@@ -1,6 +1,6 @@
-# 🚀 NovaBreaker: Supernova English AI Learning App
+# Karka English
 
-An AI-powered conversational English learning mobile app built with **React Native & Expo**, inspired by the Supernova AI learning platform and designed for learners (with native **Tamil cognitive explanations** and mental-model guidance).
+An AI-powered Tamil-to-English conversational learning app built with **React Native & Expo**, featuring Nila AI tutor feedback, offline Tamil + English lecture audio, and cosmic gamification.
 
 ---
 

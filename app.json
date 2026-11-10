@@ -21,9 +21,11 @@
       "backgroundColor": "#12111B"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.karka.english"
     },
     "android": {
+      "package": "com.karka.english",
       "backgroundColor": "#0E0E14",
       "splash": {
         "backgroundColor": "#0E0E14"
@@ -39,6 +41,9 @@
     },
     "web": {
       "bundler": "metro"
+    },
+    "experiments": {
+      "baseUrl": "/karka-english"
     }
   }
 }
