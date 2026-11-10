@@ -513,7 +513,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           style={[
             styles.scrollTopWrap,
             {
-              right: Math.max(18, (windowWidth - MAX_CONTENT_WIDTH) / 2 + 18),
+              right: Math.max(26, (windowWidth - MAX_CONTENT_WIDTH) / 2 + 26),
               opacity: scrollTopAnim,
               transform: [
                 {
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
   },
   scrollTopWrap: {
     position: 'absolute',
-    bottom: 18,
+    bottom: 28,
     zIndex: 12,
   },
   scrollTopBtn: {
