@@ -10,7 +10,6 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   useFonts,
   Poppins_400Regular,
@@ -53,6 +52,22 @@ import {
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 
 type TabType = 'learn' | 'call' | 'grammar' | 'vocab' | 'league' | 'profile';
+
+interface NavTabItem {
+  id: Exclude<TabType, 'league'>;
+  label: string;
+  family: 'mci' | 'ion';
+  activeIcon: string;
+  inactiveIcon: string;
+}
+
+const NAV_TABS: NavTabItem[] = [
+  { id: 'learn', label: 'Course', family: 'mci', activeIcon: 'compass', inactiveIcon: 'compass-outline' },
+  { id: 'grammar', label: 'Ask Nova', family: 'mci', activeIcon: 'chat-question', inactiveIcon: 'chat-question-outline' },
+  { id: 'call', label: 'Speak', family: 'ion', activeIcon: 'mic', inactiveIcon: 'mic-outline' },
+  { id: 'vocab', label: 'Vocab', family: 'ion', activeIcon: 'book', inactiveIcon: 'book-outline' },
+  { id: 'profile', label: 'Profile', family: 'ion', activeIcon: 'person', inactiveIcon: 'person-outline' },
+];
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -183,87 +198,32 @@ export default function App() {
               )}
             </View>
 
-            {/* Compact Mobile-Scaled Bottom Navigation Bar */}
+            {/* Unified Bottom Navigation Bar */}
             <View style={styles.bottomNavWrapper}>
               <View style={styles.bottomNav}>
-                <TouchableOpacity
-                  style={[styles.navItem, activeTab === 'learn' && styles.navItemActive]}
-                  onPress={() => setActiveTab('learn')}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
-                    size={21}
-                    color={activeTab === 'learn' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
-                  />
-                  <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
-                    Course
-                  </Text>
-                </TouchableOpacity>
+                {NAV_TABS.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  const iconColor = isActive ? THEME.colors.primaryGlow : THEME.colors.textMuted;
+                  const iconName = (isActive ? tab.activeIcon : tab.inactiveIcon) as any;
 
-                <TouchableOpacity
-                  style={[styles.navItem, activeTab === 'grammar' && styles.navItemActive]}
-                  onPress={() => setActiveTab('grammar')}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={activeTab === 'grammar' ? 'chat-question' : 'chat-question-outline'}
-                    size={20}
-                    color={activeTab === 'grammar' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
-                  />
-                  <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActive]}>
-                    Ask Nova
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Center Floating Nova Call Tab */}
-                <TouchableOpacity
-                  style={styles.centerCallWrapper}
-                  onPress={() => setActiveTab('call')}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={THEME.gradients.primary}
-                    style={styles.callTabGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name="mic" size={20} color="#FFFFFF" />
-                  </LinearGradient>
-                  <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveCall]}>
-                    Speak
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.navItem, activeTab === 'vocab' && styles.navItemActive]}
-                  onPress={() => setActiveTab('vocab')}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={activeTab === 'vocab' ? 'book' : 'book-outline'}
-                    size={20}
-                    color={activeTab === 'vocab' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
-                  />
-                  <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActive]}>
-                    Vocab
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.navItem, activeTab === 'profile' && styles.navItemActive]}
-                  onPress={() => setActiveTab('profile')}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={activeTab === 'profile' ? 'person' : 'person-outline'}
-                    size={20}
-                    color={activeTab === 'profile' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
-                  />
-                  <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
-                    Profile
-                  </Text>
-                </TouchableOpacity>
+                  return (
+                    <TouchableOpacity
+                      key={tab.id}
+                      style={[styles.navItem, isActive && styles.navItemActive]}
+                      onPress={() => setActiveTab(tab.id)}
+                      activeOpacity={0.75}
+                    >
+                      {tab.family === 'mci' ? (
+                        <MaterialCommunityIcons name={iconName} size={20} color={iconColor} />
+                      ) : (
+                        <Ionicons name={iconName} size={20} color={iconColor} />
+                      )}
+                      <Text style={[styles.navText, isActive && styles.navTextActive]}>
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </>
@@ -296,11 +256,11 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surfaceDark,
-    paddingVertical: 6,
-    paddingBottom: 6,
+    paddingVertical: 7,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
+    gap: 4,
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
@@ -308,35 +268,12 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingVertical: 3,
+    justifyContent: 'center',
+    paddingVertical: 6,
     borderRadius: 12,
   },
   navItemActive: {
-    backgroundColor: 'rgba(127, 67, 254, 0.08)',
-  },
-  centerCallWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingVertical: 3,
-  },
-  callTabGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginTop: -16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#A78BFA',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    elevation: 6,
-    borderBottomWidth: 3,
-    borderBottomColor: '#5B21B6',
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
   },
   navText: {
     fontFamily: THEME.fonts.medium,
@@ -345,10 +282,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   navTextActive: {
-    fontFamily: THEME.fonts.bold,
-    color: THEME.colors.primaryGlow,
-  },
-  navTextActiveCall: {
     fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
   },
