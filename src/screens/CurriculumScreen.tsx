@@ -24,6 +24,7 @@ import {
   getLessonNodeEmblem,
 } from '../constants/supernovaAssets';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
+import { KarkaWordmark } from '../components/KarkaBrand';
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
@@ -212,12 +213,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         <View style={styles.unifiedTopBarInner}>
           <View style={styles.brandRow}>
             <View style={styles.brandLogoWrap}>
-              <Image
-                source={SUPERNOVA_IMAGES.karkaLogo}
-                style={styles.brandLogoImg}
-                resizeMode="contain"
-                accessibilityLabel="Karka"
-              />
+              <KarkaWordmark width={74} height={22} />
             </View>
             <LiveStreakBadge streakDays={stats.streakDays} />
           </View>
@@ -654,10 +650,6 @@ const styles = StyleSheet.create({
   },
   activeUnitBand: {
     width: '100%',
-  },
-  brandLogoImg: {
-    width: 74,
-    height: 22,
   },
 
   /* COURSE TIMELINE */

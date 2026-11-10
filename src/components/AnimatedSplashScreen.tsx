@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { KarkaWordmark } from './KarkaBrand';
 
 interface AnimatedSplashScreenProps {
   isReady: boolean;
@@ -257,11 +258,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
             },
           ]}
         >
-          <Image
-            source={SUPERNOVA_IMAGES.karkaLogo}
-            style={styles.wordmarkImg}
-            resizeMode="contain"
-          />
+          <KarkaWordmark width={116} height={34} style={styles.wordmarkSpacing} />
 
           <View style={styles.progressTrack}>
             <Animated.View
@@ -348,9 +345,7 @@ const styles = StyleSheet.create({
   wordmarkGroup: {
     alignItems: 'center',
   },
-  wordmarkImg: {
-    width: 116,
-    height: 34,
+  wordmarkSpacing: {
     marginBottom: 18,
   },
   progressTrack: {

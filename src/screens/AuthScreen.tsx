@@ -22,6 +22,7 @@ import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { AuthUser } from '../types';
 import { saveAuthUser } from '../services/storageService';
 import { playSoundEffect } from '../services/soundEffectsService';
+import { KarkaWordmark } from '../components/KarkaBrand';
 
 type AuthMode = 'welcome' | 'login' | 'signup';
 type FocusField =
@@ -240,7 +241,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     const derivedName = extractDisplayNameFromEmail(id);
     await completeAuth({
       name: derivedName,
-      email: id.includes('@') ? id.toLowerCase() : `${id.toLowerCase()}@novabreaker.app`,
+      email: id.includes('@') ? id.toLowerCase() : `${id.toLowerCase()}@karka.app`,
       provider: 'email',
       createdAt: new Date().toISOString(),
     });
@@ -293,7 +294,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const handleForgotPassword = () => {
     Alert.alert(
       'Reset Password',
-      'Since NovaBreaker stores your study progress on this device, you can sign in with any password or continue with Google or Guest access.',
+      'Since Karka stores your study progress on this device, you can sign in with any password or continue with Google or Guest access.',
       [{ text: 'Got it' }]
     );
   };
@@ -337,7 +338,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </View>
             </View>
 
-            <Text style={styles.brandWordmark}>NovaBreaker</Text>
+            <KarkaWordmark width={136} height={40} style={styles.brandWordmarkWrap} />
             <Text style={styles.brandTagline}>
               Master everyday &amp; workplace English through Tamil.
             </Text>
@@ -406,7 +407,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <Ionicons name="arrow-back" size={22} color={THEME.colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.authNavTitle}>Enter your details</Text>
-            <View style={styles.navSpacer} />
+            <View style={styles.navBrandRight}>
+              <KarkaWordmark width={52} height={16} />
+            </View>
           </View>
 
           <Animated.View style={[styles.formBody, renderAnimatedViewStyle]}>
@@ -546,7 +549,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </Animated.View>
 
           <Text style={styles.legalCaption}>
-            By signing in to NovaBreaker, you agree to our Terms and Privacy Policy.
+            By signing in to Karka, you agree to our Terms and Privacy Policy.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -592,7 +595,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <Ionicons name="arrow-back" size={22} color={THEME.colors.textSecondary} />
           </TouchableOpacity>
           <Text style={styles.authNavTitle}>Create your profile</Text>
-          <View style={styles.navSpacer} />
+          <View style={styles.navBrandRight}>
+            <KarkaWordmark width={52} height={16} />
+          </View>
         </View>
 
         <Animated.View style={[styles.formBody, renderAnimatedViewStyle]}>
@@ -806,7 +811,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         </Animated.View>
 
         <Text style={styles.legalCaption}>
-          By creating an account on NovaBreaker, you agree to our Terms and Privacy Policy.
+          By creating an account on Karka, you agree to our Terms and Privacy Policy.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -901,11 +906,9 @@ const styles = StyleSheet.create({
     height: '100%',
     transform: [{ scale: 1.07 }],
   },
-  brandWordmark: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 28,
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
+  brandWordmarkWrap: {
+    marginTop: 6,
+    marginBottom: 4,
   },
   brandTagline: {
     fontFamily: THEME.fonts.body,
@@ -986,7 +989,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   navBackBtn: {
-    width: 36,
+    width: 52,
     height: 36,
     justifyContent: 'center',
     alignItems: 'flex-start',
@@ -996,8 +999,11 @@ const styles = StyleSheet.create({
     fontSize: 16.5,
     color: '#E9D5FF',
   },
-  navSpacer: {
-    width: 36,
+  navBrandRight: {
+    width: 52,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
   formBody: {
     flex: 1,

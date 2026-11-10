@@ -290,7 +290,7 @@ export async function analyzeSentenceGrammar(sentence: string): Promise<GrammarC
 
   const activeKey = resolveGeminiKey();
   if (activeKey) {
-    const prompt = `You are "Nila", the NovaBreaker AI English linguistics tutor for Tamil-speaking professionals.
+    const prompt = `You are "Nila", the Karka AI English linguistics tutor for Tamil-speaking professionals.
 Analyze the following sentence:
 "${trimmed}"
 
