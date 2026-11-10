@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  Dimensions,
+  useWindowDimensions,
   Image,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -26,17 +26,15 @@ interface CurriculumScreenProps {
   onOpenLeague?: () => void;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MAX_CONTENT_WIDTH = 520;
 const MAP_HORIZONTAL_PAD = 16;
-const MAP_WIDTH = SCREEN_WIDTH - MAP_HORIZONTAL_PAD * 2;
-const NODE_SIZE = 78;
+const NODE_SIZE = 72;
 const NODE_RADIUS = NODE_SIZE / 2;
-const ROW_STEP = 168;
-const TOP_OFFSET = 58;
-const LABEL_WIDTH = 162;
-
-// 6-step balanced serpentine offsets (-1..+1 fraction of wave amplitude)
-const SNAKE_OFFSETS = [0, 0.72, 0.92, 0.16, -0.72, -0.92];
+const CARD_HEIGHT = 76;
+const CARD_GAP = 14;
+const ROW_STEP = 148;
+const TOP_OFFSET = 52;
+const TROPHY_SIZE = 82;
 
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
@@ -47,6 +45,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   completedClasses,
   onOpenLeague,
 }) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const contentWidth = Math.min(windowWidth, MAX_CONTENT_WIDTH);
+  const mapWidth = Math.max(280, contentWidth - MAP_HORIZONTAL_PAD * 2);
+
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const unitYPositions = useRef<Record<number, number>>({});
@@ -59,8 +61,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       (cls) => !completedClasses.includes(cls.id)
     )?.id || null;
 
-  const waveAmp = Math.min(86, Math.max(52, (MAP_WIDTH - NODE_SIZE - 44) / 2));
-  const midX = MAP_WIDTH / 2;
+  const leftNodeCx = NODE_RADIUS + 4;
+  const rightNodeCx = mapWidth - NODE_RADIUS - 4;
+  const midX = mapWidth / 2;
+  const cardWidth = Math.max(160, mapWidth - NODE_SIZE - CARD_GAP - 8);
 
   const scrollToUnit = (levelNumber: number) => {
     const y = unitYPositions.current[levelNumber];
@@ -80,41 +84,47 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         resizeMode="cover"
       />
       <LinearGradient
-        colors={['rgba(14,14,20,0.45)', 'rgba(14,14,20,0.2)', 'rgba(14,14,20,0.75)']}
+        colors={['rgba(14,14,20,0.45)', 'rgba(14,14,20,0.2)', 'rgba(14,14,20,0.78)']}
         style={styles.mapBackdropScrim}
         pointerEvents="none"
       />
 
-      {/* Top HUD */}
-      <View style={styles.topStatsBar}>
-        <View style={styles.statPillStreak}>
-          <MaterialCommunityIcons name="fire" size={16} color={THEME.colors.gold} style={styles.statIcon} />
-          <Text style={styles.statPillTextStreak}>3</Text>
-        </View>
+      {/* Top Fixed HUD */}
+      <View style={styles.topStatsWrapper}>
+        <View style={[styles.topStatsBar, { maxWidth: MAX_CONTENT_WIDTH }]}>
+          <View style={styles.hudLeftGroup}>
+            <View style={styles.statPillStreak}>
+              <MaterialCommunityIcons name="fire" size={15} color={THEME.colors.gold} style={styles.statIcon} />
+              <Text style={styles.statPillTextStreak}>3</Text>
+            </View>
 
-        <View style={styles.statPillGems}>
-          <Ionicons name="diamond" size={14} color={THEME.colors.secondary} style={styles.statIcon} />
-          <Text style={styles.statPillTextGems}>450</Text>
-        </View>
+            <View style={styles.statPillGems}>
+              <Ionicons name="diamond" size={13} color={THEME.colors.secondary} style={styles.statIcon} />
+              <Text style={styles.statPillTextGems}>450</Text>
+            </View>
 
-        <View style={styles.statPillHearts}>
-          <Ionicons name="heart" size={14} color="#EF4444" style={styles.statIcon} />
-          <Text style={styles.statPillTextHearts}>5</Text>
-        </View>
-
-        {onOpenLeague && (
-          <TouchableOpacity style={styles.statPillLeague} onPress={onOpenLeague} activeOpacity={0.8}>
-            <MaterialCommunityIcons name="trophy-award" size={16} color={THEME.colors.gold} style={styles.statIcon} />
-            <Text style={styles.statPillTextLeague}>#4</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.missNovaHeaderPill}>
-          <View style={styles.headerAvatarWrap}>
-            <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatar} />
+            <View style={styles.statPillHearts}>
+              <Ionicons name="heart" size={13} color="#EF4444" style={styles.statIcon} />
+              <Text style={styles.statPillTextHearts}>5</Text>
+            </View>
           </View>
-          <View style={styles.onlineDot} />
-          <Text style={styles.missNovaText}>Nova</Text>
+
+          <View style={styles.hudRightGroup}>
+            {onOpenLeague && (
+              <TouchableOpacity style={styles.statPillLeague} onPress={onOpenLeague} activeOpacity={0.8}>
+                <MaterialCommunityIcons name="trophy-award" size={15} color={THEME.colors.gold} style={styles.statIcon} />
+                <Text style={styles.statPillTextLeague}>#4</Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.missNovaHeaderPill}>
+              <View style={styles.headerAvatarWrap}>
+                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatar} />
+              </View>
+              <View style={styles.onlineDot} />
+              <Text style={styles.missNovaText}>Nova</Text>
+            </View>
+          </View>
         </View>
       </View>
 
@@ -122,7 +132,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       <ScrollView
         ref={scrollViewRef}
         style={styles.roadmapScroll}
-        contentContainerStyle={styles.roadmapContent}
+        contentContainerStyle={[
+          styles.roadmapContent,
+          { width: contentWidth, alignSelf: 'center' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Map Overview & Quick-Jump Compass Strip */}
@@ -170,24 +183,24 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             (completedInLevel / level.classes.length) * 100
           );
 
-          // Alternate S-curve direction per Unit for seamless visual rhythm
-          const dir = level.levelNumber % 2 === 1 ? 1 : -1;
+          // Alternate starting side per unit (Unit 1 starts Left->Right, Unit 2 Right->Left)
+          const startLeft = level.levelNumber % 2 === 1;
 
-          // Compute exact node centers for SVG road & pins
           const nodePoints = level.classes.map((cls, idx) => {
-            const offset = SNAKE_OFFSETS[idx % SNAKE_OFFSETS.length] * dir;
-            const cx = midX + offset * waveAmp;
+            const isLeft = startLeft ? idx % 2 === 0 : idx % 2 === 1;
+            const cx = isLeft ? leftNodeCx : rightNodeCx;
             const cy = TOP_OFFSET + idx * ROW_STEP;
-            return { cls, cx, cy, offset, idx };
+            return { cls, cx, cy, isLeft, idx };
           });
 
+          const lastPoint = nodePoints[nodePoints.length - 1];
           const trophyX = midX;
-          const trophyY = TOP_OFFSET + level.classes.length * ROW_STEP + 6;
+          const trophyY = lastPoint ? lastPoint.cy + ROW_STEP - 12 : TOP_OFFSET + 60;
           const allPoints = [
             ...nodePoints.map((p) => ({ x: p.cx, y: p.cy })),
             { x: trophyX, y: trophyY },
           ];
-          const canvasHeight = trophyY + 114;
+          const canvasHeight = trophyY + TROPHY_SIZE / 2 + 46;
 
           return (
             <View
@@ -210,7 +223,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   style={styles.unitBannerScrim}
                 />
 
-                {/* Top Badge Row floating over diorama */}
                 <View style={styles.unitBannerTop}>
                   <View style={[styles.cefrBadge, { backgroundColor: level.accentColor }]}>
                     <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
@@ -220,7 +232,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   </View>
                 </View>
 
-                {/* Bottom Info Footer on Banner */}
                 <View style={styles.unitBannerFooter}>
                   <Text style={styles.unitTitleText}>{level.levelName}</Text>
                   <Text style={styles.unitDescText} numberOfLines={2}>
@@ -246,35 +257,37 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </View>
               </View>
 
-              {/* Connected Winding SVG Map Path Canvas */}
-              <View style={[styles.mapCanvas, { width: MAP_WIDTH, height: canvasHeight }]}>
+              {/* Precision Winding Map Canvas */}
+              <View style={[styles.mapCanvas, { width: mapWidth, height: canvasHeight }]}>
                 <Svg
-                  width={MAP_WIDTH}
+                  width={mapWidth}
                   height={canvasHeight}
                   style={styles.svgTrailLayer}
                 >
-                  {/* Outer recessed road casing */}
+                  {/* Outer recessed road track */}
                   {allPoints.slice(0, -1).map((pt, segIdx) => {
                     const next = allPoints[segIdx + 1];
                     const dy = next.y - pt.y;
-                    const d = `M ${pt.x} ${pt.y} C ${pt.x} ${pt.y + dy * 0.55}, ${next.x} ${next.y - dy * 0.55}, ${next.x} ${next.y}`;
+                    const cpOffset = dy * 0.56;
+                    const d = `M ${pt.x} ${pt.y} C ${pt.x} ${pt.y + cpOffset}, ${next.x} ${next.y - cpOffset}, ${next.x} ${next.y}`;
                     return (
                       <Path
                         key={`casing-${segIdx}`}
                         d={d}
-                        stroke="#19162B"
-                        strokeWidth={22}
+                        stroke="#1A172B"
+                        strokeWidth={20}
                         strokeLinecap="round"
                         fill="none"
                       />
                     );
                   })}
 
-                  {/* Active/completed trail highlight segments */}
+                  {/* Active/completed trail highlight strokes */}
                   {allPoints.slice(0, -1).map((pt, segIdx) => {
                     const next = allPoints[segIdx + 1];
                     const dy = next.y - pt.y;
-                    const d = `M ${pt.x} ${pt.y} C ${pt.x} ${pt.y + dy * 0.55}, ${next.x} ${next.y - dy * 0.55}, ${next.x} ${next.y}`;
+                    const cpOffset = dy * 0.56;
+                    const d = `M ${pt.x} ${pt.y} C ${pt.x} ${pt.y + cpOffset}, ${next.x} ${next.y - cpOffset}, ${next.x} ${next.y}`;
 
                     const segSourceClass = level.classes[segIdx];
                     const isSegCompleted = segSourceClass && completedClasses.includes(segSourceClass.id);
@@ -289,10 +302,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                             ? THEME.colors.accent
                             : isSegActive
                             ? THEME.colors.primaryGlow
-                            : '#35314F'
+                            : '#373254'
                         }
-                        strokeWidth={isSegCompleted ? 6 : isSegActive ? 5 : 4}
-                        strokeDasharray={isSegCompleted ? undefined : '9 9'}
+                        strokeWidth={isSegCompleted ? 5.5 : isSegActive ? 4.5 : 3.5}
+                        strokeDasharray={isSegCompleted ? undefined : '8 8'}
                         strokeLinecap="round"
                         fill="none"
                       />
@@ -300,63 +313,38 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   })}
                 </Svg>
 
-                {/* Stepping Stone Lesson Nodes anchored cleanly along the SVG spline */}
-                {nodePoints.map(({ cls, cx, cy, offset }) => {
+                {/* Aligned Map Station Rows (Circle Node + Bridge Stub + Horizontal Lesson Card) */}
+                {nodePoints.map(({ cls, cx, cy, isLeft }) => {
                   globalLessonCounter++;
                   const isCompleted = completedClasses.includes(cls.id);
                   const isCurrent = cls.id === nextActiveClassId;
 
                   const emblemSource = getLessonNodeEmblem(cls.id);
-                  const labelLeft = Math.max(
-                    4,
-                    Math.min(MAP_WIDTH - LABEL_WIDTH - 4, cx - LABEL_WIDTH / 2)
-                  );
-
-                  // Decorative topographic waypoint tag on opposite side of wave
-                  const showCoordLeft = offset > 0.42;
-                  const showCoordRight = offset < -0.42;
+                  const cardLeft = isLeft ? NODE_SIZE + CARD_GAP + 4 : 4;
+                  const bridgeLeft = isLeft
+                    ? cx + NODE_RADIUS - 2
+                    : cardLeft + cardWidth - 2;
+                  const bridgeColor = isCompleted
+                    ? THEME.colors.accent
+                    : isCurrent
+                    ? THEME.colors.primary
+                    : THEME.colors.border;
 
                   return (
                     <React.Fragment key={cls.id}>
-                      {(showCoordLeft || showCoordRight) && (
-                        <View
-                          pointerEvents="none"
-                          style={[
-                            styles.mapCoordTag,
-                            showCoordLeft ? { left: 6 } : { right: 6 },
-                            { top: cy - 14 },
-                          ]}
-                        >
-                          <Text style={styles.mapCoordCode}>
-                            {level.cefrTag.replace('CEFR ', '')} • {String(globalLessonCounter).padStart(2, '0')}
-                          </Text>
-                          <Text style={styles.mapCoordDuration}>{cls.duration}</Text>
-                        </View>
-                      )}
-
-                      {/* Floating "NEXT" indicator strictly above active node */}
-                      {isCurrent && (
-                        <View
-                          pointerEvents="none"
-                          style={[
-                            styles.startBadgeBubble,
-                            {
-                              left: cx - 44,
-                              top: cy - NODE_RADIUS - 34,
-                            },
-                          ]}
-                        >
-                          <LinearGradient
-                            colors={THEME.gradients.primary}
-                            style={styles.startBadgeGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                          >
-                            <Text style={styles.startBadgeText}>NEXT UP</Text>
-                          </LinearGradient>
-                          <View style={styles.startBadgeArrow} />
-                        </View>
-                      )}
+                      {/* Horizontal Connector Stub linking Pin directly to Station Card */}
+                      <View
+                        pointerEvents="none"
+                        style={[
+                          styles.bridgeConnector,
+                          {
+                            left: bridgeLeft,
+                            top: cy - 1,
+                            width: CARD_GAP + 4,
+                            backgroundColor: bridgeColor,
+                          },
+                        ]}
+                      />
 
                       {/* Circular Map Pin Button */}
                       <TouchableOpacity
@@ -384,7 +372,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           />
                         </View>
 
-                        {/* Status corner seal */}
                         {isCompleted && (
                           <View style={styles.completedBadgeCheck}>
                             <MaterialCommunityIcons name="check-bold" size={12} color="#FFFFFF" />
@@ -397,38 +384,70 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                         )}
                       </TouchableOpacity>
 
-                      {/* Clean Station Label Chip */}
+                      {/* Vertically Centered Frosted Lesson Station Card */}
                       <TouchableOpacity
-                        activeOpacity={0.85}
+                        activeOpacity={0.86}
                         onPress={() => setSelectedLesson(cls)}
                         style={[
-                          styles.nodeLabelCard,
-                          isCurrent && styles.nodeLabelCardActive,
+                          styles.stationCard,
+                          isCompleted && styles.stationCardCompleted,
+                          isCurrent && styles.stationCardCurrent,
                           {
-                            left: labelLeft,
-                            top: cy + NODE_RADIUS + 8,
-                            width: LABEL_WIDTH,
+                            left: cardLeft,
+                            top: cy - CARD_HEIGHT / 2,
+                            width: cardWidth,
+                            height: CARD_HEIGHT,
                           },
                         ]}
                       >
-                        <Text style={styles.nodeLabelTitle} numberOfLines={1}>
-                          {formatShortLessonTitle(cls.title)}
-                        </Text>
-                        <Text style={styles.nodeLabelSub}>
-                          Lesson {globalLessonCounter} • {cls.duration}
-                        </Text>
+                        <View style={styles.stationCardLeftCol}>
+                          <View style={styles.stationMetaRow}>
+                            <Text style={styles.stationIndexText}>
+                              LESSON {String(globalLessonCounter).padStart(2, '0')}
+                            </Text>
+                            {isCurrent ? (
+                              <View style={styles.statusPillNext}>
+                                <Text style={styles.statusPillTextLight}>NEXT UP</Text>
+                              </View>
+                            ) : isCompleted ? (
+                              <View style={styles.statusPillDone}>
+                                <Text style={styles.statusPillTextDone}>DONE</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.stationDurationText}>{cls.duration}</Text>
+                            )}
+                          </View>
+
+                          <Text style={styles.stationTitleText} numberOfLines={2}>
+                            {formatShortLessonTitle(cls.title)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.stationActionChevron}>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={16}
+                            color={
+                              isCurrent
+                                ? THEME.colors.primaryGlow
+                                : isCompleted
+                                ? THEME.colors.accent
+                                : THEME.colors.textMuted
+                            }
+                          />
+                        </View>
                       </TouchableOpacity>
                     </React.Fragment>
                   );
                 })}
 
-                {/* Unit Milestone Pedestal connected at bottom of winding path */}
+                {/* Unit Milestone Pedestal connected cleanly at center bottom */}
                 <TouchableOpacity
                   style={[
                     styles.chestBtn,
                     {
-                      left: trophyX - 44,
-                      top: trophyY - 44,
+                      left: trophyX - TROPHY_SIZE / 2,
+                      top: trophyY - TROPHY_SIZE / 2,
                     },
                   ]}
                   activeOpacity={0.85}
@@ -442,13 +461,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     />
                   </View>
                 </TouchableOpacity>
+
                 <View
                   style={[
                     styles.chestLabelPill,
                     {
-                      left: trophyX - 78,
-                      top: trophyY + 50,
-                      width: 156,
+                      left: trophyX - 82,
+                      top: trophyY + TROPHY_SIZE / 2 + 8,
+                      width: 164,
                     },
                   ]}
                 >
@@ -479,7 +499,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           {selectedLesson && (
             <LinearGradient
               colors={['#241B42', '#151424']}
-              style={styles.modalCard}
+              style={[
+                styles.modalCard,
+                { width: Math.min(windowWidth - 32, 460), maxHeight: windowHeight * 0.86 },
+              ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
@@ -516,100 +539,97 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </View>
               </View>
 
-              <View style={styles.modalBody}>
-                {/* Title & Coach */}
-                <View style={styles.modalNovaRow}>
-                  <View style={styles.modalAvatarRing}>
-                    <View style={styles.modalAvatarInnerClip}>
-                      <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.modalNovaAvatar} />
-                    </View>
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 14 }}>
-                    <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
-                    <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
-                  </View>
-                </View>
-
-                {/* Tamil Concept Bridge */}
-                <View style={styles.tamilConceptBox}>
-                  <Text style={styles.tamilConceptLabel}>CONCEPT IN TAMIL</Text>
-                  <Text style={styles.tamilConceptText}>
-                    "{selectedLesson.rule.tamilMentalModel}"
-                  </Text>
-                </View>
-
-                {/* 4-Step Breakdown */}
-                <View style={styles.methodologyBox}>
-                  <Text style={styles.methodologyTitle}>LESSON STAGES</Text>
-                  <View style={styles.stepGrid}>
-                    <View style={styles.stepItem}>
-                      <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(251, 191, 36, 0.14)' }]}>
-                        <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={THEME.colors.gold} />
+              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                <View style={styles.modalBody}>
+                  <View style={styles.modalNovaRow}>
+                    <View style={styles.modalAvatarRing}>
+                      <View style={styles.modalAvatarInnerClip}>
+                        <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.modalNovaAvatar} />
                       </View>
-                      <Text style={styles.stepText}>Pattern</Text>
                     </View>
-                    <View style={styles.stepItem}>
-                      <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(6, 182, 212, 0.14)' }]}>
-                        <MaterialCommunityIcons name="puzzle-outline" size={18} color={THEME.colors.secondary} />
-                      </View>
-                      <Text style={styles.stepText}>Scramble</Text>
-                    </View>
-                    <View style={styles.stepItem}>
-                      <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
-                        <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.accent} />
-                      </View>
-                      <Text style={styles.stepText}>Translate</Text>
-                    </View>
-                    <View style={styles.stepItem}>
-                      <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(127, 67, 254, 0.16)' }]}>
-                        <Ionicons name="mic-outline" size={18} color={THEME.colors.primaryGlow} />
-                      </View>
-                      <Text style={styles.stepText}>Speaking</Text>
+                    <View style={{ flex: 1, marginLeft: 14 }}>
+                      <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
+                      <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
                     </View>
                   </View>
-                </View>
 
-                {/* Rewards Row */}
-                <View style={styles.rewardsRow}>
-                  <View style={styles.rewardItem}>
-                    <MaterialCommunityIcons name="trophy-award" size={17} color={THEME.colors.gold} />
-                    <Text style={styles.rewardText}>+{selectedLesson.xpReward} XP</Text>
-                  </View>
-                  <View style={styles.rewardItem}>
-                    <Ionicons name="heart" size={16} color="#EF4444" />
-                    <Text style={styles.rewardText}>5 Lives</Text>
-                  </View>
-                  <View style={styles.rewardItem}>
-                    <Ionicons name="diamond" size={16} color={THEME.colors.secondary} />
-                    <Text style={styles.rewardText}>+5 Gems</Text>
-                  </View>
-                </View>
-
-                {/* Start Action */}
-                <TouchableOpacity
-                  style={styles.modalStartBtn}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    const lesson = selectedLesson;
-                    setSelectedLesson(null);
-                    onStartLesson(lesson);
-                  }}
-                >
-                  <LinearGradient
-                    colors={THEME.gradients.primary}
-                    style={styles.modalStartBtnInner}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <Text style={styles.modalStartBtnText}>
-                      {completedClasses.includes(selectedLesson.id)
-                        ? 'PRACTICE AGAIN (+50 XP)'
-                        : 'START LESSON (+100 XP)'}
+                  <View style={styles.tamilConceptBox}>
+                    <Text style={styles.tamilConceptLabel}>CONCEPT IN TAMIL</Text>
+                    <Text style={styles.tamilConceptText}>
+                      "{selectedLesson.rule.tamilMentalModel}"
                     </Text>
-                    <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+                  </View>
+
+                  <View style={styles.methodologyBox}>
+                    <Text style={styles.methodologyTitle}>LESSON STAGES</Text>
+                    <View style={styles.stepGrid}>
+                      <View style={styles.stepItem}>
+                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(251, 191, 36, 0.14)' }]}>
+                          <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={THEME.colors.gold} />
+                        </View>
+                        <Text style={styles.stepText}>Pattern</Text>
+                      </View>
+                      <View style={styles.stepItem}>
+                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(6, 182, 212, 0.14)' }]}>
+                          <MaterialCommunityIcons name="puzzle-outline" size={18} color={THEME.colors.secondary} />
+                        </View>
+                        <Text style={styles.stepText}>Scramble</Text>
+                      </View>
+                      <View style={styles.stepItem}>
+                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
+                          <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.accent} />
+                        </View>
+                        <Text style={styles.stepText}>Translate</Text>
+                      </View>
+                      <View style={styles.stepItem}>
+                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(127, 67, 254, 0.16)' }]}>
+                          <Ionicons name="mic-outline" size={18} color={THEME.colors.primaryGlow} />
+                        </View>
+                        <Text style={styles.stepText}>Speaking</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.rewardsRow}>
+                    <View style={styles.rewardItem}>
+                      <MaterialCommunityIcons name="trophy-award" size={17} color={THEME.colors.gold} />
+                      <Text style={styles.rewardText}>+{selectedLesson.xpReward} XP</Text>
+                    </View>
+                    <View style={styles.rewardItem}>
+                      <Ionicons name="heart" size={16} color="#EF4444" />
+                      <Text style={styles.rewardText}>5 Lives</Text>
+                    </View>
+                    <View style={styles.rewardItem}>
+                      <Ionicons name="diamond" size={16} color={THEME.colors.secondary} />
+                      <Text style={styles.rewardText}>+5 Gems</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.modalStartBtn}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      const lesson = selectedLesson;
+                      setSelectedLesson(null);
+                      onStartLesson(lesson);
+                    }}
+                  >
+                    <LinearGradient
+                      colors={THEME.gradients.primary}
+                      style={styles.modalStartBtnInner}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.modalStartBtnText}>
+                        {completedClasses.includes(selectedLesson.id)
+                          ? 'PRACTICE AGAIN (+50 XP)'
+                          : 'START LESSON (+100 XP)'}
+                      </Text>
+                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </LinearGradient>
           )}
         </View>
@@ -630,15 +650,29 @@ const styles = StyleSheet.create({
   mapBackdropScrim: {
     ...StyleSheet.absoluteFillObject,
   },
-  topStatsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  topStatsWrapper: {
     backgroundColor: 'rgba(18, 17, 27, 0.94)',
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
+    alignItems: 'center',
+  },
+  topStatsBar: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  hudLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  hudRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   statIcon: {
     marginRight: 4,
@@ -646,10 +680,10 @@ const styles = StyleSheet.create({
   statPillStreak: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 30,
     backgroundColor: THEME.colors.goldLight,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 9,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
   },
@@ -661,10 +695,10 @@ const styles = StyleSheet.create({
   statPillGems: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 30,
     backgroundColor: THEME.colors.secondaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 9,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: 'rgba(6, 182, 212, 0.4)',
   },
@@ -676,10 +710,10 @@ const styles = StyleSheet.create({
   statPillHearts: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 30,
     backgroundColor: THEME.colors.errorLight,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 9,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.4)',
   },
@@ -691,10 +725,10 @@ const styles = StyleSheet.create({
   statPillLeague: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 30,
     backgroundColor: 'rgba(251, 191, 36, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 9,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
   },
@@ -706,22 +740,22 @@ const styles = StyleSheet.create({
   missNovaHeaderPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 30,
     backgroundColor: THEME.colors.primaryLight,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: THEME.colors.primaryGlow,
   },
   headerAvatarWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   missNovaAvatar: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     transform: [{ scale: 1.08 }],
   },
   onlineDot: {
@@ -745,7 +779,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   compassStrip: {
-    backgroundColor: 'rgba(24, 23, 36, 0.88)',
+    backgroundColor: 'rgba(24, 23, 36, 0.9)',
     borderRadius: THEME.radius.lg,
     padding: 12,
     borderWidth: 1,
@@ -803,15 +837,15 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   levelSection: {
-    marginBottom: 34,
+    marginBottom: 28,
   },
   unitBannerCard: {
     borderRadius: 20,
     overflow: 'hidden',
-    height: 186,
+    height: 178,
     borderWidth: 1.5,
     borderColor: 'rgba(127, 67, 254, 0.45)',
-    marginBottom: 10,
+    marginBottom: 6,
     backgroundColor: THEME.colors.surfaceCard,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -908,61 +942,10 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
   },
-  mapCoordTag: {
+  bridgeConnector: {
     position: 'absolute',
-    backgroundColor: 'rgba(20, 19, 32, 0.72)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(61, 57, 92, 0.55)',
-  },
-  mapCoordCode: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 9,
-    color: THEME.colors.textMuted,
-    letterSpacing: 0.6,
-  },
-  mapCoordDuration: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 9,
-    color: THEME.colors.textSecondary,
-  },
-  startBadgeBubble: {
-    position: 'absolute',
-    width: 88,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  startBadgeGradient: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#C4B5FD',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  startBadgeText: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 9,
-    color: '#FFFFFF',
-    letterSpacing: 0.8,
-  },
-  startBadgeArrow: {
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderTopWidth: 5,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#7F43FE',
+    height: 2,
+    zIndex: 2,
   },
   steppingStoneBtn: {
     position: 'absolute',
@@ -1039,40 +1022,102 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#3D395C',
   },
-  nodeLabelCard: {
+
+  /* SIDE-ALIGNED STATION CARDS */
+  stationCard: {
     position: 'absolute',
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(18, 17, 27, 0.92)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: 'rgba(24, 23, 36, 0.94)',
+    borderRadius: 16,
+    borderWidth: 1.25,
     borderColor: THEME.colors.border,
-    zIndex: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    zIndex: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  nodeLabelCardActive: {
+  stationCardCompleted: {
+    borderColor: 'rgba(16, 185, 129, 0.45)',
+    backgroundColor: 'rgba(18, 28, 30, 0.94)',
+  },
+  stationCardCurrent: {
     borderColor: THEME.colors.primary,
-    backgroundColor: 'rgba(31, 25, 56, 0.96)',
+    backgroundColor: 'rgba(34, 24, 58, 0.96)',
+    shadowColor: '#7F43FE',
+    shadowOpacity: 0.35,
   },
-  nodeLabelTitle: {
+  stationCardLeftCol: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingRight: 8,
+  },
+  stationMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  stationIndexText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.7,
   },
-  nodeLabelSub: {
-    fontFamily: THEME.fonts.medium,
+  statusPillNext: {
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusPillTextLight: {
+    fontFamily: THEME.fonts.extraBold,
     fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  statusPillDone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusPillTextDone: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 9,
+    color: THEME.colors.accent,
+    letterSpacing: 0.5,
+  },
+  stationDurationText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 10,
     color: THEME.colors.textSecondary,
-    marginTop: 1,
+  },
+  stationTitleText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 13,
+    color: THEME.colors.text,
+    lineHeight: 18,
+  },
+  stationActionChevron: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   /* MILESTONE CHEST */
   chestBtn: {
     position: 'absolute',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: TROPHY_SIZE,
+    height: TROPHY_SIZE,
+    borderRadius: TROPHY_SIZE / 2,
     backgroundColor: '#181724',
     borderWidth: 2.5,
     borderColor: THEME.colors.gold,
@@ -1088,9 +1133,9 @@ const styles = StyleSheet.create({
     zIndex: 4,
   },
   chestImageClip: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: TROPHY_SIZE - 10,
+    height: TROPHY_SIZE - 10,
+    borderRadius: (TROPHY_SIZE - 10) / 2,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
@@ -1104,7 +1149,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(251, 191, 36, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 10,
     alignItems: 'center',
   },
@@ -1121,13 +1166,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.82)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 18,
+    padding: 16,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    width: SCREEN_WIDTH - 32,
     borderRadius: THEME.radius.xl,
     overflow: 'hidden',
     borderWidth: 1.5,
@@ -1139,7 +1183,7 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   modalHeroWrap: {
-    height: 92,
+    height: 90,
     width: '100%',
     justifyContent: 'flex-start',
   },

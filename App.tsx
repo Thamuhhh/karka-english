@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     paddingVertical: 4,
     borderRadius: 14,
   },
@@ -234,13 +234,14 @@ const styles = StyleSheet.create({
   centerCallWrapper: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    top: -12,
+    justifyContent: 'flex-end',
+    paddingVertical: 4,
   },
   callTabGradient: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginTop: -22,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

@@ -176,7 +176,7 @@ export const ProfileScreen: React.FC = () => {
 
         <Text style={[styles.subHeading, { marginTop: 16 }]}>PLAYBACK SPEED</Text>
         <TouchableOpacity style={styles.speedToggleRow} onPress={toggleSpeechSpeed}>
-          <View>
+          <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={styles.speedLabel}>Slow Mode (0.75x)</Text>
             <Text style={styles.speedDesc}>Clearer syllable pronunciation for beginners</Text>
           </View>
