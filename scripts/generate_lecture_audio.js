@@ -177,13 +177,8 @@ function extractInlineAudioPart(json) {
 
 async function requestGeminiAudio(apiKey, clip, voiceName) {
   const text = cleanSpeechText(clip.text, clip.mode, 'gemini');
-  const styledPrompt =
-    clip.mode === 'tamil'
-      ? `Speak warmly and naturally like a friendly Chennai Tamil English coach talking to a friend. Pronounce both Tamil words and English words clearly in one steady human female voice. Read only this text:\n\n${text}`
-      : `Speak clearly and warmly in a natural conversational English accent. Read only this text:\n\n${text}`;
-
   const body = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: styledPrompt }] }],
+    contents: [{ role: 'user', parts: [{ text }] }],
     generationConfig: {
       responseModalities: ['AUDIO'],
       speechConfig: {

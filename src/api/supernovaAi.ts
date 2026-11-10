@@ -1033,24 +1033,17 @@ function extractInlineAudio(data: any): { base64: string; mimeType: string } | n
  */
 export async function synthesizeGeminiSpeech(
   text: string,
-  mode: 'tamil-coach' | 'english-native',
-  accent: 'en-US' | 'en-GB' | 'en-AU' = 'en-US'
+  _mode: 'tamil-coach' | 'english-native',
+  _accent: 'en-US' | 'en-GB' | 'en-AU' = 'en-US'
 ): Promise<{ base64: string; mimeType: string } | null> {
   const clean = text.trim();
   const activeKey = resolveGeminiKey();
   if (!clean || !activeKey) return null;
 
-  const styledText =
-    mode === 'tamil-coach'
-      ? `Say warmly and naturally: ${clean}`
-      : accent === 'en-GB'
-        ? `Say clearly in a friendly British accent: ${clean}`
-        : `Say cheerfully and clearly: ${clean}`;
-
   const json = await callGeminiWithTimeout(
     activeKey,
     {
-      contents: [{ role: 'user', parts: [{ text: styledText }] }],
+      contents: [{ role: 'user', parts: [{ text: clean }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: {
