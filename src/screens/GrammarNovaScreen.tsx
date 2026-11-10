@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { GrammarCorrection, UserStats } from '../types';
@@ -28,6 +28,24 @@ const SAMPLE_SENTENCES = [
   "Yesterday only I have completed the full presentation.",
   "We will discuss about this tomorrow and revert back.",
 ];
+
+const TONE_VARIANTS: Array<{
+  key: 'formalVersion' | 'casualVersion' | 'nativeIdiomaticVersion';
+  fieldId: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { key: 'formalVersion', fieldId: 'formal', label: 'Professional', icon: 'briefcase-outline' },
+  { key: 'casualVersion', fieldId: 'casual', label: 'Casual', icon: 'cafe-outline' },
+  {
+    key: 'nativeIdiomaticVersion',
+    fieldId: 'native',
+    label: 'Native Phrasing',
+    icon: 'chatbubble-ellipses-outline',
+  },
+];
+
+const MAX_CONTENT_WIDTH = 500;
 
 export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpdate }) => {
   const [inputText, setInputText] = useState('');
@@ -74,56 +92,73 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
   };
 
   const onlineMode = isGeminiConfigured();
+  const hasInput = inputText.trim().length > 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Minimalist Obsidian Header */}
       <View style={styles.header}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="sparkles" size={20} color={THEME.colors.primaryGlow} />
+        <View style={styles.brandRow}>
+          <View style={styles.iconBadge}>
+            <Ionicons name="sparkles" size={19} color="#C4B5FD" />
+          </View>
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>Ask Nila</Text>
+            <Text style={styles.subtitle}>Sentence polish &amp; Tamil grammar breakdown</Text>
+          </View>
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.title}>Ask Nila</Text>
-          <Text style={styles.subtitle}>Instant grammar diagnosis & Tamil explanation</Text>
-        </View>
-        <View style={[styles.enginePill, onlineMode ? styles.enginePillOnline : styles.enginePillOffline]}>
-          <View style={[styles.engineDot, { backgroundColor: onlineMode ? THEME.colors.primaryGlow : THEME.colors.gold }]} />
-          <Text style={[styles.engineText, { color: onlineMode ? THEME.colors.primaryGlow : THEME.colors.gold }]}>
-            {onlineMode ? 'Gemini AI' : 'Offline'}
-          </Text>
+
+        <View style={styles.enginePill}>
+          <View
+            style={[
+              styles.engineDot,
+              { backgroundColor: onlineMode ? '#A78BFA' : '#76728E' },
+            ]}
+          />
+          <Text style={styles.engineText}>{onlineMode ? 'Gemini' : 'Local'}</Text>
         </View>
       </View>
 
-      {/* Input Card */}
-      <View style={styles.inputCard}>
+      {/* Monochrome Obsidian Sentence Composer */}
+      <View style={[styles.composerCard, hasInput && styles.composerCardActive]}>
         <TextInput
           style={styles.textInput}
-          placeholder="Type any English sentence to check..."
+          placeholder="Paste or type any English sentence..."
           placeholderTextColor={THEME.colors.textMuted}
           value={inputText}
           onChangeText={setInputText}
           multiline
-          numberOfLines={3}
+          textAlignVertical="top"
         />
-        <View style={styles.inputActions}>
-          <TouchableOpacity
-            style={styles.clearBtn}
-            onPress={() => {
-              setInputText('');
-              setResult(null);
-            }}
-          >
-            <Text style={styles.clearText}>Clear</Text>
-          </TouchableOpacity>
+
+        <View style={styles.composerFooter}>
+          {hasInput ? (
+            <TouchableOpacity
+              style={styles.clearBtn}
+              onPress={() => {
+                setInputText('');
+                setResult(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.clearText}>Clear</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.charHint}>English → Natural Polish</Text>
+          )}
 
           <TouchableOpacity
-            style={[styles.analyzeTouchable, (!inputText.trim() || isAnalyzing) && styles.analyzeBtnDisabled]}
+            style={[styles.analyzeTouchable, (!hasInput || isAnalyzing) && styles.analyzeDisabled]}
             onPress={() => handleAnalyze()}
-            disabled={!inputText.trim() || isAnalyzing}
+            disabled={!hasInput || isAnalyzing}
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={inputText.trim() ? THEME.gradients.primary : ['#3D395C', '#28253E']}
+              colors={hasInput ? ['#8B5CF6', '#6D28D9'] : ['#26233B', '#1F1D30']}
               style={styles.analyzeBtnGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -131,10 +166,16 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
               {isAnalyzing ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <>
-                  <Text style={styles.analyzeBtnText}>Check Grammar</Text>
-                  <Ionicons name="checkmark-done" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
-                </>
+                <View style={styles.analyzeRow}>
+                  <Text style={[styles.analyzeBtnText, !hasInput && styles.analyzeBtnTextMuted]}>
+                    Check
+                  </Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={15}
+                    color={hasInput ? '#FFFFFF' : '#76728E'}
+                  />
+                </View>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -142,14 +183,19 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
       </View>
 
       {/* Quick Test Samples */}
-      <View style={styles.sampleSection}>
-        <Text style={styles.sampleHeading}>COMMON MISTAKES TO TRY</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sampleScroll}>
+      <View style={styles.stripSection}>
+        <Text style={styles.stripLabel}>TRY A SENTENCE</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.stripRow}
+        >
           {SAMPLE_SENTENCES.map((sample, idx) => (
             <TouchableOpacity
               key={idx}
-              style={styles.sampleChip}
+              style={[styles.sampleChip, inputText.trim() === sample && styles.sampleChipActive]}
               onPress={() => handleAnalyze(sample)}
+              activeOpacity={0.8}
             >
               <Text style={styles.sampleChipText}>"{sample}"</Text>
             </TouchableOpacity>
@@ -157,11 +203,15 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
         </ScrollView>
       </View>
 
-      {/* Recent Session History */}
+      {/* Recent Session Checks */}
       {recentResults.length > 1 && (
-        <View style={styles.sampleSection}>
-          <Text style={styles.sampleHeading}>RECENT CHECKS</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sampleScroll}>
+        <View style={styles.stripSection}>
+          <Text style={styles.stripLabel}>RECENT</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.stripRow}
+          >
             {recentResults.map((item, idx) => (
               <TouchableOpacity
                 key={idx}
@@ -170,8 +220,9 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
                   setInputText(item.originalSentence);
                   setResult(item);
                 }}
+                activeOpacity={0.8}
               >
-                <Text style={styles.historyScore}>{item.fluencyScore}%</Text>
+                <Text style={styles.historyScore}>{item.fluencyScore}</Text>
                 <Text style={styles.historyText} numberOfLines={1}>
                   {item.originalSentence}
                 </Text>
@@ -181,125 +232,106 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
         </View>
       )}
 
-      {/* Diagnosis Results */}
+      {/* Consolidated Diagnosis Results */}
       {result && (
-        <View style={styles.resultContainer}>
-          <View style={styles.verdictCard}>
-            <View style={styles.verdictRow}>
+        <View style={styles.resultsStack}>
+          {/* Primary Correction + Explanation Block */}
+          <View style={styles.analysisCard}>
+            <View style={styles.verdictHeader}>
               <View>
-                <Text style={styles.verdictLabel}>FLUENCY SCORE</Text>
+                <Text style={styles.eyebrowMuted}>FLUENCY SCORE</Text>
                 <Text style={styles.verdictScore}>{result.fluencyScore}/100</Text>
               </View>
+
               <View
                 style={[
-                  styles.verdictBadge,
-                  result.hasErrors ? styles.badgeWarning : styles.badgeSuccess,
+                  styles.statusBadge,
+                  !result.hasErrors && styles.statusBadgePolished,
                 ]}
               >
                 <Ionicons
-                  name={result.hasErrors ? 'alert-circle' : 'checkmark-circle'}
-                  size={18}
-                  color={result.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow}
+                  name={result.hasErrors ? 'create-outline' : 'checkmark-circle'}
+                  size={15}
+                  color={result.hasErrors ? '#D7D3EB' : '#C4B5FD'}
                 />
                 <Text
                   style={[
-                    styles.verdictBadgeText,
-                    { color: result.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow },
+                    styles.statusBadgeText,
+                    !result.hasErrors && styles.statusBadgeTextPolished,
                   ]}
                 >
-                  {result.hasErrors ? 'Needs Improvement' : 'Excellent Grammar'}
+                  {result.hasErrors ? 'Polished' : 'Natural'}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.correctedBox}>
-              <Text style={styles.correctedLabel}>CORRECTED SENTENCE</Text>
+            <View style={styles.correctedCallout}>
+              <View style={styles.correctedTopRow}>
+                <Text style={styles.correctedLabel}>NATURAL ENGLISH</Text>
+                <TouchableOpacity
+                  style={styles.audioBtn}
+                  onPress={() => playVoice(result.correctedSentence, 'corrected')}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons
+                    name={activeAudioField === 'corrected' ? 'volume-high' : 'volume-medium-outline'}
+                    size={18}
+                    color="#A78BFA"
+                  />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.correctedText}>{result.correctedSentence}</Text>
-              <TouchableOpacity
-                style={styles.audioIconBtn}
-                onPress={() => playVoice(result.correctedSentence, 'corrected')}
-              >
-                <Ionicons
-                  name={activeAudioField === 'corrected' ? 'volume-high' : 'volume-medium-outline'}
-                  size={20}
-                  color={THEME.colors.primaryGlow}
-                />
-              </TouchableOpacity>
+            </View>
+
+            <View style={styles.explanationSection}>
+              <Text style={styles.eyebrowMuted}>KEY NOTE</Text>
+              <Text style={styles.explanationText}>{result.explanation}</Text>
+            </View>
+
+            <View style={styles.tamilCallout}>
+              <Text style={styles.tamilCalloutEyebrow}>TAMIL EXPLANATION</Text>
+              <Text style={styles.tamilCalloutBody}>{result.tamilExplanation}</Text>
             </View>
           </View>
 
-          <View style={styles.infoCard}>
-            <View style={styles.tamilHeaderRow}>
-              <Ionicons name="book-outline" size={16} color={THEME.colors.primaryGlow} />
-              <Text style={[styles.infoTitle, { marginLeft: 6, marginBottom: 0 }]}>Grammar Explanation</Text>
-            </View>
-            <Text style={[styles.infoText, { marginTop: 6 }]}>{result.explanation}</Text>
-          </View>
+          {/* Single Unified Alternative Tones Card */}
+          <View style={styles.tonesCard}>
+            <Text style={styles.tonesTitle}>ALTERNATIVE TONES</Text>
 
-          <View style={styles.tamilCard}>
-            <View style={styles.tamilHeaderRow}>
-              <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.gold} />
-              <Text style={styles.tamilCardTitle}>Tamil Explanation</Text>
-            </View>
-            <Text style={styles.tamilCardText}>{result.tamilExplanation}</Text>
-          </View>
-
-          <Text style={styles.variationsHeader}>Natural Alternatives</Text>
-
-          <View style={styles.variantCard}>
-            <View style={styles.variantTop}>
-              <View style={styles.variantTag}>
-                <Ionicons name="briefcase-outline" size={13} color={THEME.colors.secondary} />
-                <Text style={styles.variantTagText}>Professional</Text>
-              </View>
-              <TouchableOpacity onPress={() => playVoice(result.formalVersion, 'formal')}>
-                <Ionicons
-                  name={activeAudioField === 'formal' ? 'volume-high' : 'volume-medium-outline'}
-                  size={18}
-                  color={THEME.colors.primaryGlow}
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.variantText}>{result.formalVersion}</Text>
-          </View>
-
-          <View style={styles.variantCard}>
-            <View style={styles.variantTop}>
-              <View style={styles.variantTag}>
-                <Ionicons name="cafe-outline" size={13} color={THEME.colors.gold} />
-                <Text style={styles.variantTagText}>Casual</Text>
-              </View>
-              <TouchableOpacity onPress={() => playVoice(result.casualVersion, 'casual')}>
-                <Ionicons
-                  name={activeAudioField === 'casual' ? 'volume-high' : 'volume-medium-outline'}
-                  size={18}
-                  color={THEME.colors.primaryGlow}
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.variantText}>{result.casualVersion}</Text>
-          </View>
-
-          <View style={styles.variantCard}>
-            <View style={styles.variantTop}>
-              <View style={styles.variantTag}>
-                <Ionicons name="chatbubble-ellipses-outline" size={13} color={THEME.colors.primaryGlow} />
-                <Text style={styles.variantTagText}>Native Speaker</Text>
-              </View>
-              <TouchableOpacity onPress={() => playVoice(result.nativeIdiomaticVersion, 'native')}>
-                <Ionicons
-                  name={activeAudioField === 'native' ? 'volume-high' : 'volume-medium-outline'}
-                  size={18}
-                  color={THEME.colors.primaryGlow}
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.variantText}>{result.nativeIdiomaticVersion}</Text>
+            {TONE_VARIANTS.map((tone, idx) => {
+              const phrase = result[tone.key];
+              const isPlaying = activeAudioField === tone.fieldId;
+              return (
+                <View
+                  key={tone.fieldId}
+                  style={[styles.toneRow, idx > 0 && styles.toneRowBorder]}
+                >
+                  <View style={styles.toneTopRow}>
+                    <View style={styles.toneTag}>
+                      <Ionicons name={tone.icon} size={13.5} color="#A78BFA" />
+                      <Text style={styles.toneTagText}>{tone.label}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.audioBtn}
+                      onPress={() => playVoice(phrase, tone.fieldId)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons
+                        name={isPlaying ? 'volume-high' : 'volume-medium-outline'}
+                        size={17}
+                        color="#A78BFA"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.toneSentence}>{phrase}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
       )}
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 32 }} />
     </ScrollView>
   );
 };
@@ -310,53 +342,62 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   content: {
-    padding: 14,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 24,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
+
+  /* HEADER */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
-  iconCircle: {
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 10,
+  },
+  iconBadge: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(127, 67, 254, 0.16)',
+    borderRadius: 12,
+    backgroundColor: '#181628',
     borderWidth: 1,
     borderColor: 'rgba(167, 139, 250, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  titleBlock: {
+    flex: 1,
+    marginLeft: 12,
+  },
   title: {
     fontFamily: THEME.fonts.bold,
     fontSize: 18,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
   },
   subtitle: {
     fontFamily: THEME.fonts.body,
     fontSize: 11.5,
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
   enginePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    backgroundColor: '#171624',
+    borderColor: '#2A2740',
     borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 9,
     gap: 5,
-  },
-  enginePillOnline: {
-    backgroundColor: 'rgba(127, 67, 254, 0.14)',
-    borderColor: 'rgba(167, 139, 250, 0.4)',
-  },
-  enginePillOffline: {
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
-    borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   engineDot: {
     width: 6,
@@ -364,263 +405,295 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   engineText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 10.5,
+    color: '#D7D3EB',
   },
-  inputCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
-    padding: 14,
+
+  /* COMPOSER */
+  composerCard: {
+    backgroundColor: '#151422',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#29263F',
+    overflow: 'hidden',
+  },
+  composerCardActive: {
+    borderColor: 'rgba(127, 67, 254, 0.55)',
   },
   textInput: {
     fontFamily: THEME.fonts.bodyMedium,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     fontSize: 14.5,
-    minHeight: 70,
-    textAlignVertical: 'top',
+    minHeight: 84,
+    paddingHorizontal: 16,
+    paddingTop: 15,
+    paddingBottom: 12,
+    lineHeight: 22,
   },
-  inputActions: {
+  composerFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 10,
-    paddingTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#13121E',
   },
   clearBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   clearText: {
     fontFamily: THEME.fonts.medium,
+    color: THEME.colors.textSecondary,
+    fontSize: 12.5,
+  },
+  charHint: {
+    fontFamily: THEME.fonts.body,
     color: THEME.colors.textMuted,
-    fontSize: 13,
+    fontSize: 11.5,
   },
   analyzeTouchable: {
-    borderRadius: 20,
-    borderBottomWidth: 3,
-    borderBottomColor: '#5B21B6',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+    borderRadius: 11,
+    overflow: 'hidden',
   },
   analyzeBtnGradient: {
+    height: 38,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  analyzeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
+    gap: 6,
   },
-  analyzeBtnDisabled: {
-    opacity: 0.5,
-    borderBottomColor: '#28253E',
+  analyzeDisabled: {
+    opacity: 0.75,
   },
   analyzeBtnText: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
   },
-  sampleSection: {
-    marginTop: 14,
-    marginBottom: 4,
+  analyzeBtnTextMuted: {
+    color: '#76728E',
   },
-  sampleHeading: {
+
+  /* STRIPS */
+  stripSection: {
+    marginTop: 16,
+  },
+  stripLabel: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 10.5,
+    fontSize: 10,
     color: THEME.colors.textMuted,
     marginBottom: 8,
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
-  sampleScroll: {
+  stripRow: {
     gap: 8,
   },
   sampleChip: {
-    backgroundColor: THEME.colors.surfaceCard,
+    backgroundColor: '#171625',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#28253E',
+  },
+  sampleChipActive: {
+    borderColor: THEME.colors.primary,
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
   },
   sampleChipText: {
     fontFamily: THEME.fonts.body,
-    color: THEME.colors.textSecondary,
+    color: '#D5D0E6',
     fontSize: 12,
   },
   historyChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: '#171625',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+    borderColor: '#2A2740',
     maxWidth: 200,
     gap: 6,
   },
   historyScore: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    color: THEME.colors.primaryGlow,
+    color: '#C4B5FD',
   },
   historyText: {
     fontFamily: THEME.fonts.body,
     fontSize: 11.5,
-    color: THEME.colors.text,
+    color: '#D5D0E6',
     flexShrink: 1,
   },
-  resultContainer: {
-    marginTop: 14,
-    gap: 12,
+
+  /* RESULTS */
+  resultsStack: {
+    marginTop: 18,
+    gap: 14,
   },
-  verdictCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
-    padding: 16,
+  analysisCard: {
+    backgroundColor: '#151422',
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#29263F',
+    gap: 14,
   },
-  verdictRow: {
+  verdictHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
   },
-  verdictLabel: {
+  eyebrowMuted: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textMuted,
     letterSpacing: 0.8,
+    marginBottom: 3,
   },
   verdictScore: {
     fontFamily: THEME.fonts.bold,
     fontSize: 24,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
   },
-  verdictBadge: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    gap: 5,
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    borderRadius: 16,
-  },
-  badgeSuccess: {
-    backgroundColor: 'rgba(127, 67, 254, 0.16)',
-  },
-  badgeWarning: {
-    backgroundColor: THEME.colors.warningBg,
-  },
-  verdictBadgeText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 12,
-    marginLeft: 6,
-  },
-  correctedBox: {
-    backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: 10,
-    padding: 12,
-    position: 'relative',
+    backgroundColor: '#1F1D30',
+    borderWidth: 1,
+    borderColor: '#322E4D',
+  },
+  statusBadgePolished: {
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
+    borderColor: 'rgba(167, 139, 250, 0.35)',
+  },
+  statusBadgeText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11.5,
+    color: '#D7D3EB',
+  },
+  statusBadgeTextPolished: {
+    color: '#C4B5FD',
+  },
+  correctedCallout: {
+    backgroundColor: '#1B182E',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  correctedTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   correctedLabel: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.primaryGlow,
-    letterSpacing: 0.6,
+    color: '#A78BFA',
+    letterSpacing: 0.8,
+  },
+  audioBtn: {
+    padding: 3,
   },
   correctedText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15,
-    color: THEME.colors.text,
-    marginTop: 4,
-    paddingRight: 32,
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 15.5,
+    color: '#FFFFFF',
+    lineHeight: 22,
+    marginTop: 5,
   },
-  audioIconBtn: {
-    position: 'absolute',
-    right: 12,
-    top: 14,
+  explanationSection: {
+    paddingTop: 2,
   },
-  infoCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  infoTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: THEME.colors.text,
-    marginBottom: 6,
-  },
-  infoText: {
+  explanationText: {
     fontFamily: THEME.fonts.body,
     fontSize: 13,
-    color: THEME.colors.textSecondary,
+    color: '#C9C5DE',
     lineHeight: 20,
   },
-  tamilCard: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-    borderRadius: THEME.radius.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+  tamilCallout: {
+    backgroundColor: '#1A1829',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primaryGlow,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  tamilHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  tamilCardTitle: {
+  tamilCalloutEyebrow: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: THEME.colors.gold,
-    marginLeft: 6,
+    fontSize: 10,
+    color: '#A78BFA',
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
-  tamilCardText: {
+  tamilCalloutBody: {
     fontFamily: THEME.fonts.tamilMedium,
     fontSize: 13.5,
-    color: THEME.colors.text,
+    color: '#F1EFFC',
     lineHeight: 23,
   },
-  variationsHeader: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15,
-    color: THEME.colors.text,
-    marginTop: 8,
-  },
-  variantCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
-    padding: 12,
+
+  /* UNIFIED TONES CARD */
+  tonesCard: {
+    backgroundColor: '#151422',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 6,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#29263F',
   },
-  variantTop: {
+  tonesTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  toneRow: {
+    paddingVertical: 12,
+  },
+  toneRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  toneTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  variantTag: {
+  toneTag: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  variantTagText: {
+  toneTagText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginLeft: 5,
+    fontSize: 11.5,
+    color: '#C4B5FD',
   },
-  variantText: {
+  toneSentence: {
     fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 14,
-    color: THEME.colors.text,
+    fontSize: 13.5,
+    color: '#FFFFFF',
     lineHeight: 20,
   },
 });
