@@ -50,3 +50,4 @@ export function getUserLeaderboardRank(stats: UserStats): number {
   const me = ranked.find((u) => u.isCurrentUser);
   return me?.rank || ranked.length;
 }
+

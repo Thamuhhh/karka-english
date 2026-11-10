@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,18 +12,13 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_LEVELS, SupernovaClass, SupernovaLevel } from '../constants/curriculum';
+import { SUPERNOVA_LEVELS, SupernovaClass } from '../constants/curriculum';
 import { UserStats } from '../types';
 import {
   SUPERNOVA_IMAGES,
   getLessonNodeEmblem,
   getUnitBanner,
 } from '../constants/supernovaAssets';
-import {
-  ForestMapCanvas,
-  TrailSegment,
-  ForestDecorSeed,
-} from '../components/ForestMapCanvas';
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
@@ -34,24 +29,6 @@ interface CurriculumScreenProps {
 }
 
 const MAX_CONTENT_WIDTH = 480;
-const NODE_SIZE = 56;
-const NODE_RADIUS = NODE_SIZE / 2;
-const ROW_STEP = 108;
-const GATE_HEIGHT = 96;
-const GATE_GAP = 72;
-const SIGNPOST_MAX_WIDTH = 148;
-const SIGNPOST_HEIGHT = 44;
-const TROPHY_SIZE = 72;
-
-// 4-step smooth forest zig-zag wave fraction (-1..+1)
-const ZIGZAG_PHASE = [-0.9, -0.1, 0.9, 0.1];
-
-const BIOME_NAMES: Record<number, string> = {
-  1: 'Trailhead Grove',
-  2: 'Mossy Glade',
-  3: 'Canopy Vista',
-  4: 'Emerald Summit',
-};
 
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
@@ -64,205 +41,58 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onRefillHearts,
   onOpenLeague,
 }) => {
-  const completedClasses = stats.completedClasses;
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const contentWidth = Math.min(windowWidth, MAX_CONTENT_WIDTH);
-  const mapWidth = Math.max(300, contentWidth);
-
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState<number | 'all'>('all');
 
+  const completedClasses = stats.completedClasses;
   const totalClassesCount = SUPERNOVA_LEVELS.reduce((acc, lvl) => acc + lvl.classes.length, 0);
   const completedCount = completedClasses.length;
   const overallPercent = Math.round((completedCount / Math.max(1, totalClassesCount)) * 100);
+
   const nextActiveClassId =
     SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
       (cls) => !completedClasses.includes(cls.id)
     )?.id || null;
 
-  const midX = mapWidth / 2;
-  const signpostWidth = Math.min(SIGNPOST_MAX_WIDTH, Math.floor(mapWidth * 0.41));
-  const waveAmp = Math.min(92, Math.max(66, (mapWidth - 188) * 0.52));
+  const visibleLevels =
+    selectedUnitFilter === 'all'
+      ? SUPERNOVA_LEVELS
+      : SUPERNOVA_LEVELS.filter((lvl) => lvl.levelNumber === selectedUnitFilter);
 
-  // Build ONE continuous end-to-end timeline across all 4 forest biomes & 22 lessons
-  type GateNode = {
-    type: 'gate';
-    level: SupernovaLevel;
-    topY: number;
-    completedInLevel: number;
-    progressPercent: number;
-  };
-  type LessonNode = {
-    type: 'lesson';
-    cls: SupernovaClass;
-    level: SupernovaLevel;
-    globalNum: number;
-    cx: number;
-    cy: number;
-  };
-
-  const gateNodes: GateNode[] = [];
-  const lessonNodes: LessonNode[] = [];
-  const segments: TrailSegment[] = [];
-  const decorSeeds: ForestDecorSeed[] = [];
-  const unitYMap: Record<number, number> = {};
-
-  let cursorY = 18;
-  let globalLessonCounter = 0;
-  let prevAnchor: { x: number; y: number } | null = null;
-  let prevUnitLastDone = false;
-  let activeLessonY: number | null = null;
-
-  for (let lvlIdx = 0; lvlIdx < SUPERNOVA_LEVELS.length; lvlIdx++) {
-    const level = SUPERNOVA_LEVELS[lvlIdx];
-    const completedInLevel = level.classes.filter((c) =>
-      completedClasses.includes(c.id)
-    ).length;
-    const progressPercent = Math.round((completedInLevel / level.classes.length) * 100);
-
-    const gateTopY = cursorY;
-    const gateBotY = gateTopY + GATE_HEIGHT;
-    unitYMap[level.levelNumber] = Math.max(0, gateTopY - 8);
-
-    gateNodes.push({
-      type: 'gate',
-      level,
-      topY: gateTopY,
-      completedInLevel,
-      progressPercent,
-    });
-
-    if (prevAnchor) {
-      segments.push({
-        fromX: prevAnchor.x,
-        fromY: prevAnchor.y,
-        toX: midX,
-        toY: gateTopY,
-        status: prevUnitLastDone ? 'completed' : 'upcoming',
-      });
-      decorSeeds.push({
-        y: (prevAnchor.y + gateTopY) / 2,
-        avoidX: prevAnchor.x,
-        variant: globalLessonCounter + lvlIdx,
-        allowTallTree: false,
-      });
+  // Precompute global sequential lesson number for each class ID
+  const lessonNumberMap: Record<string, number> = {};
+  let runningNum = 0;
+  for (const lvl of SUPERNOVA_LEVELS) {
+    for (const cls of lvl.classes) {
+      runningNum++;
+      lessonNumberMap[cls.id] = runningNum;
     }
-
-    prevAnchor = { x: midX, y: gateBotY };
-    cursorY = gateBotY + GATE_GAP;
-
-    for (let cIdx = 0; cIdx < level.classes.length; cIdx++) {
-      const cls = level.classes[cIdx];
-      globalLessonCounter++;
-      const phaseIdx = ((lvlIdx % 2 === 0 ? cIdx : cIdx + 2)) % ZIGZAG_PHASE.length;
-      const cx = midX + ZIGZAG_PHASE[phaseIdx] * waveAmp;
-      const cy = cursorY;
-
-      if (cls.id === nextActiveClassId) {
-        activeLessonY = cy;
-      }
-
-      const isCompleted = completedClasses.includes(cls.id);
-      const isCurrent = cls.id === nextActiveClassId;
-
-      if (prevAnchor) {
-        let status: TrailSegment['status'] = 'upcoming';
-        if (cIdx === 0) {
-          status = isCompleted ? 'completed' : isCurrent ? 'active' : 'upcoming';
-        } else {
-          const prevClass = level.classes[cIdx - 1];
-          const prevDone = completedClasses.includes(prevClass.id);
-          if (prevDone && isCompleted) {
-            status = 'completed';
-          } else if (prevDone && isCurrent) {
-            status = 'active';
-          } else if (prevDone) {
-            status = 'completed';
-          } else if (prevClass.id === nextActiveClassId) {
-            status = 'active';
-          }
-        }
-
-        segments.push({
-          fromX: prevAnchor.x,
-          fromY: prevAnchor.y,
-          toX: cx,
-          toY: cy,
-          status,
-        });
-
-        decorSeeds.push({
-          y: (prevAnchor.y + cy) / 2,
-          avoidX: (prevAnchor.x + cx) / 2,
-          variant: globalLessonCounter,
-          allowTallTree: cIdx > 0,
-        });
-      }
-
-      lessonNodes.push({
-        type: 'lesson',
-        cls,
-        level,
-        globalNum: globalLessonCounter,
-        cx,
-        cy,
-      });
-
-      prevAnchor = { x: cx, y: cy };
-      prevUnitLastDone = isCompleted;
-      cursorY += ROW_STEP;
-    }
-
-    // Trim trailing step cleanly before next Gate or Summit Trophy
-    cursorY -= ROW_STEP - GATE_GAP;
   }
-
-  const trophyX = midX;
-  const trophyY = cursorY + 34;
-  if (prevAnchor) {
-    segments.push({
-      fromX: prevAnchor.x,
-      fromY: prevAnchor.y,
-      toX: trophyX,
-      toY: trophyY,
-      status: prevUnitLastDone ? 'completed' : 'upcoming',
-    });
-    decorSeeds.push({
-      y: (prevAnchor.y + trophyY) / 2,
-      avoidX: prevAnchor.x,
-      variant: 99,
-      allowTallTree: false,
-    });
-  }
-
-  const totalCanvasHeight = trophyY + TROPHY_SIZE / 2 + 86;
-
-  const scrollToUnit = (levelNumber: number) => {
-    const y = unitYMap[levelNumber];
-    if (typeof y === 'number' && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y, animated: true });
-    }
-  };
-
-  const scrollToActiveLesson = () => {
-    if (typeof activeLessonY === 'number' && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: Math.max(0, activeLessonY - 200), animated: true });
-    }
-  };
 
   return (
     <View style={styles.container}>
-      {/* Forest Emerald Top HUD */}
+      {/* Top Obsidian HUD */}
       <View style={styles.topStatsWrapper}>
         <View style={[styles.topStatsBar, { maxWidth: MAX_CONTENT_WIDTH }]}>
           <View style={styles.hudLeftGroup}>
             <View style={styles.statPillStreak}>
-              <MaterialCommunityIcons name="fire" size={15} color={THEME.colors.gold} style={styles.statIcon} />
+              <MaterialCommunityIcons
+                name="fire"
+                size={15}
+                color={THEME.colors.gold}
+                style={styles.statIcon}
+              />
               <Text style={styles.statPillTextStreak}>{stats.streakDays}</Text>
             </View>
 
             <View style={styles.statPillGems}>
-              <Ionicons name="diamond" size={13} color={THEME.colors.secondary} style={styles.statIcon} />
+              <Ionicons
+                name="diamond"
+                size={13}
+                color={THEME.colors.secondary}
+                style={styles.statIcon}
+              />
               <Text style={styles.statPillTextGems}>{stats.gems}</Text>
             </View>
 
@@ -278,8 +108,17 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
           <View style={styles.hudRightGroup}>
             {onOpenLeague && (
-              <TouchableOpacity style={styles.statPillLeague} onPress={onOpenLeague} activeOpacity={0.8}>
-                <MaterialCommunityIcons name="trophy-award" size={15} color={THEME.colors.gold} style={styles.statIcon} />
+              <TouchableOpacity
+                style={styles.statPillLeague}
+                onPress={onOpenLeague}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="trophy-award"
+                  size={15}
+                  color={THEME.colors.gold}
+                  style={styles.statIcon}
+                />
                 <Text style={styles.statPillTextLeague}>#{userRank}</Text>
               </TouchableOpacity>
             )}
@@ -294,25 +133,46 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           </View>
         </View>
 
-        {/* Sticky Slim Forest Biome Quick-Jump Strip */}
-        <View style={[styles.biomeStripBar, { maxWidth: MAX_CONTENT_WIDTH }]}>
+        {/* Unit Filter Tabs */}
+        <View style={[styles.unitFilterBar, { maxWidth: MAX_CONTENT_WIDTH }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.unitJumpRow}
+            contentContainerStyle={styles.unitFilterRow}
           >
+            <TouchableOpacity
+              style={[
+                styles.unitFilterPill,
+                selectedUnitFilter === 'all' && styles.unitFilterPillActive,
+              ]}
+              onPress={() => setSelectedUnitFilter('all')}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.unitFilterText,
+                  selectedUnitFilter === 'all' && styles.unitFilterTextActive,
+                ]}
+              >
+                All ({completedCount}/{totalClassesCount})
+              </Text>
+            </TouchableOpacity>
+
             {SUPERNOVA_LEVELS.map((lvl) => {
+              const isSelected = selectedUnitFilter === lvl.levelNumber;
               const doneInLvl = lvl.classes.filter((c) => completedClasses.includes(c.id)).length;
               return (
                 <TouchableOpacity
                   key={lvl.levelNumber}
-                  style={styles.unitJumpPill}
-                  onPress={() => scrollToUnit(lvl.levelNumber)}
+                  style={[styles.unitFilterPill, isSelected && styles.unitFilterPillActive]}
+                  onPress={() => setSelectedUnitFilter(lvl.levelNumber)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.jumpDot, { backgroundColor: lvl.accentColor }]} />
-                  <Text style={styles.unitJumpText}>Unit {lvl.levelNumber}</Text>
-                  <Text style={styles.unitJumpMeta}>
+                  <View style={[styles.unitDot, { backgroundColor: lvl.accentColor }]} />
+                  <Text style={[styles.unitFilterText, isSelected && styles.unitFilterTextActive]}>
+                    Unit {lvl.levelNumber}
+                  </Text>
+                  <Text style={styles.unitFilterCount}>
                     {doneInLvl}/{lvl.classes.length}
                   </Text>
                 </TouchableOpacity>
@@ -320,260 +180,252 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             })}
           </ScrollView>
 
-          <TouchableOpacity
-            style={styles.jumpActiveBtn}
-            onPress={scrollToActiveLesson}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="compass-rose" size={13} color={THEME.colors.gold} />
-            <Text style={styles.jumpActiveText}>{overallPercent}%</Text>
-          </TouchableOpacity>
+          <Text style={styles.overallPctBadge}>{overallPercent}%</Text>
         </View>
       </View>
 
-      {/* Seamless End-to-End Forest Zig-Zag Trail */}
+      {/* Clean Obsidian Architectural Course Timeline */}
       <ScrollView
-        ref={scrollViewRef}
-        style={styles.roadmapScroll}
-        contentContainerStyle={[
-          styles.roadmapContent,
-          { width: contentWidth, alignSelf: 'center' },
-        ]}
+        style={styles.courseScroll}
+        contentContainerStyle={styles.courseContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ width: mapWidth, height: totalCanvasHeight, position: 'relative' }}>
-          {/* Full-Height Vector Forest Terrain, Pines, Boulders, Fireflies & Cobblestone Path */}
-          <ForestMapCanvas
-            width={mapWidth}
-            height={totalCanvasHeight}
-            segments={segments}
-            decorSeeds={decorSeeds}
-          />
+        {visibleLevels.map((level) => {
+          const completedInLevel = level.classes.filter((c) =>
+            completedClasses.includes(c.id)
+          ).length;
+          const progressPercent = Math.round(
+            (completedInLevel / level.classes.length) * 100
+          );
+          const lastClass = level.classes[level.classes.length - 1];
+          const isUnitCompleted = completedInLevel === level.classes.length;
 
-          {/* Biome Portal Gates woven directly ON the continuous path */}
-          {gateNodes.map((gate) => {
-            const { level, topY, completedInLevel, progressPercent } = gate;
-            const gateWidth = mapWidth - 28;
-            return (
-              <View
-                key={`gate-${level.levelNumber}`}
-                style={[
-                  styles.gateBannerCard,
-                  {
-                    left: 14,
-                    top: topY,
-                    width: gateWidth,
-                    height: GATE_HEIGHT,
-                  },
-                ]}
-              >
+          return (
+            <View key={level.levelNumber} style={styles.unitSection}>
+              {/* Crisp 3D Diorama Unit Header Card */}
+              <View style={styles.unitCard}>
                 <Image
                   source={getUnitBanner(level.levelNumber)}
-                  style={styles.gateBannerBg}
+                  style={styles.unitBannerBg}
                   resizeMode="cover"
                 />
                 <LinearGradient
-                  colors={['rgba(9, 22, 18, 0.35)', 'rgba(9, 22, 18, 0.84)', 'rgba(8, 18, 14, 0.96)']}
-                  locations={[0, 0.55, 1]}
+                  colors={['rgba(14,14,20,0.22)', 'rgba(14,14,20,0.78)', 'rgba(14,14,20,0.97)']}
+                  locations={[0, 0.45, 1]}
                   style={StyleSheet.absoluteFillObject}
                 />
 
-                {/* Top Badge Row */}
-                <View style={styles.gateTopRow}>
-                  <View style={styles.gateBiomeTag}>
-                    <MaterialCommunityIcons name="pine-tree" size={12} color={THEME.colors.accent} />
-                    <Text style={styles.gateBiomeText}>
-                      {BIOME_NAMES[level.levelNumber] || `Biome ${level.levelNumber}`}
-                    </Text>
-                  </View>
+                <View style={styles.unitCardTopRow}>
                   <View style={[styles.cefrBadge, { backgroundColor: level.accentColor }]}>
                     <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
                   </View>
+                  <View style={styles.unitCountPill}>
+                    <Text style={styles.unitCountText}>
+                      {completedInLevel}/{level.classes.length} DONE
+                    </Text>
+                  </View>
                 </View>
 
-                {/* Bottom Title & Progress */}
-                <View style={styles.gateFooter}>
-                  <Text style={styles.gateTitle} numberOfLines={1}>
-                    {level.levelName}
+                <View style={styles.unitCardFooter}>
+                  <Text style={styles.unitTitle}>{level.levelName}</Text>
+                  <Text style={styles.unitDesc} numberOfLines={2}>
+                    {level.description}
                   </Text>
-                  <View style={styles.gateProgressRow}>
-                    <View style={styles.gateProgressTrack}>
-                      <View
-                        style={[
-                          styles.gateProgressFill,
-                          { width: `${Math.max(8, progressPercent)}%` },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.gateProgressText}>
-                      {completedInLevel}/{level.classes.length}
-                    </Text>
+                  <View style={styles.unitProgressTrack}>
+                    <LinearGradient
+                      colors={[level.accentColor, THEME.colors.accent]}
+                      style={[
+                        styles.unitProgressFill,
+                        { width: `${Math.max(6, progressPercent)}%` },
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    />
                   </View>
                 </View>
               </View>
-            );
-          })}
 
-          {/* 22 Zig-Zag Stepping Stones & Wooden Trail Signposts */}
-          {lessonNodes.map((node) => {
-            const { cls, cx, cy, globalNum } = node;
-            const isCompleted = completedClasses.includes(cls.id);
-            const isCurrent = cls.id === nextActiveClassId;
-            const emblemSource = getLessonNodeEmblem(cls.id);
+              {/* Straight Left-Spine Lesson Timeline */}
+              <View style={styles.timelineList}>
+                {level.classes.map((cls, cIdx) => {
+                  const isCompleted = completedClasses.includes(cls.id);
+                  const isCurrent = cls.id === nextActiveClassId;
+                  const prevClass = cIdx > 0 ? level.classes[cIdx - 1] : null;
+                  const prevCompleted = prevClass ? completedClasses.includes(prevClass.id) : false;
+                  const emblemSource = getLessonNodeEmblem(cls.id);
+                  const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
 
-            const tagOnRight = cx <= midX;
-            const tagLeft = tagOnRight
-              ? cx + NODE_RADIUS + 8
-              : Math.max(8, cx - NODE_RADIUS - 8 - signpostWidth);
+                  return (
+                    <View key={cls.id} style={styles.timelineRow}>
+                      {/* Left Aligned Vertical Spine + Node Medallion */}
+                      <View style={styles.railColumn}>
+                        <View
+                          style={[
+                            styles.railSegment,
+                            cIdx === 0 && styles.railSegmentHidden,
+                            prevCompleted && styles.railSegmentCompleted,
+                            prevClass?.id === nextActiveClassId && styles.railSegmentActive,
+                          ]}
+                        />
 
-            return (
-              <React.Fragment key={cls.id}>
-                {/* Subtle branch stem from stone rim to wooden signpost */}
-                <View
-                  pointerEvents="none"
-                  style={[
-                    styles.signpostStem,
-                    {
-                      left: tagOnRight ? cx + NODE_RADIUS - 1 : cx - NODE_RADIUS - 9,
-                      top: cy - 1,
-                      backgroundColor: isCompleted
-                        ? THEME.colors.accent
-                        : isCurrent
-                        ? THEME.colors.gold
-                        : '#29493B',
-                    },
-                  ]}
-                />
+                        <TouchableOpacity
+                          style={[
+                            styles.nodeCircle,
+                            isCompleted && styles.nodeCircleCompleted,
+                            isCurrent && styles.nodeCircleCurrent,
+                            !isCompleted && !isCurrent && styles.nodeCircleLocked,
+                          ]}
+                          activeOpacity={0.85}
+                          onPress={() => setSelectedLesson(cls)}
+                        >
+                          <View style={styles.nodeImageClip}>
+                            <Image
+                              source={emblemSource}
+                              style={[
+                                styles.nodeImg,
+                                !isCompleted && !isCurrent && { opacity: 0.45 },
+                              ]}
+                              resizeMode="cover"
+                            />
+                          </View>
 
-                {/* Active Lantern Beacon Pill above active node */}
-                {isCurrent && (
-                  <View
-                    pointerEvents="none"
-                    style={[
-                      styles.activeBeaconWrap,
-                      {
-                        left: cx - 34,
-                        top: cy - NODE_RADIUS - 25,
-                      },
-                    ]}
-                  >
-                    <View style={styles.activeBeaconPill}>
-                      <Text style={styles.activeBeaconText}>NEXT UP</Text>
+                          {isCompleted && (
+                            <View style={styles.nodeCheckBadge}>
+                              <MaterialCommunityIcons name="check-bold" size={10} color="#FFFFFF" />
+                            </View>
+                          )}
+                          {!isCompleted && !isCurrent && (
+                            <View style={styles.nodeLockBadge}>
+                              <Ionicons
+                                name="lock-closed"
+                                size={9}
+                                color={THEME.colors.textSecondary}
+                              />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+
+                        <View
+                          style={[
+                            styles.railSegment,
+                            isCompleted && styles.railSegmentCompleted,
+                            isCurrent && styles.railSegmentActive,
+                          ]}
+                        />
+                      </View>
+
+                      {/* Right Clean Lesson Card */}
+                      <TouchableOpacity
+                        style={[
+                          styles.lessonCard,
+                          isCompleted && styles.lessonCardCompleted,
+                          isCurrent && styles.lessonCardCurrent,
+                        ]}
+                        activeOpacity={0.84}
+                        onPress={() => setSelectedLesson(cls)}
+                      >
+                        <View style={styles.lessonCardBody}>
+                          <View style={styles.lessonMetaRow}>
+                            <Text style={styles.lessonIndexTag}>
+                              CLASS {String(lessonNum).padStart(2, '0')}
+                            </Text>
+
+                            {isCurrent ? (
+                              <View style={styles.badgeNext}>
+                                <Text style={styles.badgeNextText}>NEXT UP</Text>
+                              </View>
+                            ) : isCompleted ? (
+                              <View style={styles.badgeDone}>
+                                <Text style={styles.badgeDoneText}>COMPLETED</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.lessonDurationText}>{cls.duration}</Text>
+                            )}
+                          </View>
+
+                          <Text style={styles.lessonTitle} numberOfLines={1}>
+                            {formatShortLessonTitle(cls.title)}
+                          </Text>
+                          <Text style={styles.lessonSub} numberOfLines={1}>
+                            {cls.grammarTopic}
+                          </Text>
+                        </View>
+
+                        <View style={styles.lessonActionCol}>
+                          <Ionicons
+                            name={isCurrent ? 'play-circle' : 'chevron-forward'}
+                            size={isCurrent ? 22 : 17}
+                            color={
+                              isCurrent
+                                ? THEME.colors.primaryGlow
+                                : isCompleted
+                                ? THEME.colors.accent
+                                : THEME.colors.textMuted
+                            }
+                          />
+                        </View>
+                      </TouchableOpacity>
                     </View>
-                  </View>
-                )}
+                  );
+                })}
 
-                {/* Tactile 3D Stepping Stone Medallion */}
-                <TouchableOpacity
-                  style={[
-                    styles.stoneBtn,
-                    {
-                      left: cx - NODE_RADIUS,
-                      top: cy - NODE_RADIUS,
-                    },
-                    isCompleted && styles.stoneCompleted,
-                    isCurrent && styles.stoneCurrent,
-                    !isCompleted && !isCurrent && styles.stoneLocked,
-                  ]}
-                  activeOpacity={0.85}
-                  onPress={() => setSelectedLesson(cls)}
-                >
-                  <View style={styles.nodeImageClip}>
-                    <Image
-                      source={emblemSource}
+                {/* Unit Milestone Trophy Row */}
+                <View style={styles.timelineRow}>
+                  <View style={styles.railColumn}>
+                    <View
                       style={[
-                        styles.nodeArtworkImage,
-                        !isCompleted && !isCurrent && { opacity: 0.45 },
+                        styles.railSegment,
+                        isUnitCompleted && styles.railSegmentCompleted,
                       ]}
-                      resizeMode="cover"
                     />
-                  </View>
-
-                  {isCompleted && (
-                    <View style={styles.completedBadgeCheck}>
-                      <MaterialCommunityIcons name="check-bold" size={11} color="#FFFFFF" />
-                    </View>
-                  )}
-                  {!isCompleted && !isCurrent && (
-                    <View style={styles.lockedBadgeSeal}>
-                      <Ionicons name="lock-closed" size={10} color="#9BB5A8" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                {/* Compact Forest Signpost Pill strictly beside node */}
-                <TouchableOpacity
-                  activeOpacity={0.86}
-                  onPress={() => setSelectedLesson(cls)}
-                  style={[
-                    styles.signpostCard,
-                    isCompleted && styles.signpostCompleted,
-                    isCurrent && styles.signpostCurrent,
-                    {
-                      left: tagLeft,
-                      top: cy - SIGNPOST_HEIGHT / 2,
-                      width: signpostWidth,
-                      height: SIGNPOST_HEIGHT,
-                    },
-                  ]}
-                >
-                  <View style={styles.signpostMetaRow}>
-                    <Text
+                    <TouchableOpacity
                       style={[
-                        styles.signpostNum,
-                        isCompleted && { color: THEME.colors.accent },
-                        isCurrent && { color: THEME.colors.gold },
+                        styles.trophyNodeCircle,
+                        isUnitCompleted && styles.trophyNodeCompleted,
                       ]}
+                      activeOpacity={0.85}
+                      onPress={() => lastClass && setSelectedLesson(lastClass)}
                     >
-                      {String(globalNum).padStart(2, '0')}
-                    </Text>
-                    <Text style={styles.signpostDuration}>{cls.duration}</Text>
+                      <View style={styles.trophyImageClip}>
+                        <Image
+                          source={SUPERNOVA_IMAGES.trophyNova}
+                          style={styles.nodeImg}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    <View style={[styles.railSegment, styles.railSegmentHidden]} />
                   </View>
-                  <Text style={styles.signpostTitle} numberOfLines={1}>
-                    {formatShortLessonTitle(cls.title)}
-                  </Text>
-                </TouchableOpacity>
-              </React.Fragment>
-            );
-          })}
 
-          {/* Grand Emerald Summit Trophy Crest at Trail Finish */}
-          <TouchableOpacity
-            style={[
-              styles.summitTrophyBtn,
-              {
-                left: trophyX - TROPHY_SIZE / 2,
-                top: trophyY - TROPHY_SIZE / 2,
-              },
-            ]}
-            activeOpacity={0.85}
-            onPress={() => {
-              const lastUnit = SUPERNOVA_LEVELS[SUPERNOVA_LEVELS.length - 1];
-              setSelectedLesson(lastUnit.classes[lastUnit.classes.length - 1]);
-            }}
-          >
-            <View style={styles.summitTrophyClip}>
-              <Image
-                source={SUPERNOVA_IMAGES.trophyNova}
-                style={styles.summitTrophyImg}
-                resizeMode="cover"
-              />
+                  <TouchableOpacity
+                    style={[
+                      styles.milestoneCard,
+                      isUnitCompleted && styles.milestoneCardCompleted,
+                    ]}
+                    activeOpacity={0.85}
+                    onPress={() => lastClass && setSelectedLesson(lastClass)}
+                  >
+                    <View style={styles.lessonCardBody}>
+                      <Text style={styles.milestoneEyebrow}>UNIT {level.levelNumber} MILESTONE</Text>
+                      <Text style={styles.milestoneTitle}>
+                        {isUnitCompleted
+                          ? 'Unit Mastery Unlocked'
+                          : `Complete ${level.classes.length} classes to unlock Trophy`}
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name="trophy-outline"
+                      size={20}
+                      color={isUnitCompleted ? THEME.colors.gold : THEME.colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </TouchableOpacity>
+          );
+        })}
 
-          <View
-            style={[
-              styles.summitLabelPill,
-              {
-                left: trophyX - 88,
-                top: trophyY + TROPHY_SIZE / 2 + 8,
-                width: 176,
-              },
-            ]}
-          >
-            <Text style={styles.summitLabelText}>GRAND FLUENCY SUMMIT</Text>
-          </View>
-        </View>
+        <View style={{ height: 32 }} />
       </ScrollView>
 
       {/* LESSON START MODAL */}
@@ -592,7 +444,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
           {selectedLesson && (
             <LinearGradient
-              colors={['#132920', '#0B1612']}
+              colors={['#241B42', '#151424']}
               style={[
                 styles.modalCard,
                 { width: Math.min(windowWidth - 32, 460), maxHeight: windowHeight * 0.86 },
@@ -607,7 +459,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   resizeMode="cover"
                 />
                 <LinearGradient
-                  colors={['rgba(11, 22, 18, 0.25)', 'rgba(11, 22, 18, 0.96)']}
+                  colors={['rgba(21,20,36,0.2)', 'rgba(21,20,36,0.96)']}
                   style={StyleSheet.absoluteFillObject}
                 />
                 <View style={styles.modalHeaderOverlay}>
@@ -657,26 +509,62 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     <Text style={styles.methodologyTitle}>LESSON STAGES</Text>
                     <View style={styles.stepGrid}>
                       <View style={styles.stepItem}>
-                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(251, 191, 36, 0.14)' }]}>
-                          <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={THEME.colors.gold} />
+                        <View
+                          style={[
+                            styles.stepIconWrap,
+                            { backgroundColor: 'rgba(251, 191, 36, 0.14)' },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name="lightbulb-on-outline"
+                            size={18}
+                            color={THEME.colors.gold}
+                          />
                         </View>
                         <Text style={styles.stepText}>Pattern</Text>
                       </View>
                       <View style={styles.stepItem}>
-                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(6, 182, 212, 0.14)' }]}>
-                          <MaterialCommunityIcons name="puzzle-outline" size={18} color={THEME.colors.secondary} />
+                        <View
+                          style={[
+                            styles.stepIconWrap,
+                            { backgroundColor: 'rgba(6, 182, 212, 0.14)' },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name="puzzle-outline"
+                            size={18}
+                            color={THEME.colors.secondary}
+                          />
                         </View>
                         <Text style={styles.stepText}>Scramble</Text>
                       </View>
                       <View style={styles.stepItem}>
-                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
-                          <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.accent} />
+                        <View
+                          style={[
+                            styles.stepIconWrap,
+                            { backgroundColor: 'rgba(16, 185, 129, 0.14)' },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name="translate"
+                            size={18}
+                            color={THEME.colors.accent}
+                          />
                         </View>
                         <Text style={styles.stepText}>Translate</Text>
                       </View>
                       <View style={styles.stepItem}>
-                        <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(127, 67, 254, 0.16)' }]}>
-                          <Ionicons name="mic-outline" size={18} color={THEME.colors.primaryGlow} />
+                        <View
+                          style={[
+                            styles.stepIconWrap,
+                            { backgroundColor: 'rgba(127, 67, 254, 0.16)' },
+                          ]}
+                        >
+                          <Ionicons
+                            name="mic-outline"
+                            size={18}
+                            color={THEME.colors.primaryGlow}
+                          />
                         </View>
                         <Text style={styles.stepText}>Speaking</Text>
                       </View>
@@ -685,7 +573,11 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
                   <View style={styles.rewardsRow}>
                     <View style={styles.rewardItem}>
-                      <MaterialCommunityIcons name="trophy-award" size={17} color={THEME.colors.gold} />
+                      <MaterialCommunityIcons
+                        name="trophy-award"
+                        size={17}
+                        color={THEME.colors.gold}
+                      />
                       <Text style={styles.rewardText}>
                         +
                         {completedClasses.includes(selectedLesson.id)
@@ -724,7 +616,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     }}
                   >
                     <LinearGradient
-                      colors={THEME.gradients.accent}
+                      colors={THEME.gradients.primary}
                       style={styles.modalStartBtnInner}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
@@ -734,7 +626,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           ? `PRACTICE AGAIN (+${Math.max(25, Math.round(selectedLesson.xpReward * 0.5))} XP)`
                           : `START LESSON (+${selectedLesson.xpReward} XP)`}
                       </Text>
-                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                      <Ionicons
+                        name="arrow-forward"
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginLeft: 8 }}
+                      />
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -750,13 +647,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#091612',
-    overflow: 'hidden',
+    backgroundColor: THEME.colors.background,
   },
   topStatsWrapper: {
-    backgroundColor: '#091612',
+    backgroundColor: THEME.colors.surfaceDark,
     borderBottomWidth: 1,
-    borderBottomColor: '#1B3A2C',
+    borderBottomColor: THEME.colors.border,
     alignItems: 'center',
   },
   topStatsBar: {
@@ -764,7 +660,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 8,
     paddingBottom: 6,
   },
@@ -845,11 +741,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 26,
-    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    backgroundColor: THEME.colors.primaryLight,
     paddingHorizontal: 7,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.45)',
+    borderColor: THEME.colors.primaryGlow,
   },
   headerAvatarWrap: {
     width: 18,
@@ -872,117 +768,99 @@ const styles = StyleSheet.create({
   missNovaText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.accent,
+    color: THEME.colors.primaryGlow,
     marginLeft: 4,
   },
 
-  /* STICKY BIOME JUMP BAR */
-  biomeStripBar: {
+  /* UNIT FILTER TABS */
+  unitFilterBar: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 9,
     gap: 8,
   },
-  unitJumpRow: {
+  unitFilterRow: {
     gap: 6,
   },
-  unitJumpPill: {
+  unitFilterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#11261D',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: THEME.colors.surfaceCard,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#214535',
+    borderColor: THEME.colors.border,
     gap: 5,
   },
-  jumpDot: {
+  unitFilterPillActive: {
+    backgroundColor: 'rgba(127, 67, 254, 0.18)',
+    borderColor: THEME.colors.primary,
+  },
+  unitDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  unitJumpText: {
+  unitFilterText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 10.5,
-    color: THEME.colors.text,
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
   },
-  unitJumpMeta: {
+  unitFilterTextActive: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 9.5,
-    color: '#8BB39F',
+    color: '#FFFFFF',
   },
-  jumpActiveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.14)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.4)',
-    gap: 4,
-  },
-  jumpActiveText: {
+  unitFilterCount: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.gold,
+    color: THEME.colors.textMuted,
+  },
+  overallPctBadge: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: THEME.colors.accent,
+    paddingHorizontal: 4,
   },
 
-  roadmapScroll: {
+  /* COURSE TIMELINE */
+  courseScroll: {
     flex: 1,
   },
-  roadmapContent: {
-    paddingBottom: 20,
+  courseContent: {
+    padding: 14,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
   },
-
-  /* BIOME PORTAL GATES */
-  gateBannerCard: {
-    position: 'absolute',
+  unitSection: {
+    marginBottom: 24,
+  },
+  unitCard: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#23533E',
-    backgroundColor: '#0D2018',
+    height: 128,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 67, 254, 0.4)',
+    backgroundColor: THEME.colors.surfaceCard,
     justifyContent: 'space-between',
-    padding: 10,
-    zIndex: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 7,
+    marginBottom: 12,
   },
-  gateBannerBg: {
+  unitBannerBg: {
     position: 'absolute',
     left: 0,
     top: 0,
     width: '100%',
     height: '100%',
   },
-  gateTopRow: {
+  unitCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  gateBiomeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(9, 22, 18, 0.8)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-    gap: 4,
-  },
-  gateBiomeText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 9.5,
-    color: '#6EE7B7',
-    letterSpacing: 0.4,
+    paddingHorizontal: 12,
+    paddingTop: 10,
   },
   cefrBadge: {
     paddingHorizontal: 8,
@@ -991,234 +869,277 @@ const styles = StyleSheet.create({
   },
   cefrBadgeText: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 9,
+    fontSize: 9.5,
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  gateFooter: {
-    gap: 5,
-  },
-  gateTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
-  gateProgressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  gateProgressTrack: {
-    flex: 1,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    overflow: 'hidden',
-  },
-  gateProgressFill: {
-    height: '100%',
-    borderRadius: 2.5,
-    backgroundColor: THEME.colors.accent,
-  },
-  gateProgressText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.accent,
-  },
-
-  /* STEPPING STONE NODES & SIGNPOSTS */
-  signpostStem: {
-    position: 'absolute',
-    width: 10,
-    height: 2,
-    zIndex: 2,
-  },
-  activeBeaconWrap: {
-    position: 'absolute',
-    width: 68,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  activeBeaconPill: {
-    backgroundColor: THEME.colors.gold,
+  unitCountPill: {
+    backgroundColor: 'rgba(14, 14, 20, 0.78)',
     paddingHorizontal: 8,
     paddingVertical: 2.5,
-    borderRadius: 8,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.55,
-    shadowRadius: 6,
-    elevation: 6,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
   },
-  activeBeaconText: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 8.5,
-    color: '#091612',
-    letterSpacing: 0.6,
+  unitCountText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 9.5,
+    color: THEME.colors.text,
+    letterSpacing: 0.5,
   },
-  stoneBtn: {
-    position: 'absolute',
-    width: NODE_SIZE,
-    height: NODE_SIZE,
-    borderRadius: NODE_RADIUS,
-    backgroundColor: '#132820',
-    borderBottomWidth: 4,
-    borderBottomColor: '#07100C',
+  unitCardFooter: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  unitTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  unitDesc: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11,
+    color: '#D2CEE3',
+    lineHeight: 15,
+    marginBottom: 8,
+  },
+  unitProgressTrack: {
+    height: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 2.5,
+    overflow: 'hidden',
+  },
+  unitProgressFill: {
+    height: '100%',
+    borderRadius: 2.5,
+  },
+
+  /* TIMELINE ROWS */
+  timelineList: {
+    width: '100%',
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  railColumn: {
+    width: 56,
+    alignItems: 'center',
+  },
+  railSegment: {
+    width: 2.5,
+    flex: 1,
+    minHeight: 12,
+    backgroundColor: THEME.colors.border,
+  },
+  railSegmentHidden: {
+    backgroundColor: 'transparent',
+  },
+  railSegmentCompleted: {
+    backgroundColor: THEME.colors.accent,
+  },
+  railSegmentActive: {
+    backgroundColor: THEME.colors.primary,
+  },
+  nodeCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: THEME.colors.surfaceCard,
+    borderWidth: 2,
+    borderColor: THEME.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 5,
   },
-  stoneCompleted: {
+  nodeCircleCompleted: {
     borderColor: THEME.colors.accent,
     borderWidth: 2.5,
-    borderBottomColor: '#059669',
-    shadowColor: '#10B981',
+  },
+  nodeCircleCurrent: {
+    borderColor: THEME.colors.primary,
+    borderWidth: 3,
+    shadowColor: '#7F43FE',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.55,
     shadowRadius: 8,
     elevation: 6,
   },
-  stoneCurrent: {
-    borderColor: THEME.colors.gold,
-    borderWidth: 3,
-    borderBottomColor: '#D97706',
-    shadowColor: '#FBBF24',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  stoneLocked: {
-    borderColor: '#2A4A3C',
-    borderWidth: 2,
-    borderBottomColor: '#0C1B15',
+  nodeCircleLocked: {
+    borderColor: THEME.colors.border,
   },
   nodeImageClip: {
-    width: NODE_SIZE - 6,
-    height: NODE_SIZE - 6,
-    borderRadius: (NODE_SIZE - 6) / 2,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
-  nodeArtworkImage: {
+  nodeImg: {
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.04 }],
   },
-  completedBadgeCheck: {
+  nodeCheckBadge: {
     position: 'absolute',
     right: -2,
-    bottom: 0,
-    width: 19,
-    height: 19,
-    borderRadius: 9.5,
+    bottom: -1,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: THEME.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#091612',
+    borderColor: THEME.colors.background,
   },
-  lockedBadgeSeal: {
+  nodeLockBadge: {
     position: 'absolute',
     right: -2,
-    bottom: 0,
-    width: 19,
-    height: 19,
-    borderRadius: 9.5,
-    backgroundColor: '#183026',
+    bottom: -1,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: THEME.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#2B5140',
-  },
-  signpostCard: {
-    position: 'absolute',
-    backgroundColor: 'rgba(13, 30, 23, 0.92)',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#234536',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    justifyContent: 'center',
-    zIndex: 4,
-  },
-  signpostCompleted: {
-    borderColor: 'rgba(16, 185, 129, 0.45)',
-    backgroundColor: 'rgba(14, 34, 26, 0.95)',
-  },
-  signpostCurrent: {
-    borderColor: 'rgba(251, 191, 36, 0.65)',
-    backgroundColor: 'rgba(26, 36, 22, 0.96)',
-  },
-  signpostMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 1,
-  },
-  signpostNum: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 9,
-    color: '#7EA593',
-    letterSpacing: 0.5,
-  },
-  signpostDuration: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 9,
-    color: '#7EA593',
-  },
-  signpostTitle: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11.5,
-    color: '#FFFFFF',
+    borderColor: THEME.colors.border,
   },
 
-  /* GRAND SUMMIT TROPHY */
-  summitTrophyBtn: {
-    position: 'absolute',
-    width: TROPHY_SIZE,
-    height: TROPHY_SIZE,
-    borderRadius: TROPHY_SIZE / 2,
-    backgroundColor: '#13261E',
-    borderWidth: 2.5,
-    borderColor: THEME.colors.gold,
-    borderBottomWidth: 4,
-    borderBottomColor: THEME.colors.goldBorder,
+  /* RIGHT COLUMN CARDS */
+  lessonCard: {
+    flex: 1,
+    marginLeft: 10,
+    marginVertical: 5,
+    backgroundColor: THEME.colors.surfaceCard,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lessonCardCompleted: {
+    borderColor: 'rgba(16, 185, 129, 0.38)',
+    backgroundColor: 'rgba(16, 32, 28, 0.55)',
+  },
+  lessonCardCurrent: {
+    borderColor: THEME.colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(40, 28, 72, 0.72)',
+  },
+  lessonCardBody: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  lessonMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 3,
+  },
+  lessonIndexTag: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 9.5,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.6,
+  },
+  badgeNext: {
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+  },
+  badgeNextText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 8.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  badgeDone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+  },
+  badgeDoneText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 8.5,
+    color: THEME.colors.accent,
+    letterSpacing: 0.4,
+  },
+  lessonDurationText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 9.5,
+    color: THEME.colors.textSecondary,
+  },
+  lessonTitle: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 13.5,
+    color: THEME.colors.text,
+  },
+  lessonSub: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  lessonActionCol: {
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 5,
   },
-  summitTrophyClip: {
-    width: TROPHY_SIZE - 8,
-    height: TROPHY_SIZE - 8,
-    borderRadius: (TROPHY_SIZE - 8) / 2,
+
+  /* MILESTONE ROW */
+  trophyNodeCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: THEME.colors.surfaceCard,
+    borderWidth: 2,
+    borderColor: THEME.colors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trophyNodeCompleted: {
+    borderColor: THEME.colors.gold,
+  },
+  trophyImageClip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
-  summitTrophyImg: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.04 }],
-  },
-  summitLabelPill: {
-    position: 'absolute',
-    backgroundColor: 'rgba(251, 191, 36, 0.14)',
+  milestoneCard: {
+    flex: 1,
+    marginLeft: 10,
+    marginVertical: 5,
+    backgroundColor: 'rgba(24, 23, 36, 0.65)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.45)',
-    paddingVertical: 5,
-    borderRadius: 10,
+    borderColor: THEME.colors.border,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  summitLabelText: {
+  milestoneCardCompleted: {
+    borderColor: 'rgba(251, 191, 36, 0.45)',
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+  },
+  milestoneEyebrow: {
     fontFamily: THEME.fonts.bold,
     fontSize: 9.5,
     color: THEME.colors.gold,
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  milestoneTitle: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
   },
 
   /* MODAL POPUP */
@@ -1236,10 +1157,10 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(16, 185, 129, 0.45)',
-    shadowColor: '#10B981',
+    borderColor: 'rgba(127, 67, 254, 0.5)',
+    shadowColor: '#7F43FE',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 24,
     elevation: 12,
   },
@@ -1272,7 +1193,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalLevelPill: {
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1281,13 +1202,13 @@ const styles = StyleSheet.create({
   modalLevelText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    color: '#091612',
+    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   modalDurationPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(9, 22, 18, 0.78)',
+    backgroundColor: 'rgba(14, 14, 20, 0.72)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1302,7 +1223,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(9, 22, 18, 0.78)',
+    backgroundColor: 'rgba(14, 14, 20, 0.72)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1316,7 +1237,7 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: 27,
     borderWidth: 2,
-    borderColor: THEME.colors.accent,
+    borderColor: THEME.colors.primaryGlow,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1340,7 +1261,7 @@ const styles = StyleSheet.create({
   modalSubtitle: {
     fontFamily: THEME.fonts.body,
     fontSize: 12,
-    color: '#A7C4B5',
+    color: THEME.colors.textSecondary,
     lineHeight: 16,
   },
   tamilConceptBox: {
@@ -1370,12 +1291,12 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#1E3C2F',
+    borderColor: THEME.colors.border,
   },
   methodologyTitle: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: '#8BB39F',
+    color: THEME.colors.textMuted,
     marginBottom: 10,
     letterSpacing: 0.8,
   },
@@ -1398,18 +1319,18 @@ const styles = StyleSheet.create({
   stepText: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
-    color: '#CDE0D6',
+    color: THEME.colors.textSecondary,
     textAlign: 'center',
   },
   rewardsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: THEME.radius.md,
     paddingVertical: 10,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#1E3C2F',
+    borderColor: THEME.colors.border,
   },
   rewardItem: {
     flexDirection: 'row',
@@ -1425,10 +1346,10 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.lg,
     overflow: 'hidden',
     borderBottomWidth: 4,
-    borderBottomColor: THEME.colors.accentBorder,
-    shadowColor: '#10B981',
+    borderBottomColor: THEME.colors.primaryBorder,
+    shadowColor: '#7F43FE',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.5,
     shadowRadius: 12,
     elevation: 8,
   },
