@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +38,7 @@ import { SpeakHubScreen } from './src/screens/SpeakHubScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
+import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SupernovaClass } from './src/constants/curriculum';
 import { AuthUser, UserStats } from './src/types';
@@ -91,6 +91,8 @@ function AppContent() {
   const [stats, setStats] = useState<UserStats>(createDefaultStats);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashExiting, setSplashExiting] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('learn');
   const [currentLesson, setCurrentLesson] = useState<SupernovaClass | null>(null);
   const [authTopColor, setAuthTopColor] = useState('#1D1436');
@@ -109,16 +111,9 @@ function AppContent() {
       });
   }, []);
 
-  if (!fontsLoaded || !hydrated) {
-    return (
-      <View style={styles.fontLoaderContainer}>
-        <StatusBar style="light" backgroundColor={THEME.colors.background} translucent animated />
-        <ActivityIndicator size="large" color={THEME.colors.primary} />
-      </View>
-    );
-  }
+  const isAppReady = fontsLoaded && hydrated;
 
-  const topSurfaceColor = !authUser
+  const activeScreenTopColor = !authUser
     ? authTopColor
     : currentLesson
       ? lessonTopColor
@@ -131,6 +126,11 @@ function AppContent() {
             : activeTab === 'profile'
               ? '#201639'
               : THEME.colors.background;
+
+  const topSurfaceColor =
+    !isAppReady || (splashVisible && !splashExiting)
+      ? THEME.colors.background
+      : activeScreenTopColor;
 
   const handleAuthenticated = (user: AuthUser) => {
     setAuthUser(user);
@@ -205,7 +205,9 @@ function AppContent() {
       <View style={{ height: insets.top, backgroundColor: topSurfaceColor }} />
 
       {/* Duolingo-Style Auth / Onboarding Gate */}
-      {!authUser ? (
+      {!isAppReady ? (
+        <View style={styles.screenContainer} />
+      ) : !authUser ? (
         <View style={[styles.screenContainer, { paddingBottom: insets.bottom }]}>
           <AuthScreen
             onAuthenticated={handleAuthenticated}
@@ -312,6 +314,16 @@ function AppContent() {
             </View>
           </>
         )}
+
+      {/* Custom Animated Launch Splash Screen */}
+      {splashVisible && (
+        <AnimatedSplashScreen
+          isReady={isAppReady}
+          fontsLoaded={fontsLoaded}
+          onExiting={() => setSplashExiting(true)}
+          onFinish={() => setSplashVisible(false)}
+        />
+      )}
     </View>
   );
 }
@@ -327,12 +339,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  fontLoaderContainer: {
-    flex: 1,
-    backgroundColor: THEME.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,

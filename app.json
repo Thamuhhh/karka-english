@@ -4,7 +4,7 @@
     "slug": "novabreaker",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/appicon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0E14",
     "newArchEnabled": true,
@@ -25,8 +25,12 @@
     },
     "android": {
       "backgroundColor": "#0E0E14",
-      "adaptiveIcon": {
+      "splash": {
         "backgroundColor": "#0E0E14"
+      },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/appicon.png",
+        "backgroundColor": "#4C089C"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
