@@ -211,7 +211,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       >
         <View style={styles.unifiedTopBarInner}>
           <View style={styles.brandRow}>
-            <Text style={styles.appNameText}>NovaBreaker</Text>
+            <Image
+              source={SUPERNOVA_IMAGES.karkaLogo}
+              style={styles.brandLogoImg}
+              resizeMode="contain"
+              accessibilityLabel="Karka"
+            />
             <LiveStreakBadge streakDays={stats.streakDays} />
           </View>
 
@@ -643,11 +648,9 @@ const styles = StyleSheet.create({
   activeUnitBand: {
     width: '100%',
   },
-  appNameText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 18,
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
+  brandLogoImg: {
+    width: 96,
+    height: 28,
   },
 
   /* COURSE TIMELINE */

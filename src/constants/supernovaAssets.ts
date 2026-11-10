@@ -1,5 +1,8 @@
 // Cohesive asset registry combining bespoke 3D obsidian-violet artwork and extracted UI assets
 export const SUPERNOVA_IMAGES = {
+  // Brand Wordmark
+  karkaLogo: require('../../assets/Karka Logo.png'),
+
   // Bespoke 3D Coach & Milestone Artwork
   novaAvatar: require('../../assets/generated/nova_studio_portrait.jpg'),
   novaPortraitLegacy: require('../../assets/supernova/nova_avatar_card.png'),
