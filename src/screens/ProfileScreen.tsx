@@ -9,10 +9,12 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
+import { SUPERNOVA_LEVELS } from '../constants/curriculum';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { UserStats } from '../types';
 import {
@@ -27,11 +29,18 @@ import {
 } from '../services/storageService';
 import { validateGeminiApiKey } from '../api/supernovaAi';
 import { EnglishAccent, getSpeechRate } from '../services/ttsService';
+import { LiveStreakBadge } from '../components/LiveStreakBadge';
 
 interface ProfileScreenProps {
   stats: UserStats;
   onStatsUpdate: (stats: UserStats) => void;
 }
+
+const MAX_CONTENT_WIDTH = 480;
+const TOTAL_CURRICULUM_CLASSES = SUPERNOVA_LEVELS.reduce(
+  (sum, lvl) => sum + lvl.classes.length,
+  0
+);
 
 const DAILY_GOALS = [
   { xp: 50, label: 'Casual' },
@@ -39,11 +48,18 @@ const DAILY_GOALS = [
   { xp: 200, label: 'Intensive' },
 ];
 
+const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
+  { id: 'en-US', shortLabel: 'US' },
+  { id: 'en-GB', shortLabel: 'UK' },
+  { id: 'en-AU', shortLabel: 'AU' },
+];
+
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpdate }) => {
   const [apiKey, setApiKey] = useState('');
   const [isSavedKey, setIsSavedKey] = useState(false);
   const [isValidatingKey, setIsValidatingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<string | null>(null);
+  const [showApiConfig, setShowApiConfig] = useState(false);
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
 
@@ -63,7 +79,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
     if (!trimmed) {
       await saveApiKey('');
       setIsSavedKey(false);
-      setKeyMessage('API key removed. Using offline engine.');
+      setKeyMessage('API key removed. Using built-in offline engine.');
       return;
     }
 
@@ -82,14 +98,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
     await savePreferredAccent(acc);
   };
 
-  const toggleSpeechSpeed = async () => {
-    const newSlow = !isSlowSpeech;
-    setIsSlowSpeech(newSlow);
-    await savePreferredSpeechRate(newSlow ? 0.75 : 0.95);
+  const handleSpeechSpeedChange = async (enabledSlow: boolean) => {
+    setIsSlowSpeech(enabledSlow);
+    await savePreferredSpeechRate(enabledSlow ? 0.75 : 0.95);
   };
 
-  const handleToggleSound = async () => {
-    const updated = await updateSoundSetting(!stats.soundEnabled);
+  const handleToggleSound = async (enabled: boolean) => {
+    const updated = await updateSoundSetting(enabled);
     onStatsUpdate(updated);
   };
 
@@ -101,7 +116,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
   const handleResetProgress = () => {
     Alert.alert(
       'Reset Learning Progress?',
-      'This clears your completed lessons, XP, vocabulary mastery, and daily streak.',
+      'This clears your completed lessons, XP, saved vocabulary, and daily streak.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -120,88 +135,98 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
     100,
     Math.round((stats.todayXp / Math.max(1, stats.dailyGoalXp)) * 100)
   );
+  const coursePct =
+    TOTAL_CURRICULUM_CLASSES > 0
+      ? Math.round((stats.completedClasses.length / TOTAL_CURRICULUM_CLASSES) * 100)
+      : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Profile Header Card */}
-      <LinearGradient
-        colors={THEME.gradients.banner}
-        style={styles.profileCard}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.avatar}>
-          <Image
-            source={SUPERNOVA_IMAGES.streakNova}
-            style={styles.streakNovaAvatar}
-            resizeMode="cover"
-          />
-        </View>
-        <Text style={styles.userName}>Learner Profile</Text>
-        <Text style={styles.userRank}>{stats.cosmicRank}</Text>
-
-        {/* Daily Goal Progress */}
-        <View style={styles.dailyGoalBox}>
-          <View style={styles.dailyGoalTopRow}>
-            <Text style={styles.dailyGoalLabel}>DAILY XP GOAL</Text>
-            <Text style={styles.dailyGoalCount}>
-              {stats.todayXp}/{stats.dailyGoalXp} XP ({dailyGoalProgress}%)
-            </Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Clean Real-App Account Header */}
+      <View style={styles.accountHeader}>
+        <View style={styles.accountLeft}>
+          <View style={styles.avatarRing}>
+            <Image
+              source={SUPERNOVA_IMAGES.novaAvatar}
+              style={styles.avatarImg}
+              resizeMode="cover"
+            />
           </View>
-          <View style={styles.dailyGoalTrack}>
-            <View style={[styles.dailyGoalFill, { width: `${Math.max(4, dailyGoalProgress)}%` }]} />
+          <View style={styles.identityCol}>
+            <Text style={styles.userName}>NovaBreaker Learner</Text>
+            <View style={styles.rankSubRow}>
+              <View style={styles.rankDot} />
+              <Text style={styles.rankLabel}>{stats.cosmicRank}</Text>
+              <Text style={styles.metaSep}>·</Text>
+              <Text style={styles.coursePctText}>{coursePct}% Course</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
-            <View style={styles.statRowTop}>
-              <MaterialCommunityIcons name="fire" size={18} color={THEME.colors.gold} />
-              <Text style={styles.statVal}>{stats.streakDays}</Text>
-            </View>
-            <Text style={styles.statLabel}>Day Streak</Text>
-          </View>
-          <View style={styles.statBox}>
-            <View style={styles.statRowTop}>
-              <Ionicons name="flash" size={16} color={THEME.colors.secondary} />
-              <Text style={styles.statVal}>{stats.stardustXp}</Text>
-            </View>
-            <Text style={styles.statLabel}>Total XP</Text>
-          </View>
-          <View style={styles.statBox}>
-            <View style={styles.statRowTop}>
-              <Ionicons name="book" size={16} color={THEME.colors.primaryGlow} />
-              <Text style={styles.statVal}>{stats.wordsMastered}</Text>
-            </View>
-            <Text style={styles.statLabel}>Words Learned</Text>
-          </View>
-          <View style={styles.statBox}>
-            <View style={styles.statRowTop}>
-              <Ionicons name="checkmark-circle" size={16} color={THEME.colors.primaryGlow} />
-              <Text style={styles.statVal}>{stats.completedClasses.length}/22</Text>
-            </View>
-            <Text style={styles.statLabel}>Lessons Done</Text>
-          </View>
-        </View>
-      </LinearGradient>
+        <LiveStreakBadge streakDays={stats.streakDays} />
+      </View>
 
-      {/* Daily Goal Target Selector */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="flag-outline" size={19} color={THEME.colors.primaryGlow} />
-          <Text style={styles.sectionTitle}>Daily Target</Text>
+      {/* Unified Horizontal KPI Metrics Bar */}
+      <View style={styles.kpiStrip}>
+        <View style={styles.kpiCell}>
+          <Text style={styles.kpiValue}>{stats.stardustXp}</Text>
+          <Text style={styles.kpiLabel}>Total XP</Text>
         </View>
-        <View style={styles.accentRow}>
+        <View style={styles.kpiDivider} />
+        <View style={styles.kpiCell}>
+          <Text style={styles.kpiValue}>{stats.wordsMastered}</Text>
+          <Text style={styles.kpiLabel}>Saved Words</Text>
+        </View>
+        <View style={styles.kpiDivider} />
+        <View style={styles.kpiCell}>
+          <Text style={styles.kpiValue}>{stats.conversationsDone}</Text>
+          <Text style={styles.kpiLabel}>Talks</Text>
+        </View>
+        <View style={styles.kpiDivider} />
+        <View style={styles.kpiCell}>
+          <Text style={styles.kpiValue}>
+            {stats.completedClasses.length}/{TOTAL_CURRICULUM_CLASSES}
+          </Text>
+          <Text style={styles.kpiLabel}>Classes</Text>
+        </View>
+      </View>
+
+      {/* Daily Target Progress & Intensity Switcher */}
+      <View style={styles.goalSection}>
+        <View style={styles.goalTopRow}>
+          <Text style={styles.sectionEyebrow}>DAILY XP TARGET</Text>
+          <Text style={styles.goalStatText}>
+            {stats.todayXp} / {stats.dailyGoalXp} XP · {dailyGoalProgress}%
+          </Text>
+        </View>
+
+        <View style={styles.goalTrack}>
+          {dailyGoalProgress > 0 && (
+            <LinearGradient
+              colors={['#7F43FE', '#A78BFA']}
+              style={[styles.goalFill, { width: `${dailyGoalProgress}%` }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            />
+          )}
+        </View>
+
+        <View style={styles.goalSegmentTrack}>
           {DAILY_GOALS.map((g) => {
             const active = stats.dailyGoalXp === g.xp;
             return (
               <TouchableOpacity
                 key={g.xp}
-                style={[styles.accentPill, active && styles.accentPillSelected]}
+                style={[styles.goalSegmentBtn, active && styles.goalSegmentBtnActive]}
                 onPress={() => handleSelectDailyGoal(g.xp)}
+                activeOpacity={0.82}
               >
-                <Text style={[styles.accentPillText, active && styles.accentPillTextSelected]}>
-                  {g.label} • {g.xp} XP
+                <Text style={[styles.goalSegmentText, active && styles.goalSegmentTextActive]}>
+                  {g.label} · {g.xp}
                 </Text>
               </TouchableOpacity>
             );
@@ -209,136 +234,162 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
         </View>
       </View>
 
-      {/* Gemini API Key Settings */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="key-outline" size={20} color={THEME.colors.primaryGlow} />
-          <Text style={styles.sectionTitle}>Google Gemini AI Key</Text>
-        </View>
-        <Text style={styles.sectionDesc}>
-          Add your free API key from{' '}
-          <Text style={{ color: THEME.colors.secondary }}>aistudio.google.com</Text> for live AI coaching replies.
-        </Text>
-
-        <View style={styles.apiKeyInputRow}>
-          <TextInput
-            style={styles.keyInput}
-            placeholder="AIzaSy..."
-            placeholderTextColor={THEME.colors.textMuted}
-            value={apiKey}
-            onChangeText={setApiKey}
-            secureTextEntry
-          />
-          <TouchableOpacity
-            style={styles.saveKeyBtn}
-            onPress={handleSaveApiKey}
-            disabled={isValidatingKey}
-          >
-            {isValidatingKey ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveKeyBtnText}>{isSavedKey ? 'Verify' : 'Save'}</Text>
-            )}
-          </TouchableOpacity>
+      {/* Voice & Audio Settings Group */}
+      <Text style={styles.groupEyebrow}>VOICE &amp; AUDIO</Text>
+      <View style={styles.settingsGroup}>
+        {/* Inline Accent Selector Row */}
+        <View style={styles.settingRow}>
+          <View style={styles.settingLead}>
+            <Ionicons name="globe-outline" size={18} color={THEME.colors.primaryGlow} />
+            <Text style={styles.settingTitle}>Speech Accent</Text>
+          </View>
+          <View style={styles.inlineSegmented}>
+            {ACCENT_OPTIONS.map((acc) => {
+              const active = selectedAccent === acc.id;
+              return (
+                <TouchableOpacity
+                  key={acc.id}
+                  style={[styles.accentChip, active && styles.accentChipActive]}
+                  onPress={() => handleAccentChange(acc.id)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.accentChipText, active && styles.accentChipTextActive]}>
+                    {acc.shortLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        <View style={styles.keyStatusBox}>
-          <Ionicons
-            name={isSavedKey ? 'checkmark-circle' : 'information-circle'}
-            size={16}
-            color={isSavedKey ? THEME.colors.primaryGlow : THEME.colors.textSecondary}
+        <View style={styles.rowDivider} />
+
+        {/* Slow Speech Toggle Row */}
+        <View style={styles.settingRow}>
+          <View style={styles.settingLead}>
+            <Ionicons name="speedometer-outline" size={18} color={THEME.colors.primaryGlow} />
+            <View style={styles.settingTextCol}>
+              <Text style={styles.settingTitle}>Slow Speech Mode</Text>
+              <Text style={styles.settingSub}>0.75x clearer syllable pacing</Text>
+            </View>
+          </View>
+          <Switch
+            value={isSlowSpeech}
+            onValueChange={handleSpeechSpeedChange}
+            trackColor={{ false: '#26233B', true: THEME.colors.primary }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor="#26233B"
           />
-          <Text style={styles.keyStatusText}>
-            {keyMessage ||
-              (isSavedKey
-                ? 'Active: Gemini Flash enabled with automatic offline fallback'
-                : 'Using built-in offline diagnostics engine (No key required)')}
-          </Text>
+        </View>
+
+        <View style={styles.rowDivider} />
+
+        {/* Sound Effects Toggle Row */}
+        <View style={styles.settingRow}>
+          <View style={styles.settingLead}>
+            <Ionicons name="volume-medium-outline" size={18} color={THEME.colors.primaryGlow} />
+            <View style={styles.settingTextCol}>
+              <Text style={styles.settingTitle}>Sound Effects</Text>
+              <Text style={styles.settingSub}>Chimes on answers and completions</Text>
+            </View>
+          </View>
+          <Switch
+            value={stats.soundEnabled}
+            onValueChange={handleToggleSound}
+            trackColor={{ false: '#26233B', true: THEME.colors.primary }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor="#26233B"
+          />
         </View>
       </View>
 
-      {/* Audio & Preferences */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="volume-high-outline" size={20} color={THEME.colors.secondary} />
-          <Text style={styles.sectionTitle}>Voice Accent & Sound</Text>
-        </View>
-
-        <Text style={styles.subHeading}>ENGLISH ACCENT</Text>
-        <View style={styles.accentRow}>
-          {[
-            { id: 'en-US' as EnglishAccent, label: 'US English' },
-            { id: 'en-GB' as EnglishAccent, label: 'UK English' },
-            { id: 'en-AU' as EnglishAccent, label: 'AU English' },
-          ].map((acc) => {
-            const isSelected = selectedAccent === acc.id;
-            return (
-              <TouchableOpacity
-                key={acc.id}
-                style={[styles.accentPill, isSelected && styles.accentPillSelected]}
-                onPress={() => handleAccentChange(acc.id)}
-              >
-                <Text style={[styles.accentPillText, isSelected && styles.accentPillTextSelected]}>
-                  {acc.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <Text style={[styles.subHeading, { marginTop: 14 }]}>PREFERENCES</Text>
-        <TouchableOpacity style={styles.speedToggleRow} onPress={toggleSpeechSpeed}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.speedLabel}>Slow Speech Mode (0.75x)</Text>
-            <Text style={styles.speedDesc}>Clearer syllable pronunciation for learners</Text>
-          </View>
-          <View style={[styles.toggleCircle, isSlowSpeech && styles.toggleCircleActive]}>
-            <Ionicons
-              name={isSlowSpeech ? 'checkmark' : 'close'}
-              size={14}
-              color={THEME.colors.text}
-            />
-          </View>
-        </TouchableOpacity>
-
+      {/* AI & Account Settings Group */}
+      <Text style={styles.groupEyebrow}>COACHING ENGINE &amp; DATA</Text>
+      <View style={styles.settingsGroup}>
+        {/* Collapsible AI Key Configuration Row */}
         <TouchableOpacity
-          style={[styles.speedToggleRow, { marginTop: 8 }]}
-          onPress={handleToggleSound}
+          style={styles.settingRow}
+          onPress={() => setShowApiConfig((prev) => !prev)}
+          activeOpacity={0.82}
         >
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.speedLabel}>Lesson Sound Effects</Text>
-            <Text style={styles.speedDesc}>Play chimes on answers and completions</Text>
+          <View style={styles.settingLead}>
+            <Ionicons name="sparkles-outline" size={18} color={THEME.colors.primaryGlow} />
+            <View style={styles.settingTextCol}>
+              <Text style={styles.settingTitle}>AI Coaching Engine</Text>
+              <Text style={styles.settingSub}>
+                {isSavedKey ? 'Gemini Live connected' : 'Built-in offline engine'}
+              </Text>
+            </View>
           </View>
-          <View style={[styles.toggleCircle, stats.soundEnabled && styles.toggleCircleActive]}>
+          <View style={styles.rowEndAction}>
+            <View style={[styles.statusDot, isSavedKey && styles.statusDotActive]} />
             <Ionicons
-              name={stats.soundEnabled ? 'checkmark' : 'close'}
-              size={14}
-              color={THEME.colors.text}
+              name={showApiConfig ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={THEME.colors.textMuted}
             />
           </View>
         </TouchableOpacity>
+
+        {showApiConfig && (
+          <View style={styles.expandedApiPane}>
+            <Text style={styles.apiHelperText}>
+              Optional free Gemini key from aistudio.google.com for cloud coaching.
+            </Text>
+            <View style={styles.apiKeyRow}>
+              <TextInput
+                style={styles.keyInput}
+                placeholder="Paste Gemini API key (AIza...)"
+                placeholderTextColor={THEME.colors.textMuted}
+                value={apiKey}
+                onChangeText={setApiKey}
+                secureTextEntry
+              />
+              <TouchableOpacity
+                style={styles.saveKeyBtn}
+                onPress={handleSaveApiKey}
+                disabled={isValidatingKey}
+                activeOpacity={0.84}
+              >
+                {isValidatingKey ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveKeyBtnText}>{isSavedKey ? 'Verify' : 'Save'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            {keyMessage && <Text style={styles.keyFeedbackText}>{keyMessage}</Text>}
+          </View>
+        )}
+
+        <View style={styles.rowDivider} />
+
+        {/* Reset Progress Action Row */}
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={handleResetProgress}
+          activeOpacity={0.82}
+        >
+          <View style={styles.settingLead}>
+            <Ionicons name="refresh-outline" size={18} color={THEME.colors.textSecondary} />
+            <View style={styles.settingTextCol}>
+              <Text style={styles.settingTitle}>Reset Learning Progress</Text>
+              <Text style={styles.settingSub}>Clear XP, completed lessons, and streak</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
-      {/* Account Data & About */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="school-outline" size={20} color={THEME.colors.gold} />
-          <Text style={styles.sectionTitle}>NovaBreaker English</Text>
-        </View>
-        <Text style={styles.aboutText}>
-          Built for learners aiming to speak fluent English naturally. Combines structured lessons, grammar diagnostics, vocabulary mastery, and Tamil mental-model guides.
+      {/* Subtle App Footer */}
+      <View style={styles.footerInfo}>
+        <Text style={styles.footerBrand}>NovaBreaker English · v1.0.0</Text>
+        <Text style={styles.footerTagline}>
+          Structured Tamil-to-English fluency training
         </Text>
-
-        <View style={styles.footerActionRow}>
-          <Text style={styles.versionText}>Version 1.0.0</Text>
-          <TouchableOpacity onPress={handleResetProgress} style={styles.resetBtn}>
-            <Ionicons name="refresh-outline" size={14} color="#C7C3DC" />
-            <Text style={styles.resetBtnText}>Reset Progress</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 32 }} />
     </ScrollView>
   );
 };
@@ -349,290 +400,319 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   content: {
-    padding: 14,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 24,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
-  profileCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.lg,
-    padding: 16,
+
+  /* ACCOUNT HEADER */
+  accountHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    marginBottom: 14,
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
-  avatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#181724',
-    borderWidth: 2,
-    borderColor: THEME.colors.primaryGlow,
-    justifyContent: 'center',
+  accountLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    flex: 1,
+    paddingRight: 12,
+  },
+  avatarRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: 'rgba(167, 139, 250, 0.5)',
+    backgroundColor: '#161423',
     overflow: 'hidden',
   },
-  streakNovaAvatar: {
+  avatarImg: {
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.04 }],
   },
+  identityCol: {
+    flex: 1,
+    marginLeft: 13,
+  },
   userName: {
     fontFamily: THEME.fonts.bold,
     fontSize: 18,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
   },
-  userRank: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: THEME.colors.gold,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  dailyGoalBox: {
-    width: '100%',
-    marginTop: 12,
-    backgroundColor: 'rgba(14, 14, 20, 0.45)',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  dailyGoalTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  dailyGoalLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
-    letterSpacing: 0.6,
-  },
-  dailyGoalCount: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#C4B5FD',
-  },
-  dailyGoalTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    overflow: 'hidden',
-  },
-  dailyGoalFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: THEME.colors.primary,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-    width: '100%',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  statBox: {
-    width: '48%',
-    backgroundColor: THEME.colors.surfaceElevated,
-    padding: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  statRowTop: {
+  rankSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 3,
     gap: 6,
   },
-  statVal: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 16,
-    color: THEME.colors.text,
+  rankDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.primaryGlow,
   },
-  statLabel: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
+  rankLabel: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12,
+    color: '#C4B5FD',
   },
-  sectionCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    marginBottom: 14,
+  metaSep: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
+    color: THEME.colors.textMuted,
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15,
-    color: THEME.colors.text,
-    marginLeft: 8,
-  },
-  sectionDesc: {
-    fontFamily: THEME.fonts.body,
+  coursePctText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    lineHeight: 18,
-    marginBottom: 10,
   },
-  apiKeyInputRow: {
+
+  /* UNIFIED KPI BAR */
+  kpiStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#151422',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    paddingVertical: 14,
+    marginBottom: 20,
+  },
+  kpiCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  kpiValue: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  kpiLabel: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 10.5,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  kpiDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  },
+
+  /* DAILY GOAL SECTION */
+  goalSection: {
+    marginBottom: 22,
+  },
+  goalTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 7,
+  },
+  sectionEyebrow: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.9,
+  },
+  goalStatText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
+    color: '#C4B5FD',
+  },
+  goalTrack: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#221F33',
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  goalFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  goalSegmentTrack: {
+    flexDirection: 'row',
+    backgroundColor: '#14131E',
+    borderRadius: 11,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  goalSegmentBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  goalSegmentBtnActive: {
+    backgroundColor: '#231E3A',
+  },
+  goalSegmentText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11.5,
+    color: THEME.colors.textMuted,
+  },
+  goalSegmentTextActive: {
+    fontFamily: THEME.fonts.bold,
+    color: '#FFFFFF',
+  },
+
+  /* GROUPED SETTINGS LISTS */
+  groupEyebrow: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.9,
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  settingsGroup: {
+    backgroundColor: '#151422',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    paddingHorizontal: 14,
+    marginBottom: 20,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    gap: 10,
+  },
+  settingLead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  settingTextCol: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+  },
+  settingSub: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+    marginTop: 1,
+  },
+  rowDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  inlineSegmented: {
+    flexDirection: 'row',
+    backgroundColor: '#1D1B2D',
+    borderRadius: 9,
+    padding: 2,
+    gap: 2,
+  },
+  accentChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  accentChipActive: {
+    backgroundColor: THEME.colors.primary,
+  },
+  accentChipText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  accentChipTextActive: {
+    fontFamily: THEME.fonts.bold,
+    color: '#FFFFFF',
+  },
+  rowEndAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#6E6A85',
+  },
+  statusDotActive: {
+    backgroundColor: THEME.colors.primaryGlow,
+  },
+
+  /* COLLAPSIBLE API KEY CONFIG */
+  expandedApiPane: {
+    paddingBottom: 14,
+    paddingTop: 2,
+  },
+  apiHelperText: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+    marginBottom: 8,
+    lineHeight: 17,
+  },
+  apiKeyRow: {
     flexDirection: 'row',
     gap: 8,
   },
   keyInput: {
-    fontFamily: THEME.fonts.body,
     flex: 1,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 8,
+    fontFamily: THEME.fonts.body,
+    backgroundColor: '#1D1B2D',
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: THEME.colors.text,
-    fontSize: 13,
+    color: '#FFFFFF',
+    fontSize: 12.5,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   saveKeyBtn: {
     backgroundColor: THEME.colors.primary,
     paddingHorizontal: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
-    minWidth: 68,
     alignItems: 'center',
+    minWidth: 66,
   },
   saveKeyBtnText: {
     fontFamily: THEME.fonts.bold,
-    color: THEME.colors.text,
-    fontSize: 12.5,
+    color: '#FFFFFF',
+    fontSize: 12,
   },
-  keyStatusBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  keyStatusText: {
+  keyFeedbackText: {
     fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginLeft: 6,
-    flex: 1,
+    fontSize: 11.5,
+    color: '#C4B5FD',
+    marginTop: 7,
   },
-  subHeading: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  accentRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  accentPill: {
-    flex: 1,
-    backgroundColor: THEME.colors.surfaceElevated,
-    paddingVertical: 9,
-    paddingHorizontal: 6,
-    borderRadius: 8,
+
+  /* FOOTER */
+  footerInfo: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    marginTop: 4,
   },
-  accentPillSelected: {
-    backgroundColor: 'rgba(127, 67, 254, 0.2)',
-    borderColor: THEME.colors.primary,
-  },
-  accentPillText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-  },
-  accentPillTextSelected: {
-    fontFamily: THEME.fonts.bold,
-    color: THEME.colors.primaryGlow,
-  },
-  speedToggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
-    padding: 12,
-    borderRadius: 8,
-  },
-  speedLabel: {
+  footerBrand: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13,
-    color: THEME.colors.text,
-  },
-  speedDesc: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-  },
-  toggleCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: THEME.colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toggleCircleActive: {
-    backgroundColor: THEME.colors.primary,
-  },
-  aboutText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12.5,
-    color: THEME.colors.textSecondary,
-    lineHeight: 19,
-    marginTop: 2,
-  },
-  footerActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-  },
-  versionText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11,
+    fontSize: 11.5,
     color: THEME.colors.textMuted,
   },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#1E1C2E',
-    borderWidth: 1,
-    borderColor: '#302D46',
-  },
-  resetBtnText: {
-    fontFamily: THEME.fonts.semiBold,
+  footerTagline: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
-    color: '#C7C3DC',
+    color: THEME.colors.textMuted,
+    marginTop: 2,
   },
 });
