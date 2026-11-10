@@ -44,10 +44,6 @@ const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
   { id: 'en-AU', shortLabel: 'AU' },
 ];
 
-function formatShortUnitName(fullName: string): string {
-  return fullName.replace(/^Unit\s+\d+:\s*/i, '').trim();
-}
-
 function getLearnerTierLabel(completedCount: number): string {
   if (completedCount >= 17) return 'B2–C1 Fluent';
   if (completedCount >= 11) return 'B1 Career';
@@ -220,34 +216,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
               );
             })}
           </View>
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        {/* Open Unit Progress List */}
-        <View style={styles.openSection}>
-          <Text style={[styles.eyebrow, { marginBottom: 12 }]}>COURSE PROGRESS</Text>
-          {SUPERNOVA_LEVELS.map((lvl, idx) => {
-            const doneInUnit = lvl.classes.filter((c) =>
-              stats.completedClasses.includes(c.id)
-            ).length;
-            const unitPct = Math.round((doneInUnit / lvl.classes.length) * 100);
-            return (
-              <View key={lvl.levelNumber} style={[styles.unitLineItem, idx > 0 && { marginTop: 12 }]}>
-                <View style={styles.unitLineMeta}>
-                  <Text style={styles.unitNameText} numberOfLines={1}>
-                    U{lvl.levelNumber} · {formatShortUnitName(lvl.levelName)}
-                  </Text>
-                  <Text style={styles.unitRatioText}>
-                    {doneInUnit}/{lvl.classes.length}
-                  </Text>
-                </View>
-                <View style={styles.unitHairline}>
-                  {unitPct > 0 && <View style={[styles.unitHairlineFill, { width: `${unitPct}%` }]} />}
-                </View>
-              </View>
-            );
-          })}
         </View>
 
         <View style={styles.sectionDivider} />
@@ -514,40 +482,6 @@ const styles = StyleSheet.create({
   dayTextToday: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
-  },
-
-  /* COURSE PROGRESS */
-  unitLineItem: {
-    width: '100%',
-  },
-  unitLineMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  unitNameText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 13,
-    color: '#FFFFFF',
-    flex: 1,
-    paddingRight: 10,
-  },
-  unitRatioText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
-    color: '#C4B5FD',
-  },
-  unitHairline: {
-    height: 2.5,
-    borderRadius: 1.5,
-    backgroundColor: '#221F33',
-    overflow: 'hidden',
-  },
-  unitHairlineFill: {
-    height: '100%',
-    borderRadius: 1.5,
-    backgroundColor: THEME.colors.primaryGlow,
   },
 
   /* PREFERENCES ROWS */
