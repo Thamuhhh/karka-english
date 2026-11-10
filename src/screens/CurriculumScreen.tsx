@@ -30,6 +30,13 @@ interface CurriculumScreenProps {
 
 const MAX_CONTENT_WIDTH = 480;
 
+const CEFR_SHORT_LABELS: Record<number, { code: string; focus: string }> = {
+  1: { code: 'A1', focus: 'Start' },
+  2: { code: 'A2', focus: 'Daily' },
+  3: { code: 'B1', focus: 'Work' },
+  4: { code: 'B2', focus: 'Pro' },
+};
+
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
 }
@@ -70,23 +77,37 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     }
   }
 
-  const unitTabs: Array<{
+  const commandTabs: Array<{
     key: number | 'all';
-    label: string;
+    code: string;
+    focus: string;
     accentColor: string;
-    isCompact?: boolean;
+    showDot?: boolean;
   }> = [
-    { key: 'all', label: 'All', accentColor: THEME.colors.primaryGlow, isCompact: true },
-    ...SUPERNOVA_LEVELS.map((lvl) => ({
-      key: lvl.levelNumber,
-      label: `Unit ${lvl.levelNumber}`,
-      accentColor: lvl.accentColor,
-    })),
+    {
+      key: 'all',
+      code: 'All',
+      focus: `${totalClassesCount} cls`,
+      accentColor: THEME.colors.primaryGlow,
+    },
+    ...SUPERNOVA_LEVELS.map((lvl) => {
+      const meta = CEFR_SHORT_LABELS[lvl.levelNumber] || {
+        code: lvl.cefrTag.replace(/^CEFR\s+/i, '').split(' ')[0],
+        focus: `Unit ${lvl.levelNumber}`,
+      };
+      return {
+        key: lvl.levelNumber,
+        code: meta.code,
+        focus: meta.focus,
+        accentColor: lvl.accentColor,
+        showDot: true,
+      };
+    }),
   ];
 
   return (
     <View style={styles.container}>
-      {/* Clean Corporate Obsidian Top Navigation Bar */}
+      {/* Executive CEFR Tier Command Top Bar */}
       <LinearGradient
         colors={['#151422', '#0E0E14']}
         style={styles.topHeaderContainer}
@@ -98,40 +119,32 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             <View style={styles.brandAvatarRing}>
               <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.brandAvatarImg} />
             </View>
-            <View>
-              <Text style={styles.brandTitle}>SUPERNOVA</Text>
-              <Text style={styles.brandSubtitle}>
-                {completedCount}/{totalClassesCount} Done · {overallPercent}%
-              </Text>
+            <Text style={styles.brandTitle}>Supernova</Text>
+            <View style={styles.progressBadgePill}>
+              <Text style={styles.progressBadgeText}>{overallPercent}%</Text>
             </View>
           </View>
 
-          <View style={styles.telemetryGroup}>
-            <View style={styles.statsCapsule}>
-              <View style={styles.statChip}>
-                <MaterialCommunityIcons name="fire" size={14} color={THEME.colors.gold} />
-                <Text style={styles.statValueText}>{stats.streakDays}</Text>
-              </View>
-
-              <View style={styles.statDivider} />
-
-              <View style={styles.statChip}>
-                <Ionicons name="diamond" size={12.5} color={THEME.colors.secondary} />
-                <Text style={styles.statValueText}>{stats.gems}</Text>
-              </View>
-
-              <View style={styles.statDivider} />
-
-              <TouchableOpacity
-                style={styles.statChip}
-                onPress={onRefillHearts}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 4, right: 6 }}
-              >
-                <Ionicons name="heart" size={12.5} color="#F43F5E" />
-                <Text style={styles.statValueText}>{stats.hearts}</Text>
-              </TouchableOpacity>
+          <View style={styles.telemetryRow}>
+            <View style={styles.metricChip}>
+              <MaterialCommunityIcons name="fire" size={13.5} color={THEME.colors.gold} />
+              <Text style={styles.metricText}>{stats.streakDays}</Text>
             </View>
+
+            <View style={styles.metricChip}>
+              <Ionicons name="diamond" size={12} color={THEME.colors.secondary} />
+              <Text style={styles.metricText}>{stats.gems}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.metricChip}
+              onPress={onRefillHearts}
+              activeOpacity={0.75}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+            >
+              <Ionicons name="heart" size={12.5} color="#F43F5E" />
+              <Text style={styles.heartsText}>{stats.hearts}</Text>
+            </TouchableOpacity>
 
             {onOpenLeague && (
               <TouchableOpacity
@@ -139,50 +152,51 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 onPress={onOpenLeague}
                 activeOpacity={0.75}
               >
-                <MaterialCommunityIcons
-                  name="trophy-variant"
-                  size={13}
-                  color={THEME.colors.gold}
-                />
                 <Text style={styles.rankChipText}>#{userRank}</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        {/* Full-Width Segmented Underline Unit Tabs */}
-        <View style={[styles.unitTabsRow, { maxWidth: MAX_CONTENT_WIDTH }]}>
-          {unitTabs.map((tab) => {
+        {/* 5-Tile CEFR Tier Command Grid */}
+        <View style={[styles.commandGrid, { maxWidth: MAX_CONTENT_WIDTH }]}>
+          {commandTabs.map((tab) => {
             const isSelected = selectedUnitFilter === tab.key;
             return (
               <TouchableOpacity
                 key={String(tab.key)}
-                style={[styles.unitTabBtn, tab.isCompact && styles.unitTabBtnCompact]}
+                style={[
+                  styles.commandTile,
+                  isSelected && {
+                    backgroundColor: `${tab.accentColor}20`,
+                    borderColor: tab.accentColor,
+                  },
+                ]}
                 onPress={() => setSelectedUnitFilter(tab.key)}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
               >
-                <View style={styles.unitTabLabelRow}>
-                  {!tab.isCompact && (
+                <View style={styles.commandCodeRow}>
+                  {tab.showDot && (
                     <View
                       style={[
-                        styles.unitTabDot,
-                        { backgroundColor: tab.accentColor, opacity: isSelected ? 1 : 0.6 },
+                        styles.commandDot,
+                        { backgroundColor: tab.accentColor, opacity: isSelected ? 1 : 0.7 },
                       ]}
                     />
                   )}
                   <Text
-                    style={[styles.unitTabText, isSelected && styles.unitTabTextActive]}
+                    style={[styles.commandCodeText, isSelected && styles.commandCodeTextActive]}
                     numberOfLines={1}
                   >
-                    {tab.label}
+                    {tab.code}
                   </Text>
                 </View>
-                <View
-                  style={[
-                    styles.unitTabIndicator,
-                    isSelected && { backgroundColor: tab.accentColor },
-                  ]}
-                />
+                <Text
+                  style={[styles.commandFocusText, isSelected && styles.commandFocusTextActive]}
+                  numberOfLines={1}
+                >
+                  {tab.focus}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -670,17 +684,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 8,
+    paddingBottom: 9,
   },
   brandGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 7,
   },
   brandAvatarRing: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: 'rgba(167, 139, 250, 0.65)',
     overflow: 'hidden',
@@ -692,108 +706,115 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.04 }],
   },
   brandTitle: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 12.5,
-    color: '#FFFFFF',
-    letterSpacing: 0.7,
-  },
-  brandSubtitle: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
-    marginTop: -1,
-  },
-  telemetryGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statsCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 30,
-    backgroundColor: '#171624',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#2A2740',
-    paddingHorizontal: 8,
-    gap: 7,
-  },
-  statChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3.5,
-  },
-  statValueText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  progressBadgePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 7,
+    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+  },
+  progressBadgeText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
+    color: '#34D399',
+  },
+  telemetryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  metricChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 28,
+    paddingHorizontal: 7,
+    gap: 3.5,
+    borderRadius: 9,
+    backgroundColor: '#191827',
+    borderWidth: 1,
+    borderColor: '#29273E',
+  },
+  metricText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
     color: '#FFFFFF',
   },
-  statDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: '#2B2842',
+  heartsText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#FB7185',
   },
   rankChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 30,
-    backgroundColor: 'rgba(127, 67, 254, 0.16)',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.35)',
+    justifyContent: 'center',
+    height: 28,
     paddingHorizontal: 8,
+    borderRadius: 9,
+    backgroundColor: 'rgba(127, 67, 254, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.4)',
   },
   rankChipText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
-    color: '#FFFFFF',
+    fontSize: 11,
+    color: '#E9D5FF',
   },
 
-  /* SEGMENTED UNDERLINE UNIT TABS */
-  unitTabsRow: {
+  /* CEFR TIER COMMAND GRID */
+  commandGrid: {
     width: '100%',
     flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingHorizontal: 10,
-  },
-  unitTabBtn: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 11,
+    gap: 6,
   },
-  unitTabBtnCompact: {
-    flex: 0.72,
+  commandTile: {
+    flex: 1,
+    backgroundColor: '#181725',
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#28263C',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  unitTabLabelRow: {
+  commandCodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingBottom: 7,
+    gap: 4,
   },
-  unitTabDot: {
-    width: 5.5,
-    height: 5.5,
-    borderRadius: 3,
+  commandDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
-  unitTabText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11.5,
-    color: THEME.colors.textMuted,
-  },
-  unitTabTextActive: {
+  commandCodeText: {
     fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
+    color: '#C7C3DC',
+  },
+  commandCodeTextActive: {
     color: '#FFFFFF',
   },
-  unitTabIndicator: {
-    width: '68%',
-    height: 2.5,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-    backgroundColor: 'transparent',
+  commandFocusText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 9.5,
+    color: THEME.colors.textMuted,
+    marginTop: 1,
+  },
+  commandFocusTextActive: {
+    fontFamily: THEME.fonts.semiBold,
+    color: '#E5E1F7',
   },
 
   /* COURSE TIMELINE */
