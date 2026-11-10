@@ -27,6 +27,7 @@ function parseArgs(argv) {
     concurrency: null,
     delayMs: null,
     voice: null,
+    model: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -53,6 +54,8 @@ function parseArgs(argv) {
       if (Number.isFinite(parsed) && parsed >= 0) args.delayMs = parsed;
     } else if (arg === '--voice' && argv[i + 1]) {
       args.voice = argv[++i].trim();
+    } else if (arg === '--model' && argv[i + 1]) {
+      args.model = argv[++i].trim();
     }
   }
   if (args.concurrency === null) args.concurrency = args.engine === 'gemini' ? 1 : 2;
@@ -143,7 +146,13 @@ function replaceEnglishTimesAndYears(text) {
 function cleanSpeechText(text, mode, engine = 'edge') {
   let out = String(text || '').trim();
   if (engine === 'gemini') {
-    return out.replace(/\s*->\s*/g, ', ').replace(/\s{2,}/g, ' ').trim();
+    return out
+      .replace(/\s*->\s*/g, ', ')
+      .replace(/\.{2,}/g, ' ')
+      .replace(/(["“”])-(?=[\u0B80-\u0BFF])/g, '$1 ')
+      .replace(/\(([^)]+)\)/g, ', $1')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   }
   if (mode === 'tamil') {
     out = replaceEnglishTimesAndYears(out)
@@ -175,8 +184,9 @@ function extractInlineAudioPart(json) {
   return null;
 }
 
-async function requestGeminiAudio(apiKey, clip, voiceName) {
+async function requestGeminiAudio(apiKey, clip, voiceName, modelOverride) {
   const text = cleanSpeechText(clip.text, clip.mode, 'gemini');
+  const models = modelOverride ? [modelOverride] : GEMINI_TTS_MODELS;
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text }] }],
     generationConfig: {
@@ -198,7 +208,7 @@ async function requestGeminiAudio(apiKey, clip, voiceName) {
 
   const errors = [];
   for (const buildUrl of endpoints) {
-    for (const model of GEMINI_TTS_MODELS) {
+    for (const model of models) {
       const res = await fetch(buildUrl(model), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -208,7 +218,7 @@ async function requestGeminiAudio(apiKey, clip, voiceName) {
       if (res.ok) {
         const json = await res.json();
         const inline = extractInlineAudioPart(json);
-        if (inline) return inline;
+        if (inline) return { ...inline, model };
         errors.push(`${model}: Empty audio candidate`);
         continue;
       }
@@ -219,19 +229,21 @@ async function requestGeminiAudio(apiKey, clip, voiceName) {
   throw new Error(errors.join(' | ').slice(0, 260));
 }
 
-async function generateWithGemini(apiKey, clip, audioDir, voiceName) {
-  const inline = await requestGeminiAudio(apiKey, clip, voiceName);
+async function generateWithGemini(apiKey, clip, audioDir, voiceName, modelOverride) {
+  const inline = await requestGeminiAudio(apiKey, clip, voiceName, modelOverride);
   const rawBuf = Buffer.from(inline.base64, 'base64');
   const lower = inline.mimeType.toLowerCase();
+  let savedName;
   if (lower.includes('mp3') || lower.includes('mpeg')) {
-    return writeAudioReplacingOldExts(audioDir, clip.key, '.mp3', rawBuf);
+    savedName = writeAudioReplacingOldExts(audioDir, clip.key, '.mp3', rawBuf);
+  } else if (lower.includes('wav')) {
+    savedName = writeAudioReplacingOldExts(audioDir, clip.key, '.wav', rawBuf);
+  } else {
+    const rateMatch = /rate=(\d+)/i.exec(inline.mimeType);
+    const sampleRate = rateMatch ? Number(rateMatch[1]) : 24000;
+    savedName = writeAudioReplacingOldExts(audioDir, clip.key, '.wav', pcmToWavBuffer(rawBuf, sampleRate));
   }
-  if (lower.includes('wav')) {
-    return writeAudioReplacingOldExts(audioDir, clip.key, '.wav', rawBuf);
-  }
-  const rateMatch = /rate=(\d+)/i.exec(inline.mimeType);
-  const sampleRate = rateMatch ? Number(rateMatch[1]) : 24000;
-  return writeAudioReplacingOldExts(audioDir, clip.key, '.wav', pcmToWavBuffer(rawBuf, sampleRate));
+  return `${savedName} [${inline.model}]`;
 }
 
 async function generateWithEdge(tts, clip, audioDir, voiceOverride) {
@@ -254,7 +266,7 @@ async function synthesizeClipWithRetry(ctx, clip, audioDir, attempts = 3) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       return ctx.engine === 'gemini'
-        ? await generateWithGemini(ctx.geminiKey, clip, audioDir, ctx.voice)
+        ? await generateWithGemini(ctx.geminiKey, clip, audioDir, ctx.voice, ctx.model)
         : await generateWithEdge(ctx.edgeTts, clip, audioDir, ctx.voice);
     } catch (err) {
       lastErr = err;
@@ -307,6 +319,7 @@ async function main() {
     geminiKey,
     edgeTts: opts.engine === 'edge' ? new EdgeTTS({ timeout: 30000 }) : null,
     voice: opts.voice,
+    model: opts.model,
   };
 
   let cursor = 0;
