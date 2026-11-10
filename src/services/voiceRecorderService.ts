@@ -41,7 +41,9 @@ function inferMimeType(uri: string): string {
   if (lower.endsWith('.webm')) return 'audio/webm';
   if (lower.endsWith('.wav')) return 'audio/wav';
   if (lower.endsWith('.aac')) return 'audio/aac';
-  return 'audio/mp4';
+  if (lower.endsWith('.mp3')) return 'audio/mp3';
+  if (lower.endsWith('.ogg')) return 'audio/ogg';
+  return 'audio/m4a';
 }
 
 /** Requests mic access and begins capturing user speech using expo-av. */
