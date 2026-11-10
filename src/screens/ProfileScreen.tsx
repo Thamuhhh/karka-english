@@ -8,6 +8,8 @@ import {
   Alert,
   Image,
   Switch,
+  Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,6 +46,78 @@ const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
   { id: 'en-AU', shortLabel: 'AU' },
 ];
 
+type LegalDocKey = 'privacy' | 'terms' | 'licenses';
+
+const LEGAL_LINKS: Array<{
+  key: LegalDocKey;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { key: 'privacy', label: 'Privacy Policy', icon: 'shield-checkmark-outline' },
+  { key: 'terms', label: 'Terms of Service', icon: 'document-text-outline' },
+  { key: 'licenses', label: 'Data & Open Source', icon: 'information-circle-outline' },
+];
+
+const LEGAL_DOCS: Record<
+  LegalDocKey,
+  {
+    title: string;
+    updated: string;
+    sections: Array<{ heading: string; body: string }>;
+  }
+> = {
+  privacy: {
+    title: 'Privacy Policy',
+    updated: 'Effective November 2026',
+    sections: [
+      {
+        heading: 'Local Storage First',
+        body: 'Your completed classes, XP, saved vocabulary words, daily streak, and voice settings are stored locally on your device using AsyncStorage.',
+      },
+      {
+        heading: 'Voice & Grammar Practice',
+        body: 'Sentences typed or spoken for grammar coaching are processed strictly to generate fluency corrections and Tamil explanations for your current session.',
+      },
+      {
+        heading: 'Data Control',
+        body: 'You can clear all stored learning history, vocabulary bookmarks, and streak data anytime via Reset Progress in Preferences.',
+      },
+    ],
+  },
+  terms: {
+    title: 'Terms of Service',
+    updated: 'Effective November 2026',
+    sections: [
+      {
+        heading: 'Educational Use',
+        body: 'NovaBreaker English is provided as a personal Tamil-to-English fluency and speaking practice companion.',
+      },
+      {
+        heading: 'AI & Offline Feedback',
+        body: 'Grammar tips, translations, and conversational replies are designed for self-study assistance and should be reviewed alongside your real-world context.',
+      },
+      {
+        heading: 'Content & Fair Use',
+        body: 'Course lessons, prompts, and visual assets within NovaBreaker are intended for your personal, non-commercial learning experience.',
+      },
+    ],
+  },
+  licenses: {
+    title: 'Data & Open Source',
+    updated: 'NovaBreaker v1.0.0',
+    sections: [
+      {
+        heading: 'Core Stack',
+        body: 'Built with Expo, React Native, React Native SVG, Expo Speech, and Google Noto Sans Tamil, Poppins, and Montserrat fonts.',
+      },
+      {
+        heading: 'Dictionary Services',
+        body: 'Corporate Lexicon lookups query public English dictionary and Datamuse thesaurus endpoints when online, falling back cleanly to curated offline terms.',
+      },
+    ],
+  },
+};
+
 function getLearnerTierLabel(completedCount: number): string {
   if (completedCount >= 17) return 'B2–C1 Fluent';
   if (completedCount >= 11) return 'B1 Career';
@@ -52,8 +126,10 @@ function getLearnerTierLabel(completedCount: number): string {
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpdate }) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocKey | null>(null);
 
   useEffect(() => {
     loadPreferredAccent().then(setSelectedAccent);
@@ -282,20 +358,124 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
               ios_backgroundColor="#26233B"
             />
           </View>
+
+          <View style={styles.rowDivider} />
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleResetProgress}
+            activeOpacity={0.78}
+          >
+            <View style={styles.settingLead}>
+              <Ionicons name="refresh-outline" size={18} color={THEME.colors.textSecondary} />
+              <Text style={styles.settingTitle}>Reset Progress</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.sectionDivider} />
 
-        {/* Quiet Footer */}
-        <View style={styles.footerRow}>
-          <Text style={styles.versionText}>NovaBreaker · v1.0.0</Text>
-          <TouchableOpacity onPress={handleResetProgress} activeOpacity={0.75}>
-            <Text style={styles.resetText}>Reset Progress</Text>
-          </TouchableOpacity>
+        {/* Open Borderless Legal Links */}
+        <View style={styles.openSection}>
+          <Text style={[styles.eyebrow, { marginBottom: 6 }]}>LEGAL</Text>
+          {LEGAL_LINKS.map((item, idx) => (
+            <React.Fragment key={item.key}>
+              {idx > 0 && <View style={styles.rowDivider} />}
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => setActiveLegalDoc(item.key)}
+                activeOpacity={0.78}
+              >
+                <View style={styles.settingLead}>
+                  <Ionicons name={item.icon} size={18} color={THEME.colors.textSecondary} />
+                  <Text style={styles.settingTitle}>{item.label}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
+        </View>
+
+        <View style={styles.sectionDivider} />
+
+        {/* Production App Footer */}
+        <View style={styles.appFooter}>
+          <Text style={styles.footerBrand}>NovaBreaker English</Text>
+          <Text style={styles.footerSub}>Tamil-to-English Fluency Studio</Text>
+
+          <View style={styles.footerLegalLinks}>
+            <TouchableOpacity onPress={() => setActiveLegalDoc('privacy')} activeOpacity={0.75}>
+              <Text style={styles.footerLinkText}>Privacy</Text>
+            </TouchableOpacity>
+            <Text style={styles.footerDot}>·</Text>
+            <TouchableOpacity onPress={() => setActiveLegalDoc('terms')} activeOpacity={0.75}>
+              <Text style={styles.footerLinkText}>Terms</Text>
+            </TouchableOpacity>
+            <Text style={styles.footerDot}>·</Text>
+            <TouchableOpacity onPress={() => setActiveLegalDoc('licenses')} activeOpacity={0.75}>
+              <Text style={styles.footerLinkText}>Open Source</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.footerVersion}>Version 1.0.0 · © 2026 NovaBreaker</Text>
         </View>
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* In-App Legal Document Reader Modal */}
+      <Modal
+        visible={!!activeLegalDoc}
+        transparent
+        statusBarTranslucent
+        animationType="fade"
+        onRequestClose={() => setActiveLegalDoc(null)}
+      >
+        <View style={styles.legalOverlay}>
+          <TouchableOpacity
+            style={styles.legalBackdrop}
+            activeOpacity={1}
+            onPress={() => setActiveLegalDoc(null)}
+          />
+
+          {activeLegalDoc && (
+            <View
+              style={[
+                styles.legalSheet,
+                { width: Math.min(windowWidth - 32, 420), maxHeight: windowHeight * 0.78 },
+              ]}
+            >
+              <View style={styles.legalHeader}>
+                <View>
+                  <Text style={styles.legalEyebrow}>{LEGAL_DOCS[activeLegalDoc].updated}</Text>
+                  <Text style={styles.legalTitle}>{LEGAL_DOCS[activeLegalDoc].title}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.legalCloseBtn}
+                  onPress={() => setActiveLegalDoc(null)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={16} color="#C9C5DE" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                style={styles.legalScroll}
+                contentContainerStyle={styles.legalBodyContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {LEGAL_DOCS[activeLegalDoc].sections.map((sec, sIdx) => (
+                  <View key={sIdx} style={[styles.legalSection, sIdx > 0 && { marginTop: 16 }]}>
+                    <Text style={styles.legalSectionHeading}>{sec.heading}</Text>
+                    <Text style={styles.legalSectionBody}>{sec.body}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -541,20 +721,115 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  /* FOOTER */
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  /* APP FOOTER */
+  appFooter: {
     alignItems: 'center',
+    paddingTop: 4,
+    paddingBottom: 6,
   },
-  versionText: {
+  footerBrand: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  footerSub: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  footerLegalLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  footerLinkText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11.5,
+    color: '#A78BFA',
+  },
+  footerDot: {
     fontFamily: THEME.fonts.medium,
     fontSize: 11.5,
     color: THEME.colors.textMuted,
   },
-  resetText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
+  footerVersion: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 8,
+  },
+
+  /* LEGAL DOCUMENT READER MODAL */
+  legalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(6, 6, 10, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  legalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  legalSheet: {
+    backgroundColor: '#151422',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.28)',
+    overflow: 'hidden',
+  },
+  legalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  legalEyebrow: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
+    color: '#A78BFA',
+    letterSpacing: 0.8,
+  },
+  legalTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 18,
+    color: '#FFFFFF',
+    marginTop: 2,
+  },
+  legalCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  legalScroll: {
+    flexGrow: 0,
+  },
+  legalBodyContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  legalSection: {
+    width: '100%',
+  },
+  legalSectionHeading: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  legalSectionBody: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12.5,
     color: THEME.colors.textSecondary,
+    lineHeight: 19,
   },
 });
