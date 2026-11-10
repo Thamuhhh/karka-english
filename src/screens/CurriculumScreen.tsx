@@ -57,13 +57,6 @@ function getZigZagCenterX(
   return index % 2 === 1 ? leftX : rightX;
 }
 
-const LESSON_STAGES = [
-  { key: 'pattern', label: 'Pattern', family: 'mci' as const, icon: 'lightbulb-on-outline' },
-  { key: 'scramble', label: 'Scramble', family: 'mci' as const, icon: 'puzzle-outline' },
-  { key: 'translate', label: 'Translate', family: 'mci' as const, icon: 'translate' },
-  { key: 'speak', label: 'Speak', family: 'ion' as const, icon: 'mic-outline' },
-];
-
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
 }
@@ -76,7 +69,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   stats,
 }) => {
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
   const [activeUnitIdx, setActiveUnitIdx] = useState(0);
   const activeUnitIdxRef = useRef(0);
@@ -93,7 +86,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       ? Math.max(25, Math.round(selectedLesson.xpReward * 0.5))
       : selectedLesson.xpReward
     : 0;
-  const selectedGemReward = isSelectedCompleted ? 2 : 5;
 
   const nextActiveClassId =
     SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
@@ -504,7 +496,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         />
       </View>
 
-      {/* Sleek Obsidian Lesson Sheet Modal */}
+      {/* Ultra-Minimal Quick Popover Lesson Card */}
       <Modal
         visible={!!selectedLesson}
         transparent
@@ -521,145 +513,39 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           {selectedLesson && (
             <View
               style={[
-                styles.modalCard,
-                { width: Math.min(windowWidth - 32, 420), maxHeight: windowHeight * 0.82 },
+                styles.popoverCard,
+                { width: Math.min(windowWidth - 44, 320) },
               ]}
             >
-              {/* Fixed Editorial Header */}
-              <View style={styles.modalTopHeader}>
-                <View style={styles.modalHeaderRow}>
-                  <View style={styles.modalEmblemWrap}>
-                    <Image
-                      source={getLessonNodeEmblem(selectedLesson.id)}
-                      style={styles.modalEmblemImg}
-                      resizeMode="cover"
-                    />
-                  </View>
-
-                  <View style={styles.modalTitleBlock}>
-                    <Text style={styles.modalEyebrow}>
-                      LESSON {selectedLesson.id.replace('sn-', '').replace('-', '.')}  ·{' '}
-                      {selectedLesson.duration.toUpperCase()}
-                    </Text>
-                    <Text style={styles.modalTitle}>
-                      {formatShortLessonTitle(selectedLesson.title)}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.closeBtn}
-                    onPress={() => setSelectedLesson(null)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="close" size={16} color="#9C98B8" />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
+              <View style={styles.popoverMetaRow}>
+                <Text style={styles.popoverEyebrow}>
+                  CLASS {String(lessonNumberMap[selectedLesson.id] || selectedLesson.classNumber).padStart(2, '0')} ·{' '}
+                  {selectedLesson.duration.toUpperCase()}
+                </Text>
+                <Text style={styles.popoverXp}>+{selectedXpReward} XP</Text>
               </View>
 
-              {/* Scrollable Middle Details (Shrinks cleanly on small screens) */}
-              <ScrollView
-                style={styles.modalScroll}
-                bounces={false}
-                showsVerticalScrollIndicator={false}
+              <Text style={styles.popoverTitle}>
+                {formatShortLessonTitle(selectedLesson.title)}
+              </Text>
+              <Text style={styles.popoverSubtitle} numberOfLines={2}>
+                {selectedLesson.subtitle}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.popoverStartBtn}
+                activeOpacity={0.86}
+                onPress={() => {
+                  const lesson = selectedLesson;
+                  setSelectedLesson(null);
+                  onStartLesson(lesson);
+                }}
               >
-                <View style={styles.tamilConceptBox}>
-                  <Text style={styles.tamilConceptLabel}>TAMIL KEY INSIGHT</Text>
-                  <Text style={styles.tamilConceptText}>
-                    "{selectedLesson.rule.tamilMentalModel}"
-                  </Text>
-                </View>
-
-                <View style={styles.stagesSection}>
-                  <Text style={styles.sectionEyebrow}>LESSON FLOW</Text>
-                  <View style={styles.stepGrid}>
-                    {LESSON_STAGES.map((stage) => (
-                      <View key={stage.key} style={styles.stepPill}>
-                        {stage.family === 'mci' ? (
-                          <MaterialCommunityIcons
-                            name={stage.icon as any}
-                            size={16}
-                            color={THEME.colors.primaryGlow}
-                          />
-                        ) : (
-                          <Ionicons
-                            name={stage.icon as any}
-                            size={16}
-                            color={THEME.colors.primaryGlow}
-                          />
-                        )}
-                        <Text style={styles.stepText} numberOfLines={1}>
-                          {stage.label}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.rewardsStrip}>
-                  <View style={styles.rewardItem}>
-                    <MaterialCommunityIcons
-                      name="trophy-variant"
-                      size={15}
-                      color={THEME.colors.gold}
-                    />
-                    <Text style={styles.rewardText}>+{selectedXpReward} XP</Text>
-                  </View>
-
-                  <View style={styles.rewardDivider} />
-
-                  <View style={styles.rewardItem}>
-                    <Ionicons name="diamond" size={14} color={THEME.colors.secondary} />
-                    <Text style={styles.rewardText}>+{selectedGemReward} Gems</Text>
-                  </View>
-
-                  <View style={styles.rewardDivider} />
-
-                  <View style={styles.rewardItem}>
-                    <Ionicons
-                      name={stats.hearts > 0 ? 'heart' : 'shield-checkmark'}
-                      size={14.5}
-                      color={stats.hearts > 0 ? '#C4B5FD' : '#A78BFA'}
-                    />
-                    <Text style={styles.rewardText}>
-                      {stats.hearts > 0
-                        ? `${stats.hearts} ${stats.hearts === 1 ? 'Life' : 'Lives'}`
-                        : 'Shield'}
-                    </Text>
-                  </View>
-                </View>
-              </ScrollView>
-
-              {/* Pinned Primary Action Footer (Always visible on every screen height) */}
-              <View style={styles.modalActionsWrap}>
-                <TouchableOpacity
-                  style={styles.modalStartBtn}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    const lesson = selectedLesson;
-                    setSelectedLesson(null);
-                    onStartLesson(lesson);
-                  }}
-                >
-                  <LinearGradient
-                    colors={['#8B5CF6', '#6D28D9']}
-                    style={styles.modalStartBtnInner}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <Text style={styles.modalStartBtnText}>
-                      {isSelectedCompleted ? 'Practice Again' : 'Start Lesson'}
-                    </Text>
-                    <Ionicons
-                      name="arrow-forward"
-                      size={17}
-                      color="#FFFFFF"
-                      style={{ marginLeft: 8 }}
-                    />
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+                <Text style={styles.popoverStartText}>
+                  {isSelectedCompleted ? 'PRACTICE AGAIN' : 'START LESSON'}
+                </Text>
+                <Ionicons name="arrow-forward" size={16} color="#141320" />
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -976,202 +862,73 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
 
-  /* MODAL POPUP */
+  /* QUICK POPOVER MODAL */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(6, 6, 10, 0.8)',
+    backgroundColor: 'rgba(6, 6, 10, 0.72)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 28,
+    paddingHorizontal: 22,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
-  modalCard: {
-    backgroundColor: '#141320',
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#2B2842',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
-    elevation: 16,
+  popoverCard: {
+    backgroundColor: '#1B1633',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(127, 67, 254, 0.58)',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 14,
   },
-  modalScroll: {
-    flexShrink: 1,
-    flexGrow: 0,
-  },
-  modalTopHeader: {
-    flexShrink: 0,
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 14,
-  },
-  modalHeaderRow: {
+  popoverMetaRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
-  },
-  modalEmblemWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#322E4D',
-    backgroundColor: '#1C1A2B',
-  },
-  modalEmblemImg: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.04 }],
-  },
-  modalTitleBlock: {
-    flex: 1,
-    marginLeft: 14,
-    paddingRight: 10,
-  },
-  modalEyebrow: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10.5,
-    color: '#A78BFA',
-    letterSpacing: 0.7,
-  },
-  modalTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 18,
-    color: '#FFFFFF',
-    lineHeight: 24,
-    marginTop: 2,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1E1C2D',
-    borderWidth: 1,
-    borderColor: '#2E2B44',
-    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 6,
   },
-  modalSubtitle: {
+  popoverEyebrow: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 10.5,
+    color: '#C4B5FD',
+    letterSpacing: 0.8,
+  },
+  popoverXp: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 11.5,
+    color: THEME.colors.goldGlow,
+  },
+  popoverTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 17.5,
+    color: '#FFFFFF',
+    lineHeight: 23,
+  },
+  popoverSubtitle: {
     fontFamily: THEME.fonts.body,
-    fontSize: 13,
-    color: '#9D99B5',
-    lineHeight: 19,
-    marginTop: 12,
-  },
-  tamilConceptBox: {
-    marginHorizontal: 22,
-    marginBottom: 14,
-    backgroundColor: '#1A1829',
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: THEME.colors.primary,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-  },
-  tamilConceptLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: '#A78BFA',
-    marginBottom: 5,
-    letterSpacing: 0.8,
-  },
-  tamilConceptText: {
-    fontFamily: THEME.fonts.tamilMedium,
-    fontSize: 13.5,
-    color: '#F1EFFC',
-    lineHeight: 24,
-  },
-  stagesSection: {
-    paddingHorizontal: 22,
-    marginBottom: 14,
-  },
-  sectionEyebrow: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-    marginBottom: 10,
-    letterSpacing: 0.8,
-  },
-  stepGrid: {
-    flexDirection: 'row',
-    gap: 7,
-  },
-  stepPill: {
-    flex: 1,
-    backgroundColor: '#191826',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#27253B',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  stepText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 10.5,
-    color: '#D7D4EC',
-    textAlign: 'center',
-  },
-  rewardsStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginHorizontal: 22,
-    paddingVertical: 12,
-    marginBottom: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-  },
-  rewardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rewardDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  rewardText: {
-    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    color: '#FFFFFF',
+    color: '#C9C5DE',
+    lineHeight: 17,
+    marginTop: 5,
   },
-  modalActionsWrap: {
-    flexShrink: 0,
-    paddingHorizontal: 22,
-    paddingTop: 14,
-    paddingBottom: 20,
-    backgroundColor: '#141320',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  modalStartBtn: {
-    width: '100%',
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: THEME.colors.primary,
-  },
-  modalStartBtnInner: {
-    width: '100%',
+  popoverStartBtn: {
+    marginTop: 16,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    height: 50,
+    justifyContent: 'center',
+    gap: 8,
   },
-  modalStartBtnText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 14.5,
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
+  popoverStartText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 13,
+    color: '#141320',
+    letterSpacing: 0.5,
   },
 });
