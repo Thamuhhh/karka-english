@@ -187,7 +187,7 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
             },
           ]}
         >
-          <Svg width={22} height={24} viewBox="0 0 24 28">
+          <Svg width={18} height={24} viewBox="3.5 0 17 28">
             <Circle cx="13.5" cy="6.5" r="1.35" fill="#FDE68A" />
           </Svg>
         </Animated.View>
@@ -201,7 +201,7 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
             },
           ]}
         >
-          <Svg width={22} height={24} viewBox="0 0 24 28">
+          <Svg width={18} height={24} viewBox="3.5 0 17 28">
             <Circle cx="9.5" cy="7.5" r="1.15" fill="#FB923C" />
           </Svg>
         </Animated.View>
@@ -220,7 +220,7 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
             },
           ]}
         >
-          <Svg width={22} height={24} viewBox="0 0 24 28">
+          <Svg width={18} height={24} viewBox="3.5 0 17 28">
             <Defs>
               <LinearGradient id="novaFireOuterGrad" x1="0.5" y1="0" x2="0.5" y2="1">
                 <Stop offset="0" stopColor="#FBBF24" />
@@ -248,7 +248,7 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
             },
           ]}
         >
-          <Svg width={22} height={24} viewBox="0 0 24 28">
+          <Svg width={18} height={24} viewBox="3.5 0 17 28">
             <Defs>
               <LinearGradient id="novaFireCoreGrad" x1="0.5" y1="0" x2="0.5" y2="1">
                 <Stop offset="0" stopColor="#FEF9C3" />
@@ -273,11 +273,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 2,
+    gap: 4,
+    height: 24,
   },
   flameStage: {
-    width: 22,
+    width: 18,
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
@@ -295,8 +295,13 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 20,
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
   },
 });
