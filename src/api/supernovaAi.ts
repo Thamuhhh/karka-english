@@ -26,6 +26,7 @@ export function isGeminiConfigured(): boolean {
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
 const GEMINI_TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
 const MODEL_COOLDOWN_MS = 60_000;
+const RATE_LIMIT_COOLDOWN_MS = 12_000;
 const modelCooldownUntil: Record<string, number> = {};
 let lastGeminiError: string | null = null;
 
@@ -150,7 +151,8 @@ async function tryEndpointProvider(
       console.warn('Gemini request error:', model, errSnippet);
 
       if (res.status === 503 || res.status === 429) {
-        modelCooldownUntil[model] = Date.now() + MODEL_COOLDOWN_MS;
+        const cooldown = res.status === 429 ? RATE_LIMIT_COOLDOWN_MS : MODEL_COOLDOWN_MS;
+        modelCooldownUntil[model] = Date.now() + cooldown;
       }
 
       const isKeyRejection =

@@ -82,6 +82,12 @@ function hashCacheKey(str: string): string {
 }
 
 /** Converts Gemini TTS PCM/audio payload into a local file:// WAV URI (Android/iOS) or data URI (web). */
+function getPersistentAudioPath(cacheKey: string, ext = 'wav'): string | null {
+  const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+  if (Platform.OS === 'web' || !baseDir) return null;
+  return `${baseDir}nila_tts_${hashCacheKey(cacheKey)}.${ext}`;
+}
+
 async function inlineAudioToPlayableUri(
   cacheKey: string,
   base64Data: string,
@@ -121,8 +127,8 @@ async function inlineAudioToPlayableUri(
     finalBase64 = encodeBase64Bytes(wav);
   }
 
-  if (Platform.OS !== 'web' && FileSystem.cacheDirectory) {
-    const fileUri = `${FileSystem.cacheDirectory}nila_tts_${hashCacheKey(cacheKey)}.${ext}`;
+  const fileUri = getPersistentAudioPath(cacheKey, ext);
+  if (fileUri) {
     await FileSystem.writeAsStringAsync(fileUri, finalBase64, {
       encoding: FileSystem.EncodingType.Base64,
     });
@@ -180,8 +186,13 @@ async function pickPreferredVoiceId(language: string): Promise<string | undefine
     if (vl === targetLower) score += 100;
     else if (vl.startsWith(`${baseLang}-`) || vl === baseLang) score += 20;
     if (v.quality === Speech.VoiceQuality.Enhanced) score += 40;
-    // Prefer instant on-device voices; Android -network voices add 1-3s streaming lag
-    if (id.includes('network')) score -= 35;
+    // For Tamil fallback, Google network/neural voices sound much warmer than robotic offline local Tamil;
+    // for English, prefer instant offline enhanced voices without network delay.
+    if (baseLang === 'ta') {
+      if (id.includes('network') || id.includes('neural') || id.includes('wavenet')) score += 35;
+    } else if (id.includes('network')) {
+      score -= 35;
+    }
     if (
       id.includes('samantha') ||
       id.includes('karen') ||
@@ -280,6 +291,18 @@ async function playCachedOrSynthesizedAudio(
       if (!info.exists) {
         geminiAudioCache.delete(cacheKey);
         audioUri = undefined;
+      }
+    }
+
+    // Reuse persisted WAV from previous app sessions before spending TTS API quota
+    if (!audioUri) {
+      const savedWav = getPersistentAudioPath(cacheKey, 'wav');
+      if (savedWav) {
+        const info = await FileSystem.getInfoAsync(savedWav).catch(() => ({ exists: false }));
+        if (info.exists) {
+          audioUri = savedWav;
+          cacheAudioUri(cacheKey, savedWav);
+        }
       }
     }
 
