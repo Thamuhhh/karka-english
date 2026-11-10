@@ -202,27 +202,28 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
           return (
             <View key={level.levelNumber} style={styles.unitSection}>
-              {/* Crisp 3D Diorama Unit Header Card */}
+              {/* Full-Aspect 3D Diorama Unit Showcase Card */}
               <View style={styles.unitCard}>
-                <Image
-                  source={getUnitBanner(level.levelNumber)}
-                  style={styles.unitBannerBg}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={['rgba(14,14,20,0.22)', 'rgba(14,14,20,0.78)', 'rgba(14,14,20,0.97)']}
-                  locations={[0, 0.45, 1]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-
-                <View style={styles.unitCardTopRow}>
-                  <View style={[styles.cefrBadge, { backgroundColor: level.accentColor }]}>
-                    <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
-                  </View>
-                  <View style={styles.unitCountPill}>
-                    <Text style={styles.unitCountText}>
-                      {completedInLevel}/{level.classes.length} DONE
-                    </Text>
+                <View style={styles.unitMediaBox}>
+                  <Image
+                    source={getUnitBanner(level.levelNumber)}
+                    style={styles.unitBannerBg}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={['rgba(14,14,20,0.35)', 'rgba(14,14,20,0)', 'rgba(24,23,36,0.92)']}
+                    locations={[0, 0.48, 1]}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  <View style={styles.unitCardTopRow}>
+                    <View style={[styles.cefrBadge, { backgroundColor: level.accentColor }]}>
+                      <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
+                    </View>
+                    <View style={styles.unitCountPill}>
+                      <Text style={styles.unitCountText}>
+                        UNIT {level.levelNumber} • {completedInLevel}/{level.classes.length}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -231,16 +232,19 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   <Text style={styles.unitDesc} numberOfLines={2}>
                     {level.description}
                   </Text>
-                  <View style={styles.unitProgressTrack}>
-                    <LinearGradient
-                      colors={[level.accentColor, THEME.colors.accent]}
-                      style={[
-                        styles.unitProgressFill,
-                        { width: `${Math.max(6, progressPercent)}%` },
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    />
+                  <View style={styles.unitProgressRow}>
+                    <View style={styles.unitProgressTrack}>
+                      <LinearGradient
+                        colors={[level.accentColor, THEME.colors.accent]}
+                        style={[
+                          styles.unitProgressFill,
+                          { width: `${Math.max(6, progressPercent)}%` },
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      />
+                    </View>
+                    <Text style={styles.unitProgressPctText}>{progressPercent}%</Text>
                   </View>
                 </View>
               </View>
@@ -839,33 +843,38 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   unitCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    height: 128,
     borderWidth: 1,
     borderColor: 'rgba(127, 67, 254, 0.4)',
-    backgroundColor: THEME.colors.surfaceCard,
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    backgroundColor: THEME.colors.surface,
+    marginBottom: 14,
+  },
+  unitMediaBox: {
+    width: '100%',
+    aspectRatio: 1376 / 768,
+    justifyContent: 'flex-start',
+    backgroundColor: THEME.colors.surfaceDark,
   },
   unitBannerBg: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
     width: '100%',
     height: '100%',
   },
   unitCardTopRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingTop: 11,
   },
   cefrBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   cefrBadgeText: {
     fontFamily: THEME.fonts.extraBold,
@@ -874,12 +883,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   unitCountPill: {
-    backgroundColor: 'rgba(14, 14, 20, 0.78)',
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 7,
+    backgroundColor: 'rgba(14, 14, 20, 0.82)',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
   },
   unitCountText: {
     fontFamily: THEME.fonts.bold,
@@ -888,31 +897,44 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   unitCardFooter: {
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 13,
+    backgroundColor: THEME.colors.surface,
   },
   unitTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 15,
+    fontSize: 15.5,
     color: '#FFFFFF',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   unitDesc: {
     fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: '#D2CEE3',
-    lineHeight: 15,
-    marginBottom: 8,
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+  unitProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   unitProgressTrack: {
-    height: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderRadius: 2.5,
+    flex: 1,
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 3,
     overflow: 'hidden',
   },
   unitProgressFill: {
     height: '100%',
-    borderRadius: 2.5,
+    borderRadius: 3,
+  },
+  unitProgressPctText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.accent,
   },
 
   /* TIMELINE ROWS */
@@ -1165,9 +1187,10 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   modalHeroWrap: {
-    height: 90,
+    aspectRatio: 2.0,
     width: '100%',
     justifyContent: 'flex-start',
+    backgroundColor: THEME.colors.surfaceDark,
   },
   modalHeroImg: {
     position: 'absolute',
