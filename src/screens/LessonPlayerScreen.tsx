@@ -16,7 +16,13 @@ import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { SupernovaClass } from '../constants/curriculum';
 import { UserStats, GrammarCorrection, ChatMessage } from '../types';
-import { speakText, stopAllAudio } from '../services/ttsService';
+import {
+  speakText,
+  speakTamil,
+  speakBilingualSequence,
+  BilingualSpeechSegment,
+  stopAllAudio,
+} from '../services/ttsService';
 import {
   checkLessonTranslation,
   sendLessonRealTalkReply,
@@ -152,7 +158,15 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [isReplying, setIsReplying] = useState(false);
   const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
 
-  const teacherLectureScript = `${lesson.rule.heading}. ${lesson.rule.englishExplanation} Avoid saying: ${lesson.rule.doAndDont.wrong}. Instead, say naturally: ${lesson.rule.doAndDont.right}.`;
+  const tamilClassSegments: BilingualSpeechSegment[] = [
+    { text: 'வணக்கம்! இன்று நாம் கற்றுக்கொள்ள போவது:', lang: 'ta-IN' },
+    { text: lesson.rule.tamilMentalModel, lang: 'ta-IN' },
+    { text: 'இதை தவறாக இப்படி சொல்லக் கூடாது:', lang: 'ta-IN' },
+    { text: lesson.rule.doAndDont.wrong, lang: 'en' },
+    { text: 'சரியாக இப்படி சொல்லுங்கள்:', lang: 'ta-IN' },
+    { text: lesson.rule.doAndDont.right, lang: 'en' },
+    { text: lesson.rule.doAndDont.whyTamil, lang: 'ta-IN' },
+  ];
 
   const handlePlayVoice = (text: string, id: string) => {
     stopAllAudio();
@@ -160,16 +174,28 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     speakText(text, () => setPlayingAudioId(null));
   };
 
+  const handlePlayTamilVoice = (text: string, id: string) => {
+    stopAllAudio();
+    setPlayingAudioId(id);
+    speakTamil(text, () => setPlayingAudioId(null));
+  };
+
+  const handlePlayTamilLecture = () => {
+    stopAllAudio();
+    setPlayingAudioId('teacher-lecture');
+    speakBilingualSequence(tamilClassSegments, () => setPlayingAudioId(null));
+  };
+
   const handleStopVoice = () => {
     stopAllAudio();
     setPlayingAudioId(null);
   };
 
-  // Auto-speak Teacher intro on Stage 1 and Nila opening line on Stage 4
+  // Auto-speak Teacher Tamil lecture on Stage 1 and Nila opening question on Stage 4
   useEffect(() => {
     if (voiceMuted) return;
     if (currentSlide === 'rule') {
-      handlePlayVoice(teacherLectureScript, 'teacher-lecture');
+      handlePlayTamilLecture();
     } else if (currentSlide === 'speaking') {
       const firstLine = lesson.speakingChallenge.missNovaQuestion;
       handlePlayVoice(firstLine, 'init-nila');
@@ -470,11 +496,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.teacherAvatarImg} />
               </View>
               <View style={{ flex: 1, marginLeft: 11 }}>
-                <Text style={styles.teacherName}>Nila · English Tutor</Text>
+                <Text style={styles.teacherName}>Nila · Tamil Tutor</Text>
                 <Text style={styles.teacherStatus}>
                   {playingAudioId === 'teacher-lecture'
-                    ? 'Speaking lesson aloud...'
-                    : 'Listen or read along below'}
+                    ? 'தமிழில் விளக்குகிறேன்...'
+                    : 'தமிழில் பாடம் கேட்கலாம்'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -485,7 +511,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 onPress={() =>
                   playingAudioId === 'teacher-lecture'
                     ? handleStopVoice()
-                    : handlePlayVoice(teacherLectureScript, 'teacher-lecture')
+                    : handlePlayTamilLecture()
                 }
                 activeOpacity={0.8}
               >
@@ -495,18 +521,36 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   color="#FFFFFF"
                 />
                 <Text style={styles.teacherPlayText}>
-                  {playingAudioId === 'teacher-lecture' ? 'Stop' : 'Hear Class'}
+                  {playingAudioId === 'teacher-lecture' ? 'Stop' : 'Hear Tamil'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <Text style={styles.slideTitle}>{lesson.rule.heading}</Text>
-            <Text style={styles.ruleExplainText}>{lesson.rule.englishExplanation}</Text>
 
             <View style={styles.tamilInsightCard}>
-              <Text style={styles.tamilInsightEyebrow}>THINK IN TAMIL</Text>
+              <View style={styles.promptTopRow}>
+                <Text style={styles.tamilInsightEyebrow}>THINK IN TAMIL</Text>
+                <TouchableOpacity
+                  style={styles.audioIconBtn}
+                  onPress={() =>
+                    handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'tamil-model')
+                  }
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons
+                    name={
+                      playingAudioId === 'tamil-model' ? 'volume-high' : 'volume-medium-outline'
+                    }
+                    size={18}
+                    color={THEME.colors.primaryGlow}
+                  />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.tamilInsightBody}>{lesson.rule.tamilMentalModel}</Text>
             </View>
+
+            <Text style={styles.ruleExplainText}>{lesson.rule.englishExplanation}</Text>
 
             <View style={styles.contrastStack}>
               <View style={styles.avoidCard}>
@@ -557,16 +601,35 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.tamilPromptCard}>
               <View style={styles.promptTopRow}>
                 <Text style={styles.tamilInsightEyebrow}>TAMIL SENTENCE</Text>
-                <TouchableOpacity
-                  onPress={() => setShowJumbleHint((prev) => !prev)}
-                  style={styles.hintTogglePill}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons name="bulb-outline" size={12} color="#C4B5FD" />
-                  <Text style={styles.hintToggleText}>
-                    {showJumbleHint ? 'Hide Hint' : 'Hint'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.promptActionGroup}>
+                  <TouchableOpacity
+                    style={styles.audioIconBtn}
+                    onPress={() =>
+                      handlePlayTamilVoice(lesson.jumble.tamilSentence, 'jumble-tamil')
+                    }
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Ionicons
+                      name={
+                        playingAudioId === 'jumble-tamil'
+                          ? 'volume-high'
+                          : 'volume-medium-outline'
+                      }
+                      size={17}
+                      color={THEME.colors.primaryGlow}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setShowJumbleHint((prev) => !prev)}
+                    style={styles.hintTogglePill}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="bulb-outline" size={12} color="#C4B5FD" />
+                    <Text style={styles.hintToggleText}>
+                      {showJumbleHint ? 'Hide Hint' : 'Hint'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               <Text style={styles.tamilPromptText}>{lesson.jumble.tamilSentence}</Text>
               {showJumbleHint && <Text style={styles.hintBody}>{lesson.jumble.hint}</Text>}
@@ -650,7 +713,26 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             </Text>
 
             <View style={styles.tamilPromptCard}>
-              <Text style={styles.tamilInsightEyebrow}>QUESTION PROMPT</Text>
+              <View style={styles.promptTopRow}>
+                <Text style={styles.tamilInsightEyebrow}>QUESTION PROMPT</Text>
+                <TouchableOpacity
+                  style={styles.audioIconBtn}
+                  onPress={() =>
+                    handlePlayTamilVoice(lesson.translation.tamilPrompt, 'qa-tamil-prompt')
+                  }
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons
+                    name={
+                      playingAudioId === 'qa-tamil-prompt'
+                        ? 'volume-high'
+                        : 'volume-medium-outline'
+                    }
+                    size={17}
+                    color={THEME.colors.primaryGlow}
+                  />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.tamilPromptText}>{lesson.translation.tamilPrompt}</Text>
             </View>
 
@@ -791,13 +873,32 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             {lastTurnFeedback && (
               <View style={styles.realTalkCoachCard}>
                 <View style={styles.feedbackTopBar}>
-                  <Text style={styles.feedbackTitle}>Live Coach Note</Text>
-                  <View style={styles.scoreBadge}>
-                    <Text style={styles.scoreBadgeText}>{lastTurnFeedback.fluencyScore}/100</Text>
+                  <Text style={styles.feedbackTitle}>Nila Tamil Coach</Text>
+                  <View style={styles.promptActionGroup}>
+                    <TouchableOpacity
+                      style={styles.audioIconBtn}
+                      onPress={() =>
+                        handlePlayTamilVoice(lastTurnFeedback.tamilExplanation, 'realtalk-tamil')
+                      }
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons
+                        name={
+                          playingAudioId === 'realtalk-tamil'
+                            ? 'volume-high'
+                            : 'volume-medium-outline'
+                        }
+                        size={17}
+                        color={THEME.colors.primaryGlow}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.scoreBadge}>
+                      <Text style={styles.scoreBadgeText}>{lastTurnFeedback.fluencyScore}/100</Text>
+                    </View>
                   </View>
                 </View>
-                <Text style={styles.feedbackEnglish}>{lastTurnFeedback.explanation}</Text>
                 <Text style={styles.feedbackTamil}>{lastTurnFeedback.tamilExplanation}</Text>
+                <Text style={styles.feedbackEnglish}>{lastTurnFeedback.explanation}</Text>
               </View>
             )}
 
@@ -1051,7 +1152,26 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         </Text>
                       )}
                       <Text style={styles.drawerCorrectionText}>{transEval.feedbackEnglish}</Text>
-                      <Text style={styles.drawerTamilNote}>{transEval.tamilExplanation}</Text>
+                      <TouchableOpacity
+                        style={styles.drawerTamilRow}
+                        onPress={() =>
+                          handlePlayTamilVoice(transEval.tamilExplanation, 'trans-tamil')
+                        }
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.drawerTamilNote, { flex: 1 }]}>
+                          {transEval.tamilExplanation}
+                        </Text>
+                        <Ionicons
+                          name={
+                            playingAudioId === 'trans-tamil'
+                              ? 'volume-high'
+                              : 'volume-medium-outline'
+                          }
+                          size={16}
+                          color={THEME.colors.primaryGlow}
+                        />
+                      </TouchableOpacity>
                     </View>
 
                     <View style={styles.dualBtnRow}>
@@ -1252,9 +1372,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   teacherStatus: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11,
+    fontFamily: THEME.fonts.tamil,
+    fontSize: 11.5,
     color: THEME.colors.textSecondary,
+    lineHeight: 18,
     marginTop: 1,
   },
   teacherPlayBtn: {
@@ -1378,6 +1499,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  promptActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   hintTogglePill: {
     flexDirection: 'row',
@@ -1890,6 +2016,12 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: '#E5E1F7',
     lineHeight: 18,
+  },
+  drawerTamilRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
   },
   drawerTamilNote: {
     fontFamily: THEME.fonts.tamilMedium,

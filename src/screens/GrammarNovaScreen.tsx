@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { GrammarCorrection, UserStats } from '../types';
 import { analyzeSentenceGrammar, isGeminiConfigured } from '../api/supernovaAi';
-import { speakText, stopAllAudio } from '../services/ttsService';
+import { speakText, speakTamil, stopAllAudio } from '../services/ttsService';
 import { incrementMetric } from '../services/storageService';
 import { playSoundEffect } from '../services/soundEffectsService';
 
@@ -89,6 +89,11 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
   const playVoice = (text: string, fieldId: string) => {
     setActiveAudioField(fieldId);
     speakText(text, () => setActiveAudioField(null));
+  };
+
+  const playTamilVoice = (text: string, fieldId: string) => {
+    setActiveAudioField(fieldId);
+    speakTamil(text, () => setActiveAudioField(null));
   };
 
   const onlineMode = isGeminiConfigured();
@@ -289,7 +294,20 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
             </View>
 
             <View style={styles.tamilCallout}>
-              <Text style={styles.tamilCalloutEyebrow}>TAMIL EXPLANATION</Text>
+              <View style={styles.correctedTopRow}>
+                <Text style={styles.tamilCalloutEyebrow}>TAMIL EXPLANATION</Text>
+                <TouchableOpacity
+                  style={styles.audioBtn}
+                  onPress={() => playTamilVoice(result.tamilExplanation, 'tamil-explain')}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons
+                    name={activeAudioField === 'tamil-explain' ? 'volume-high' : 'volume-medium-outline'}
+                    size={17}
+                    color="#A78BFA"
+                  />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.tamilCalloutBody}>{result.tamilExplanation}</Text>
             </View>
           </View>

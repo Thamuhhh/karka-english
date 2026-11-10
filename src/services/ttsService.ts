@@ -2,6 +2,7 @@ import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
 
 let currentSound: Audio.Sound | null = null;
+let activeSequenceId = 0;
 
 export type EnglishAccent = 'en-US' | 'en-GB' | 'en-AU';
 
@@ -24,7 +25,21 @@ export function getSpeechRate(): number {
   return currentSpeechRate;
 }
 
-export async function speakText(text: string, onDone?: () => void) {
+async function stopPlaybackOnly() {
+  try {
+    Speech.stop();
+    if (currentSound) {
+      const soundToStop = currentSound;
+      currentSound = null;
+      await soundToStop.stopAsync();
+      await soundToStop.unloadAsync();
+    }
+  } catch (e) {
+    // Ignore cleanup error
+  }
+}
+
+function speakWithLanguage(text: string, language: string, onDone?: () => void) {
   let finished = false;
   const finishOnce = () => {
     if (!finished) {
@@ -34,10 +49,9 @@ export async function speakText(text: string, onDone?: () => void) {
   };
 
   try {
-    await stopAllAudio();
     Speech.speak(text, {
-      language: currentAccent,
-      rate: currentSpeechRate,
+      language,
+      rate: language === 'ta-IN' ? Math.min(currentSpeechRate, 0.92) : currentSpeechRate,
       pitch: 1.0,
       onDone: finishOnce,
       onStopped: finishOnce,
@@ -50,6 +64,59 @@ export async function speakText(text: string, onDone?: () => void) {
     console.warn('Speech invocation error:', e);
     finishOnce();
   }
+}
+
+export async function speakText(text: string, onDone?: () => void) {
+  activeSequenceId++;
+  await stopPlaybackOnly();
+  speakWithLanguage(text, currentAccent, onDone);
+}
+
+/** Speaks Tamil instructional text using Tamil (India) TTS voice. */
+export async function speakTamil(text: string, onDone?: () => void) {
+  activeSequenceId++;
+  await stopPlaybackOnly();
+  speakWithLanguage(text, 'ta-IN', onDone);
+}
+
+export interface BilingualSpeechSegment {
+  text: string;
+  lang: 'ta-IN' | 'en';
+}
+
+/** Sequentially plays mixed Tamil narration and English example sentences. */
+export async function speakBilingualSequence(
+  segments: BilingualSpeechSegment[],
+  onDone?: () => void
+) {
+  const sequenceToken = ++activeSequenceId;
+  await stopPlaybackOnly();
+
+  const cleanSegments = segments.filter((seg) => seg.text.trim().length > 0);
+  if (cleanSegments.length === 0) {
+    onDone?.();
+    return;
+  }
+
+  let index = 0;
+  const playNext = () => {
+    if (sequenceToken !== activeSequenceId) {
+      return;
+    }
+    if (index >= cleanSegments.length) {
+      onDone?.();
+      return;
+    }
+    const seg = cleanSegments[index++];
+    const lang = seg.lang === 'ta-IN' ? 'ta-IN' : currentAccent;
+    speakWithLanguage(seg.text, lang, () => {
+      if (sequenceToken === activeSequenceId) {
+        playNext();
+      }
+    });
+  };
+
+  playNext();
 }
 
 export async function playRemoteAudio(
@@ -93,15 +160,6 @@ export async function playRemoteAudio(
 }
 
 export async function stopAllAudio() {
-  try {
-    Speech.stop();
-    if (currentSound) {
-      const soundToStop = currentSound;
-      currentSound = null;
-      await soundToStop.stopAsync();
-      await soundToStop.unloadAsync();
-    }
-  } catch (e) {
-    // Ignore cleanup error
-  }
+  activeSequenceId++;
+  await stopPlaybackOnly();
 }
