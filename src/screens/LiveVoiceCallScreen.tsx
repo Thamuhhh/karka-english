@@ -265,7 +265,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             <View
               style={[
                 styles.liveDot,
-                { backgroundColor: isCalling ? THEME.colors.success : THEME.colors.error },
+                { backgroundColor: isCalling ? THEME.colors.primaryGlow : THEME.colors.textMuted },
               ]}
             />
             <Text style={styles.liveTimerText}>
@@ -376,12 +376,12 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
                 <Ionicons
                   name={lastFeedback.hasErrors ? 'alert-circle' : 'checkmark-circle'}
                   size={16}
-                  color={lastFeedback.hasErrors ? THEME.colors.warning : THEME.colors.success}
+                  color={lastFeedback.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow}
                 />
                 <Text
                   style={[
                     styles.feedbackScoreText,
-                    { color: lastFeedback.hasErrors ? THEME.colors.warning : THEME.colors.success },
+                    { color: lastFeedback.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow },
                   ]}
                 >
                   Fluency Score: {lastFeedback.fluencyScore}/100{' '}
@@ -440,7 +440,11 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           <TouchableOpacity
             style={[
               styles.callActionBtn,
-              { backgroundColor: isCalling ? THEME.colors.error : THEME.colors.success },
+              {
+                backgroundColor: isCalling ? '#28223A' : THEME.colors.primary,
+                borderWidth: 1,
+                borderColor: isCalling ? '#3D3456' : THEME.colors.primaryGlow,
+              },
             ]}
             onPress={toggleCallState}
           >
@@ -474,7 +478,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             <Ionicons
               name={isMutedAudio ? 'volume-mute' : 'volume-high'}
               size={22}
-              color={isMutedAudio ? THEME.colors.error : THEME.colors.primaryGlow}
+              color={isMutedAudio ? THEME.colors.textMuted : THEME.colors.primaryGlow}
             />
           </TouchableOpacity>
         </View>
@@ -694,7 +698,7 @@ const styles = StyleSheet.create({
   correctedSentenceText: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 13,
-    color: THEME.colors.success,
+    color: '#E9D5FF',
     marginTop: 4,
   },
   tamilFeedbackText: {
@@ -778,8 +782,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   callActionBtnMuted: {
-    borderColor: THEME.colors.error,
-    backgroundColor: 'rgba(239, 68, 68, 0.14)',
+    borderColor: '#484366',
+    backgroundColor: '#232036',
   },
   bigMicBtn: {
     width: 68,

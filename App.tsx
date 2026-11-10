@@ -209,9 +209,9 @@ export default function App() {
                   <MaterialCommunityIcons
                     name={activeTab === 'grammar' ? 'chat-question' : 'chat-question-outline'}
                     size={20}
-                    color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
+                    color={activeTab === 'grammar' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
                   />
-                  <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
+                  <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActive]}>
                     Ask Nova
                   </Text>
                 </TouchableOpacity>
@@ -243,9 +243,9 @@ export default function App() {
                   <Ionicons
                     name={activeTab === 'vocab' ? 'book' : 'book-outline'}
                     size={20}
-                    color={activeTab === 'vocab' ? THEME.colors.accent : THEME.colors.textMuted}
+                    color={activeTab === 'vocab' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
                   />
-                  <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveAccent]}>
+                  <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActive]}>
                     Vocab
                   </Text>
                 </TouchableOpacity>
@@ -351,13 +351,5 @@ const styles = StyleSheet.create({
   navTextActiveCall: {
     fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
-  },
-  navTextActiveGold: {
-    fontFamily: THEME.fonts.bold,
-    color: THEME.colors.gold,
-  },
-  navTextActiveAccent: {
-    fontFamily: THEME.fonts.bold,
-    color: THEME.colors.accent,
   },
 });

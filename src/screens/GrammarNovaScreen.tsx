@@ -87,8 +87,8 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
           <Text style={styles.subtitle}>Instant grammar diagnosis & Tamil explanation</Text>
         </View>
         <View style={[styles.enginePill, onlineMode ? styles.enginePillOnline : styles.enginePillOffline]}>
-          <View style={[styles.engineDot, { backgroundColor: onlineMode ? THEME.colors.accent : THEME.colors.gold }]} />
-          <Text style={[styles.engineText, { color: onlineMode ? THEME.colors.accent : THEME.colors.gold }]}>
+          <View style={[styles.engineDot, { backgroundColor: onlineMode ? THEME.colors.primaryGlow : THEME.colors.gold }]} />
+          <Text style={[styles.engineText, { color: onlineMode ? THEME.colors.primaryGlow : THEME.colors.gold }]}>
             {onlineMode ? 'Gemini AI' : 'Offline'}
           </Text>
         </View>
@@ -199,12 +199,12 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
                 <Ionicons
                   name={result.hasErrors ? 'alert-circle' : 'checkmark-circle'}
                   size={18}
-                  color={result.hasErrors ? THEME.colors.warning : THEME.colors.success}
+                  color={result.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow}
                 />
                 <Text
                   style={[
                     styles.verdictBadgeText,
-                    { color: result.hasErrors ? THEME.colors.warning : THEME.colors.success },
+                    { color: result.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow },
                   ]}
                 >
                   {result.hasErrors ? 'Needs Improvement' : 'Excellent Grammar'}
@@ -349,8 +349,8 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   enginePillOnline: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.4)',
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
+    borderColor: 'rgba(167, 139, 250, 0.4)',
   },
   enginePillOffline: {
     backgroundColor: 'rgba(251, 191, 36, 0.12)',
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   historyScore: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    color: THEME.colors.accent,
+    color: THEME.colors.primaryGlow,
   },
   historyText: {
     fontFamily: THEME.fonts.body,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   badgeSuccess: {
-    backgroundColor: THEME.colors.successBg,
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
   },
   badgeWarning: {
     backgroundColor: THEME.colors.warningBg,
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   correctedLabel: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.success,
+    color: THEME.colors.primaryGlow,
     letterSpacing: 0.6,
   },
   correctedText: {

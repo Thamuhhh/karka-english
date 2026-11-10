@@ -145,7 +145,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ stats, onB
       </View>
 
       <View style={styles.zoneDivider}>
-        <Ionicons name="trending-up" size={14} color={THEME.colors.success} />
+        <Ionicons name="trending-up" size={14} color={THEME.colors.primaryGlow} />
         <Text style={styles.zoneDividerText}>
           PROMOTION ZONE (TOP {PROMOTION_CUTOFF_RANK} ADVANCE)
         </Text>
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   zoneDividerText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.success,
+    color: THEME.colors.primaryGlow,
     marginLeft: 6,
     letterSpacing: 0.6,
   },
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   rankCutoffBorder: {
     borderBottomWidth: 2,
-    borderBottomColor: 'rgba(16, 185, 129, 0.45)',
+    borderBottomColor: 'rgba(167, 139, 250, 0.45)',
   },
   rankNumber: {
     fontFamily: THEME.fonts.bold,

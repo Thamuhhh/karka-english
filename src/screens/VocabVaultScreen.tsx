@@ -221,7 +221,7 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({ stats, onSta
 
       {filteredWords.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Ionicons name="checkmark-done-circle-outline" size={34} color={THEME.colors.accent} />
+          <Ionicons name="checkmark-done-circle-outline" size={34} color={THEME.colors.primaryGlow} />
           <Text style={styles.emptyTitle}>
             {filter === 'review' ? 'All current words mastered!' : 'No mastered words yet'}
           </Text>
@@ -240,7 +240,7 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({ stats, onSta
             <View style={styles.cardBadgesRight}>
               {isCurrentMastered && (
                 <View style={styles.masteredTag}>
-                  <Ionicons name="checkmark-circle" size={11} color={THEME.colors.accent} />
+                  <Ionicons name="checkmark-circle" size={11} color={THEME.colors.primaryGlow} />
                   <Text style={styles.masteredTagText}>MASTERED</Text>
                 </View>
               )}
@@ -320,7 +320,7 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({ stats, onSta
 
             <TouchableOpacity style={styles.masteredTouchable} onPress={handleMastered} activeOpacity={0.85}>
               <LinearGradient
-                colors={THEME.gradients.accent}
+                colors={THEME.gradients.primary}
                 style={styles.masteredBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   masteredTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   masteredTagText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.accent,
+    color: THEME.colors.primaryGlow,
   },
   cefrTag: {
     backgroundColor: 'rgba(99, 102, 241, 0.2)',
@@ -689,21 +689,15 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   masteredTouchable: {
-    borderRadius: 24,
-    borderBottomWidth: 3,
-    borderBottomColor: '#059669',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   masteredBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
   },
   masteredBtnText: {
     fontFamily: THEME.fonts.bold,

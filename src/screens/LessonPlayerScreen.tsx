@@ -302,9 +302,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <Ionicons
                 name={hearts > 0 ? 'heart' : 'shield-checkmark'}
                 size={13.5}
-                color={hearts > 0 ? '#F43F5E' : THEME.colors.accent}
+                color={hearts > 0 ? '#C4B5FD' : '#A78BFA'}
               />
-              <Text style={[styles.heartCount, hearts === 0 && { color: THEME.colors.accent }]}>
+              <Text style={styles.heartCount}>
                 {hearts > 0 ? hearts : 'Shield'}
               </Text>
             </View>
@@ -333,7 +333,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.contrastStack}>
               <View style={styles.avoidCard}>
                 <View style={styles.contrastHeaderRow}>
-                  <Ionicons name="close-circle" size={15} color="#F87171" />
+                  <Ionicons name="close-circle" size={15} color="#8E89A6" />
                   <Text style={styles.avoidLabel}>AVOID (தவறு)</Text>
                 </View>
                 <Text style={styles.avoidSentence}>"{lesson.rule.doAndDont.wrong}"</Text>
@@ -341,7 +341,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
               <View style={styles.naturalCard}>
                 <View style={styles.contrastHeaderRow}>
-                  <Ionicons name="checkmark-circle" size={15} color="#34D399" />
+                  <Ionicons name="checkmark-circle" size={15} color="#A78BFA" />
                   <Text style={styles.naturalLabel}>SAY NATURALLY (சரி)</Text>
                   <TouchableOpacity
                     style={styles.audioIconBtn}
@@ -604,7 +604,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <View style={styles.victoryMetricDivider} />
 
               <View style={styles.victoryMetricItem}>
-                <Text style={[styles.victoryMetricVal, { color: THEME.colors.gold }]}>
+                <Text style={[styles.victoryMetricVal, { color: '#C4B5FD' }]}>
                   {victorySummary?.streakDays ?? 1}d
                 </Text>
                 <Text style={styles.victoryMetricLabel}>Streak</Text>
@@ -613,7 +613,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <View style={styles.victoryMetricDivider} />
 
               <View style={styles.victoryMetricItem}>
-                <Text style={[styles.victoryMetricVal, { color: THEME.colors.accent }]}>
+                <Text style={[styles.victoryMetricVal, { color: '#FFFFFF' }]}>
                   {victorySummary?.accuracy ?? 100}%
                 </Text>
                 <Text style={styles.victoryMetricLabel}>Accuracy</Text>
@@ -622,7 +622,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <View style={styles.victoryMetricDivider} />
 
               <View style={styles.victoryMetricItem}>
-                <Text style={[styles.victoryMetricVal, { color: THEME.colors.secondary }]}>
+                <Text style={[styles.victoryMetricVal, { color: '#93C5FD' }]}>
                   +{victorySummary?.awardedGems ?? 5}
                 </Text>
                 <Text style={styles.victoryMetricLabel}>Gems</Text>
@@ -667,14 +667,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     >
                       <View style={styles.feedbackHeadlineRow}>
                         <Ionicons
-                          name={isJumbleCorrect ? 'checkmark-circle' : 'close-circle'}
+                          name={isJumbleCorrect ? 'checkmark-circle' : 'alert-circle'}
                           size={19}
-                          color={isJumbleCorrect ? '#34D399' : '#F87171'}
+                          color={isJumbleCorrect ? '#C4B5FD' : '#E2B94B'}
                         />
                         <Text
                           style={[
                             styles.feedbackHeadline,
-                            { color: isJumbleCorrect ? '#34D399' : '#F87171' },
+                            { color: isJumbleCorrect ? '#E9D5FF' : '#F3D677' },
                           ]}
                         >
                           {isJumbleCorrect ? 'Clean sentence structure!' : 'Incorrect word order'}
@@ -707,7 +707,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     <ActionButton
                       label={isJumbleCorrect ? 'Continue' : 'Try Again'}
                       icon={isJumbleCorrect ? 'arrow-forward' : 'refresh'}
-                      colors={isJumbleCorrect ? ['#8B5CF6', '#6D28D9'] : ['#EF4444', '#DC2626']}
+                      colors={isJumbleCorrect ? ['#8B5CF6', '#6D28D9'] : ['#2E294D', '#231F3B']}
                       onPress={() => {
                         if (isJumbleCorrect) {
                           setCurrentSlide('translation');
@@ -741,14 +741,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     >
                       <View style={styles.feedbackHeadlineRow}>
                         <Ionicons
-                          name={isTransCorrect ? 'checkmark-circle' : 'close-circle'}
+                          name={isTransCorrect ? 'checkmark-circle' : 'alert-circle'}
                           size={19}
-                          color={isTransCorrect ? '#34D399' : '#F87171'}
+                          color={isTransCorrect ? '#C4B5FD' : '#E2B94B'}
                         />
                         <Text
                           style={[
                             styles.feedbackHeadline,
-                            { color: isTransCorrect ? '#34D399' : '#F87171' },
+                            { color: isTransCorrect ? '#E9D5FF' : '#F3D677' },
                           ]}
                         >
                           {isTransCorrect ? 'Spot on!' : 'Check natural phrasing'}
@@ -801,7 +801,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   <ActionButton
                     label={`Complete Lesson (+${lesson.xpReward} XP)`}
                     iconLeft="checkmark-done"
-                    colors={['#10B981', '#059669']}
+                    colors={['#8B5CF6', '#6D28D9']}
                     onPress={handleFinishLesson}
                   />
                 ) : (
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#232036',
   },
   segmentTrackDone: {
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: '#A78BFA',
   },
   segmentTrackActive: {
     backgroundColor: THEME.colors.primary,
@@ -956,18 +956,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   avoidCard: {
-    backgroundColor: '#191520',
+    backgroundColor: '#161522',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.22)',
+    borderColor: '#29273D',
   },
   naturalCard: {
-    backgroundColor: '#131E1E',
+    backgroundColor: '#1A162D',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.26)',
+    borderColor: 'rgba(127, 67, 254, 0.45)',
   },
   contrastHeaderRow: {
     flexDirection: 'row',
@@ -977,13 +977,13 @@ const styles = StyleSheet.create({
   avoidLabel: {
     fontFamily: THEME.fonts.tamilBold,
     fontSize: 10.5,
-    color: '#F87171',
+    color: '#9590AE',
     lineHeight: 16,
   },
   naturalLabel: {
     fontFamily: THEME.fonts.tamilBold,
     fontSize: 10.5,
-    color: '#34D399',
+    color: '#C4B5FD',
     lineHeight: 16,
     flex: 1,
   },
@@ -1123,12 +1123,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(127, 67, 254, 0.14)',
   },
   optionCardCorrect: {
-    borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
   },
   optionCardWrong: {
-    borderColor: '#EF4444',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: 'rgba(226, 185, 75, 0.45)',
+    backgroundColor: 'rgba(226, 185, 75, 0.08)',
   },
   optionLetterBox: {
     width: 26,
@@ -1146,12 +1146,12 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.primaryGlow,
   },
   optionLetterCorrect: {
-    backgroundColor: '#10B981',
-    borderColor: '#34D399',
+    backgroundColor: '#7F43FE',
+    borderColor: '#A78BFA',
   },
   optionLetterWrong: {
-    backgroundColor: '#EF4444',
-    borderColor: '#F87171',
+    backgroundColor: '#4A3D22',
+    borderColor: '#E2B94B',
   },
   optionLetterText: {
     fontFamily: THEME.fonts.bold,
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
   victoryEyebrow: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10.5,
-    color: THEME.colors.accent,
+    color: '#A78BFA',
     letterSpacing: 1.0,
     marginBottom: 4,
   },
@@ -1418,12 +1418,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   noticeCorrect: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.32)',
+    backgroundColor: 'rgba(127, 67, 254, 0.12)',
+    borderColor: 'rgba(167, 139, 250, 0.35)',
   },
   noticeWrong: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.32)',
+    backgroundColor: 'rgba(226, 185, 75, 0.08)',
+    borderColor: 'rgba(226, 185, 75, 0.28)',
   },
   feedbackHeadlineRow: {
     flexDirection: 'row',

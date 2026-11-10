@@ -132,7 +132,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   <View style={styles.unitProgressRow}>
                     <View style={styles.unitProgressTrack}>
                       <LinearGradient
-                        colors={[level.accentColor, THEME.colors.accent]}
+                        colors={[level.accentColor, '#A78BFA']}
                         style={[
                           styles.unitProgressFill,
                           { width: `${Math.max(6, progressPercent)}%` },
@@ -260,7 +260,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                               isCurrent
                                 ? THEME.colors.primaryGlow
                                 : isCompleted
-                                ? THEME.colors.accent
+                                ? '#A78BFA'
                                 : THEME.colors.textMuted
                             }
                           />
@@ -445,7 +445,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     <Ionicons
                       name={stats.hearts > 0 ? 'heart' : 'shield-checkmark'}
                       size={14.5}
-                      color={stats.hearts > 0 ? '#F43F5E' : THEME.colors.accent}
+                      color={stats.hearts > 0 ? '#C4B5FD' : '#A78BFA'}
                     />
                     <Text style={styles.rewardText}>
                       {stats.hearts > 0
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   unitProgressPctText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10.5,
-    color: THEME.colors.accent,
+    color: '#C4B5FD',
   },
 
   /* TIMELINE ROWS */
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   railSegmentCompleted: {
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: '#9D7CFE',
   },
   railSegmentActive: {
     backgroundColor: THEME.colors.primary,
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nodeCircleCompleted: {
-    borderColor: THEME.colors.accent,
+    borderColor: '#9D7CFE',
     borderWidth: 2.5,
   },
   nodeCircleCurrent: {
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
@@ -731,8 +731,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lessonCardCompleted: {
-    borderColor: 'rgba(16, 185, 129, 0.38)',
-    backgroundColor: 'rgba(16, 32, 28, 0.55)',
+    borderColor: 'rgba(167, 139, 250, 0.28)',
+    backgroundColor: '#171625',
   },
   lessonCardCurrent: {
     borderColor: THEME.colors.primary,
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   badgeDone: {
-    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
     paddingHorizontal: 6,
     paddingVertical: 1.5,
     borderRadius: 5,
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
   badgeDoneText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 8.5,
-    color: THEME.colors.accent,
+    color: '#C4B5FD',
     letterSpacing: 0.4,
   },
   lessonDurationText: {

@@ -170,7 +170,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
           </View>
           <View style={styles.statBox}>
             <View style={styles.statRowTop}>
-              <Ionicons name="book" size={16} color={THEME.colors.accent} />
+              <Ionicons name="book" size={16} color={THEME.colors.primaryGlow} />
               <Text style={styles.statVal}>{stats.wordsMastered}</Text>
             </View>
             <Text style={styles.statLabel}>Words Learned</Text>
@@ -188,7 +188,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
       {/* Daily Goal Target Selector */}
       <View style={styles.sectionCard}>
         <View style={styles.sectionTitleRow}>
-          <Ionicons name="flag-outline" size={19} color={THEME.colors.accent} />
+          <Ionicons name="flag-outline" size={19} color={THEME.colors.primaryGlow} />
           <Text style={styles.sectionTitle}>Daily Target</Text>
         </View>
         <View style={styles.accentRow}>
@@ -246,7 +246,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
           <Ionicons
             name={isSavedKey ? 'checkmark-circle' : 'information-circle'}
             size={16}
-            color={isSavedKey ? THEME.colors.success : THEME.colors.gold}
+            color={isSavedKey ? THEME.colors.primaryGlow : THEME.colors.textSecondary}
           />
           <Text style={styles.keyStatusText}>
             {keyMessage ||
@@ -332,7 +332,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
         <View style={styles.footerActionRow}>
           <Text style={styles.versionText}>Version 1.0.0</Text>
           <TouchableOpacity onPress={handleResetProgress} style={styles.resetBtn}>
-            <Ionicons name="refresh-outline" size={14} color={THEME.colors.error} />
+            <Ionicons name="refresh-outline" size={14} color="#C7C3DC" />
             <Text style={styles.resetBtnText}>Reset Progress</Text>
           </TouchableOpacity>
         </View>
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   dailyGoalCount: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    color: THEME.colors.accent,
+    color: '#C4B5FD',
   },
   dailyGoalTrack: {
     height: 6,
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   dailyGoalFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.primary,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -622,15 +622,17 @@ const styles = StyleSheet.create({
   resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: '#1E1C2E',
+    borderWidth: 1,
+    borderColor: '#302D46',
   },
   resetBtnText: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
-    color: THEME.colors.error,
+    color: '#C7C3DC',
   },
 });

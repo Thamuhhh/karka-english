@@ -321,7 +321,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
     levelName: 'Unit 2: Daily Fluency & Workplace Basics',
     cefrTag: 'CEFR A2',
     badge: 'Fluency',
-    accentColor: '#0BB35A',
+    accentColor: '#6366F1',
     description: 'Master phone etiquette, past tense storytelling, future commitments, and clear office communication.',
     classes: [
       {
