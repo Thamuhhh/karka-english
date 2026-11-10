@@ -575,3 +575,4 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 });
+
