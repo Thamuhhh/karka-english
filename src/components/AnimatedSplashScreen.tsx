@@ -42,10 +42,10 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
 
   const containerOpacity = useRef(new Animated.Value(1)).current;
   const heroExitScale = useRef(new Animated.Value(1)).current;
-  const badgeScale = useRef(new Animated.Value(0.68)).current;
+  const badgeScale = useRef(new Animated.Value(0.86)).current;
+  const badgeSlideY = useRef(new Animated.Value(18)).current;
   const badgeOpacity = useRef(new Animated.Value(0)).current;
-  const rippleScale = useRef(new Animated.Value(0.75)).current;
-  const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const sheenX = useRef(new Animated.Value(-135)).current;
   const wordmarkOpacity = useRef(new Animated.Value(0)).current;
   const wordmarkSlideY = useRef(new Animated.Value(14)).current;
   const loaderProgress = useRef(new Animated.Value(0)).current;
@@ -53,41 +53,35 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
 
   useEffect(() => {
     const entranceAnim = Animated.parallel([
-      Animated.spring(badgeScale, {
+      Animated.timing(badgeScale, {
         toValue: 1,
-        friction: 6.5,
-        tension: 68,
+        duration: 460,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }),
+      Animated.timing(badgeSlideY, {
+        toValue: 0,
+        duration: 460,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(badgeOpacity, {
         toValue: 1,
-        duration: 320,
+        duration: 300,
         easing: Easing.out(Easing.quad),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.sequence([
-        Animated.delay(90),
-        Animated.parallel([
-          Animated.timing(rippleOpacity, {
-            toValue: 0.72,
-            duration: 180,
-            useNativeDriver: USE_NATIVE_DRIVER,
-          }),
-          Animated.timing(rippleScale, {
-            toValue: 1.58,
-            duration: 680,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: USE_NATIVE_DRIVER,
-          }),
-        ]),
-        Animated.timing(rippleOpacity, {
-          toValue: 0,
-          duration: 240,
+        Animated.delay(340),
+        Animated.timing(sheenX, {
+          toValue: 145,
+          duration: 580,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
       Animated.sequence([
-        Animated.delay(220),
+        Animated.delay(200),
         Animated.parallel([
           Animated.timing(wordmarkOpacity, {
             toValue: 1,
@@ -104,7 +98,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
         ]),
       ]),
       Animated.sequence([
-        Animated.delay(260),
+        Animated.delay(240),
         Animated.timing(loaderProgress, {
           toValue: 1,
           duration: 950,
@@ -147,9 +141,9 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
     auraPulse,
     badgeOpacity,
     badgeScale,
+    badgeSlideY,
     loaderProgress,
-    rippleOpacity,
-    rippleScale,
+    sheenX,
     wordmarkOpacity,
     wordmarkSlideY,
   ]);
@@ -214,32 +208,42 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
       <Animated.View
         style={[styles.centerStage, { transform: [{ scale: heroExitScale }] }]}
       >
-        {/* Icon Squircle + Expanding Ripple Halo */}
+        {/* Icon Squircle: Smooth Cubic Rise + Diagonal Glass Sheen */}
         <View style={styles.emblemStage}>
           <Animated.View
             style={[
-              styles.rippleRing,
-              {
-                opacity: rippleOpacity,
-                transform: [{ scale: rippleScale }],
-              },
-            ]}
-          />
-
-          <Animated.View
-            style={[
-              styles.iconSquircle,
+              styles.iconSquircleShadow,
               {
                 opacity: badgeOpacity,
-                transform: [{ scale: badgeScale }],
+                transform: [{ translateY: badgeSlideY }, { scale: badgeScale }],
               },
             ]}
           >
-            <Image
-              source={SUPERNOVA_IMAGES.appIcon}
-              style={styles.iconImg}
-              resizeMode="cover"
-            />
+            <View style={styles.iconSquircleClip}>
+              <Image
+                source={SUPERNOVA_IMAGES.appIcon}
+                style={styles.iconImg}
+                resizeMode="cover"
+              />
+              <Animated.View
+                style={[
+                  styles.sheenOverlay,
+                  { transform: [{ translateX: sheenX }, { rotate: '24deg' }] },
+                ]}
+                pointerEvents="none"
+              >
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0)',
+                    'rgba(255, 255, 255, 0.36)',
+                    'rgba(255, 255, 255, 0)',
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.sheenGradient}
+                />
+              </Animated.View>
+            </View>
           </Animated.View>
         </View>
 
@@ -303,33 +307,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emblemStage: {
-    width: 112,
-    height: 112,
+    width: 104,
+    height: 104,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
   },
-  rippleRing: {
-    position: 'absolute',
-    width: 92,
-    height: 92,
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: '#A78BFA',
-  },
-  iconSquircle: {
+  iconSquircleShadow: {
     width: 88,
     height: 88,
     borderRadius: 25,
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.48,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  iconSquircleClip: {
+    flex: 1,
+    borderRadius: 25,
     backgroundColor: '#4C089C',
     borderWidth: 1.5,
-    borderColor: 'rgba(196, 181, 253, 0.45)',
+    borderColor: 'rgba(196, 181, 253, 0.42)',
     overflow: 'hidden',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.48,
-    shadowRadius: 18,
-    elevation: 12,
+  },
+  sheenOverlay: {
+    position: 'absolute',
+    top: -32,
+    bottom: -32,
+    width: 44,
+  },
+  sheenGradient: {
+    flex: 1,
   },
   iconImg: {
     width: '100%',
