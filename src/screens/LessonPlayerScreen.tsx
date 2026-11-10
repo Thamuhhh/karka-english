@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { SupernovaClass } from '../constants/curriculum';
-import { UserStats, GrammarCorrection } from '../types';
+import { UserStats, GrammarCorrection, ChatMessage } from '../types';
 import { speakText, stopAllAudio } from '../services/ttsService';
-import { analyzeSentenceGrammar } from '../api/supernovaAi';
+import {
+  checkLessonTranslation,
+  sendLessonRealTalkReply,
+  TranslationEvalResult,
+} from '../api/supernovaAi';
 import { playSoundEffect } from '../services/soundEffectsService';
 
 interface LessonPlayerProps {
@@ -106,6 +110,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [currentSlide, setCurrentSlide] = useState<SlideType>('rule');
   const [hearts, setHearts] = useState(Math.max(0, initialHearts));
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [voiceMuted, setVoiceMuted] = useState(false);
+  const slideScrollRef = useRef<ScrollView>(null);
 
   // Accuracy & Victory Tracking
   const [checksTotal, setChecksTotal] = useState(0);
@@ -122,17 +128,57 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [availableWords, setAvailableWords] = useState<string[]>([
     ...lesson.jumble.scrambledWords,
   ]);
+  const [showJumbleHint, setShowJumbleHint] = useState(false);
   const [jumbleChecked, setJumbleChecked] = useState(false);
   const [isJumbleCorrect, setIsJumbleCorrect] = useState(false);
 
-  // Slide 3: Translation State
+  // Slide 3: Active English Q&A Translation State
+  const [transMode, setTransMode] = useState<'type' | 'choices'>('type');
+  const [typedAnswer, setTypedAnswer] = useState('');
   const [selectedTransIdx, setSelectedTransIdx] = useState<number | null>(null);
-  const [transChecked, setTransChecked] = useState(false);
+  const [isCheckingTrans, setIsCheckingTrans] = useState(false);
+  const [transEval, setTransEval] = useState<TranslationEvalResult | null>(null);
 
-  // Slide 4: Speaking State
-  const [spokenText, setSpokenText] = useState('');
-  const [isEvaluating, setIsEvaluating] = useState(false);
-  const [speakingFeedback, setSpeakingFeedback] = useState<GrammarCorrection | null>(null);
+  // Slide 4: Conversational Real Talk State
+  const [realTalkMessages, setRealTalkMessages] = useState<ChatMessage[]>([
+    {
+      id: 'init-nila',
+      role: 'assistant',
+      content: lesson.speakingChallenge.missNovaQuestion,
+      timestamp: Date.now(),
+    },
+  ]);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+  const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
+
+  const teacherLectureScript = `${lesson.rule.heading}. ${lesson.rule.englishExplanation} Avoid saying: ${lesson.rule.doAndDont.wrong}. Instead, say naturally: ${lesson.rule.doAndDont.right}.`;
+
+  const handlePlayVoice = (text: string, id: string) => {
+    stopAllAudio();
+    setPlayingAudioId(id);
+    speakText(text, () => setPlayingAudioId(null));
+  };
+
+  const handleStopVoice = () => {
+    stopAllAudio();
+    setPlayingAudioId(null);
+  };
+
+  // Auto-speak Teacher intro on Stage 1 and Nila opening line on Stage 4
+  useEffect(() => {
+    if (voiceMuted) return;
+    if (currentSlide === 'rule') {
+      handlePlayVoice(teacherLectureScript, 'teacher-lecture');
+    } else if (currentSlide === 'speaking') {
+      const firstLine = lesson.speakingChallenge.missNovaQuestion;
+      handlePlayVoice(firstLine, 'init-nila');
+    }
+    return () => {
+      stopAllAudio();
+      setPlayingAudioId(null);
+    };
+  }, [currentSlide]);
 
   useEffect(() => {
     return () => {
@@ -140,9 +186,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     };
   }, []);
 
-  const handlePlayVoice = (text: string, id: string) => {
-    setPlayingAudioId(id);
-    speakText(text, () => setPlayingAudioId(null));
+  const goToSlide = (next: SlideType) => {
+    stopAllAudio();
+    setPlayingAudioId(null);
+    setCurrentSlide(next);
+    slideScrollRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   const handleExit = () => {
@@ -171,6 +219,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     });
   };
 
+  // Stage 2: Jumble Word Matching Handlers
   const handleTapBankWord = (word: string, index: number) => {
     if (jumbleChecked) return;
     playSoundEffect('button');
@@ -206,49 +255,116 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     if (isOk) {
       setChecksCorrect((prev) => prev + 1);
       playSoundEffect('success');
+      if (!voiceMuted) {
+        handlePlayVoice(lesson.jumble.correctWords.join(' '), 'jumble-answer');
+      }
     } else {
       playSoundEffect('error');
       loseOneHeart();
     }
   };
 
-  const handleCheckTranslation = () => {
-    if (selectedTransIdx === null) return;
-    setTransChecked(true);
-    const isOk = selectedTransIdx === lesson.translation.correctOptionIndex;
-    setChecksTotal((prev) => prev + 1);
-    if (isOk) {
-      setChecksCorrect((prev) => prev + 1);
-      playSoundEffect('chime');
-    } else {
-      playSoundEffect('error');
-      loseOneHeart();
+  // Stage 3: Active English Q&A Translation Handler
+  const handleCheckTranslation = async () => {
+    if (isCheckingTrans) return;
+
+    if (transMode === 'choices') {
+      if (selectedTransIdx === null) return;
+      const isOk = selectedTransIdx === lesson.translation.correctOptionIndex;
+      setTransEval({
+        isCorrect: isOk,
+        score: isOk ? 100 : 40,
+        feedbackEnglish: lesson.translation.explanation,
+        tamilExplanation: lesson.translation.tamilExplanation,
+        expectedEnglish: lesson.translation.expectedEnglish,
+      });
+      setChecksTotal((prev) => prev + 1);
+      if (isOk) {
+        setChecksCorrect((prev) => prev + 1);
+        playSoundEffect('chime');
+      } else {
+        playSoundEffect('error');
+        loseOneHeart();
+      }
+      return;
     }
-  };
 
-  const handleSubmitSpeaking = async () => {
-    const text = spokenText.trim();
-    if (!text || isEvaluating) return;
-
-    setIsEvaluating(true);
+    const raw = typedAnswer.trim();
+    if (!raw) return;
+    setIsCheckingTrans(true);
     try {
-      const feedback = await analyzeSentenceGrammar(text);
-      setSpeakingFeedback(feedback);
+      const evaluation = await checkLessonTranslation(raw, lesson.translation);
+      setTransEval(evaluation);
+      setChecksTotal((prev) => prev + 1);
+      if (evaluation.isCorrect) {
+        setChecksCorrect((prev) => prev + 1);
+        playSoundEffect('chime');
+      } else {
+        playSoundEffect('error');
+        loseOneHeart();
+      }
+    } finally {
+      setIsCheckingTrans(false);
+    }
+  };
+
+  // Stage 4: Conversational Real Talk Handler
+  const handleSendRealTalk = async (overrideText?: string) => {
+    const text = (overrideText ?? replyDraft).trim();
+    if (!text || isReplying) return;
+
+    stopAllAudio();
+    setPlayingAudioId(null);
+    setReplyDraft('');
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: text,
+      timestamp: Date.now(),
+    };
+    const nextHistory = [...realTalkMessages, userMsg];
+    setRealTalkMessages(nextHistory);
+    setIsReplying(true);
+
+    setTimeout(() => {
+      slideScrollRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+
+    try {
+      const { reply, feedback } = await sendLessonRealTalkReply(nextHistory, text, lesson);
+      setLastTurnFeedback(feedback);
       setChecksTotal((prev) => prev + 1);
       if (feedback.fluencyScore >= 70) {
         setChecksCorrect((prev) => prev + 1);
       }
+
+      const nilaMsgId = `nila-${Date.now()}`;
+      const nilaMsg: ChatMessage = {
+        id: nilaMsgId,
+        role: 'assistant',
+        content: reply,
+        timestamp: Date.now(),
+      };
+      setRealTalkMessages((prev) => [...prev, nilaMsg]);
       if (!feedback.hasErrors) {
         playSoundEffect('success');
       }
+      if (!voiceMuted) {
+        handlePlayVoice(reply, nilaMsgId);
+      }
+      setTimeout(() => {
+        slideScrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (e) {
-      console.warn('Speech eval error:', e);
+      console.warn('Real talk error:', e);
     } finally {
-      setIsEvaluating(false);
+      setIsReplying(false);
     }
   };
 
   const handleFinishLesson = async () => {
+    stopAllAudio();
     playSoundEffect('finish');
     const accuracy = checksTotal > 0 ? Math.round((checksCorrect / checksTotal) * 100) : 100;
     const result = await onComplete(lesson.id, lesson.xpReward, 5);
@@ -259,17 +375,28 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
       accuracy,
     });
     setCurrentSlide('victory');
+    slideScrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
+
+  const toggleVoiceMute = () => {
+    const nextMuted = !voiceMuted;
+    setVoiceMuted(nextMuted);
+    if (nextMuted) {
+      handleStopVoice();
+    }
   };
 
   const currentStepIdx = LESSON_STEPS.indexOf(
     currentSlide === 'victory' ? 'speaking' : currentSlide
   );
-  const isTransCorrect = selectedTransIdx === lesson.translation.correctOptionIndex;
   const shortTitle = formatShortLessonTitle(lesson.title);
+  const userTalkTurns = realTalkMessages.filter((m) => m.role === 'user').length;
+  const canCheckTranslation =
+    transMode === 'type' ? typedAnswer.trim().length > 0 : selectedTransIdx !== null;
 
   return (
     <View style={styles.fullscreen}>
-      {/* Minimalist Top Bar: Close, 4-Step Segment Bar, Hearts */}
+      {/* Top Bar: Close, 4-Step Segment Track, Audio Mute & Hearts */}
       {currentSlide !== 'victory' && (
         <View style={styles.topBarWrapper}>
           <View style={styles.topBar}>
@@ -298,35 +425,86 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               })}
             </View>
 
+            <TouchableOpacity
+              onPress={toggleVoiceMute}
+              style={styles.muteBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            >
+              <Ionicons
+                name={voiceMuted ? 'volume-mute-outline' : 'volume-medium-outline'}
+                size={15}
+                color={voiceMuted ? THEME.colors.textMuted : '#C4B5FD'}
+              />
+            </TouchableOpacity>
+
             <View style={styles.heartPill}>
               <Ionicons
                 name={hearts > 0 ? 'heart' : 'shield-checkmark'}
                 size={13.5}
                 color={hearts > 0 ? '#C4B5FD' : '#A78BFA'}
               />
-              <Text style={styles.heartCount}>
-                {hearts > 0 ? hearts : 'Shield'}
-              </Text>
+              <Text style={styles.heartCount}>{hearts > 0 ? hearts : 'Shield'}</Text>
             </View>
           </View>
         </View>
       )}
 
-      {/* Centered Editorial Lesson Stage */}
+      {/* Centered Scrollable Lesson Body */}
       <ScrollView
+        ref={slideScrollRef}
         style={styles.slideScroll}
         contentContainerStyle={styles.slideContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* SLIDE 1: CORE PATTERN */}
+        {/* ============================================================ */}
+        {/* STAGE 1: TEACHER CLASS LECTURE (Nila explains like a tutor)  */}
+        {/* ============================================================ */}
         {currentSlide === 'rule' && (
           <View style={styles.slideBody}>
-            <Text style={styles.stepEyebrow}>STEP 01 · CORE PATTERN</Text>
+            <Text style={styles.stepEyebrow}>STEP 01 · CLASS LECTURE</Text>
+
+            {/* Interactive Teacher Walkthrough Header */}
+            <View style={styles.teacherBanner}>
+              <View style={styles.teacherAvatarRing}>
+                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.teacherAvatarImg} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 11 }}>
+                <Text style={styles.teacherName}>Nila · English Tutor</Text>
+                <Text style={styles.teacherStatus}>
+                  {playingAudioId === 'teacher-lecture'
+                    ? 'Speaking lesson aloud...'
+                    : 'Listen or read along below'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.teacherPlayBtn,
+                  playingAudioId === 'teacher-lecture' && styles.teacherPlayBtnActive,
+                ]}
+                onPress={() =>
+                  playingAudioId === 'teacher-lecture'
+                    ? handleStopVoice()
+                    : handlePlayVoice(teacherLectureScript, 'teacher-lecture')
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={playingAudioId === 'teacher-lecture' ? 'stop' : 'play'}
+                  size={13}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.teacherPlayText}>
+                  {playingAudioId === 'teacher-lecture' ? 'Stop' : 'Hear Class'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={styles.slideTitle}>{lesson.rule.heading}</Text>
             <Text style={styles.ruleExplainText}>{lesson.rule.englishExplanation}</Text>
 
             <View style={styles.tamilInsightCard}>
-              <Text style={styles.tamilInsightEyebrow}>TAMIL MENTAL MODEL</Text>
+              <Text style={styles.tamilInsightEyebrow}>THINK IN TAMIL</Text>
               <Text style={styles.tamilInsightBody}>{lesson.rule.tamilMentalModel}</Text>
             </View>
 
@@ -349,7 +527,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   >
                     <Ionicons
-                      name={playingAudioId === 'right-audio' ? 'volume-high' : 'volume-medium-outline'}
+                      name={
+                        playingAudioId === 'right-audio' ? 'volume-high' : 'volume-medium-outline'
+                      }
                       size={18}
                       color={THEME.colors.primaryGlow}
                     />
@@ -363,21 +543,38 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           </View>
         )}
 
-        {/* SLIDE 2: SENTENCE BUILDER */}
+        {/* ============================================================ */}
+        {/* STAGE 2: TAMIL -> ENGLISH JUMBLED WORD MATCH                 */}
+        {/* ============================================================ */}
         {currentSlide === 'jumble' && (
           <View style={styles.slideBody}>
-            <Text style={styles.stepEyebrow}>STEP 02 · SENTENCE BUILDER</Text>
-            <Text style={styles.slideTitle}>Arrange in Natural English</Text>
-            <Text style={styles.slideSubtitle}>Tap words in order to form the sentence.</Text>
+            <Text style={styles.stepEyebrow}>STEP 02 · WORD MATCH</Text>
+            <Text style={styles.slideTitle}>Match the Jumbled English</Text>
+            <Text style={styles.slideSubtitle}>
+              Read the Tamil sentence and tap English words in the right order.
+            </Text>
 
             <View style={styles.tamilPromptCard}>
-              <Text style={styles.tamilInsightEyebrow}>TAMIL THOUGHT</Text>
+              <View style={styles.promptTopRow}>
+                <Text style={styles.tamilInsightEyebrow}>TAMIL SENTENCE</Text>
+                <TouchableOpacity
+                  onPress={() => setShowJumbleHint((prev) => !prev)}
+                  style={styles.hintTogglePill}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="bulb-outline" size={12} color="#C4B5FD" />
+                  <Text style={styles.hintToggleText}>
+                    {showJumbleHint ? 'Hide Hint' : 'Hint'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.tamilPromptText}>{lesson.jumble.tamilSentence}</Text>
+              {showJumbleHint && <Text style={styles.hintBody}>{lesson.jumble.hint}</Text>}
             </View>
 
             <View style={styles.answerDropzone}>
               <View style={styles.dropzoneTopRow}>
-                <Text style={styles.dropzoneLabel}>YOUR SENTENCE</Text>
+                <Text style={styles.dropzoneLabel}>YOUR ENGLISH MATCH</Text>
                 {assembledWords.length > 0 && !jumbleChecked && (
                   <TouchableOpacity onPress={handleResetJumble} style={styles.resetChip}>
                     <Ionicons name="refresh" size={12} color="#B8B4CF" />
@@ -389,7 +586,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <View style={styles.wordsWrapRow}>
                 {assembledWords.length === 0 ? (
                   <Text style={styles.emptySlotPlaceholder}>
-                    Tap word chips below to build your sentence
+                    Tap jumbled words below to form the sentence
                   </Text>
                 ) : (
                   assembledWords.map((word, wIdx) => (
@@ -426,106 +623,194 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           </View>
         )}
 
-        {/* SLIDE 3: GUIDED TRANSLATION */}
+        {/* ============================================================ */}
+        {/* STAGE 3: TRANSLATE Q&A (Answer the asked prompt in English)  */}
+        {/* ============================================================ */}
         {currentSlide === 'translation' && (
           <View style={styles.slideBody}>
-            <Text style={styles.stepEyebrow}>STEP 03 · NATURAL PHRASING</Text>
-            <Text style={styles.slideTitle}>Choose the Best Fit</Text>
+            <View style={styles.stepHeaderRow}>
+              <Text style={styles.stepEyebrow}>STEP 03 · ENGLISH Q&amp;A</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (transEval) return;
+                  setTransMode((prev) => (prev === 'type' ? 'choices' : 'type'));
+                }}
+                style={styles.modeSwitchChip}
+                disabled={!!transEval}
+              >
+                <Text style={styles.modeSwitchText}>
+                  {transMode === 'type' ? 'Need Choices?' : 'Type Answer'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.slideTitle}>Answer in English</Text>
             <Text style={styles.slideSubtitle}>
-              Pick the option a fluent speaker would naturally say.
+              Write the natural English answer for what Nila is asking in Tamil.
             </Text>
 
             <View style={styles.tamilPromptCard}>
-              <Text style={styles.tamilInsightEyebrow}>TAMIL MEANING</Text>
+              <Text style={styles.tamilInsightEyebrow}>QUESTION PROMPT</Text>
               <Text style={styles.tamilPromptText}>{lesson.translation.tamilPrompt}</Text>
             </View>
 
-            <View style={styles.optionsCol}>
-              {lesson.translation.options.map((opt, oIdx) => {
-                const isSelected = selectedTransIdx === oIdx;
-                const isRightOption = oIdx === lesson.translation.correctOptionIndex;
+            {transMode === 'type' ? (
+              <TextInput
+                style={[
+                  styles.qaAnswerInput,
+                  typedAnswer.trim().length > 0 && styles.qaAnswerInputActive,
+                ]}
+                placeholder="Type your English answer here..."
+                placeholderTextColor={THEME.colors.textMuted}
+                value={typedAnswer}
+                onChangeText={setTypedAnswer}
+                editable={!transEval}
+                multiline
+                textAlignVertical="top"
+              />
+            ) : (
+              <View style={styles.optionsCol}>
+                {lesson.translation.options.map((opt, oIdx) => {
+                  const isSelected = selectedTransIdx === oIdx;
+                  const isRightOption = oIdx === lesson.translation.correctOptionIndex;
 
-                let cardModifier = null;
-                let badgeModifier = null;
-                if (transChecked) {
-                  if (isRightOption) {
-                    cardModifier = styles.optionCardCorrect;
-                    badgeModifier = styles.optionLetterCorrect;
+                  let cardModifier = null;
+                  let badgeModifier = null;
+                  if (transEval) {
+                    if (isRightOption) {
+                      cardModifier = styles.optionCardCorrect;
+                      badgeModifier = styles.optionLetterCorrect;
+                    } else if (isSelected) {
+                      cardModifier = styles.optionCardWrong;
+                      badgeModifier = styles.optionLetterWrong;
+                    }
                   } else if (isSelected) {
-                    cardModifier = styles.optionCardWrong;
-                    badgeModifier = styles.optionLetterWrong;
+                    cardModifier = styles.optionCardSelected;
+                    badgeModifier = styles.optionLetterSelected;
                   }
-                } else if (isSelected) {
-                  cardModifier = styles.optionCardSelected;
-                  badgeModifier = styles.optionLetterSelected;
-                }
 
-                return (
-                  <TouchableOpacity
-                    key={oIdx}
-                    style={[styles.optionCard, cardModifier]}
-                    onPress={() => {
-                      if (!transChecked) {
-                        playSoundEffect('button');
-                        setSelectedTransIdx(oIdx);
-                      }
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.optionLetterBox, badgeModifier]}>
-                      <Text style={styles.optionLetterText}>
-                        {OPTION_LETTERS[oIdx] || String(oIdx + 1)}
-                      </Text>
-                    </View>
-                    <Text style={styles.optionText}>{opt}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                  return (
+                    <TouchableOpacity
+                      key={oIdx}
+                      style={[styles.optionCard, cardModifier]}
+                      onPress={() => {
+                        if (!transEval) {
+                          playSoundEffect('button');
+                          setSelectedTransIdx(oIdx);
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.optionLetterBox, badgeModifier]}>
+                        <Text style={styles.optionLetterText}>
+                          {OPTION_LETTERS[oIdx] || String(oIdx + 1)}
+                        </Text>
+                      </View>
+                      <Text style={styles.optionText}>{opt}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
-        {/* SLIDE 4: PRACTICE SPEAKING */}
+        {/* ============================================================ */}
+        {/* STAGE 4: CONVERSATIONAL REAL TALK (Live multi-turn dialogue) */}
+        {/* ============================================================ */}
         {currentSlide === 'speaking' && (
           <View style={styles.slideBody}>
-            <Text style={styles.stepEyebrow}>STEP 04 · SPEAK IT OUT</Text>
-            <Text style={styles.slideTitle}>Respond in Your Own Words</Text>
-            <Text style={styles.slideSubtitle}>{lesson.speakingChallenge.prompt}</Text>
-
-            <View style={styles.promptBubbleCard}>
-              <View style={styles.promptBubbleHeader}>
-                <View style={styles.novaMiniAvatar}>
-                  <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaMiniImg} />
-                </View>
-                <Text style={styles.promptSpeakerName}>Nila</Text>
-                <TouchableOpacity
-                  style={styles.audioIconBtn}
-                  onPress={() =>
-                    handlePlayVoice(lesson.speakingChallenge.missNovaQuestion, 'nova-q')
-                  }
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Ionicons
-                    name={playingAudioId === 'nova-q' ? 'volume-high' : 'volume-medium-outline'}
-                    size={19}
-                    color={THEME.colors.primaryGlow}
-                  />
-                </TouchableOpacity>
+            <View style={styles.stepHeaderRow}>
+              <Text style={styles.stepEyebrow}>STEP 04 · REAL TALK</Text>
+              <View style={styles.turnPill}>
+                <Text style={styles.turnPillText}>
+                  {userTalkTurns === 0 ? 'Reply to start' : `${userTalkTurns} Turn${userTalkTurns > 1 ? 's' : ''}`}
+                </Text>
               </View>
-              <Text style={styles.promptQuestionText}>
-                "{lesson.speakingChallenge.missNovaQuestion}"
-              </Text>
             </View>
 
+            <Text style={styles.slideTitle}>Talk with Nila</Text>
+            <Text style={styles.slideSubtitle}>{lesson.speakingChallenge.prompt}</Text>
+
+            {/* Conversational Dialogue Thread */}
+            <View style={styles.chatThreadCard}>
+              {realTalkMessages.map((msg) => {
+                const isNila = msg.role === 'assistant';
+                return (
+                  <View
+                    key={msg.id}
+                    style={[styles.chatRow, isNila ? styles.chatRowLeft : styles.chatRowRight]}
+                  >
+                    {isNila && (
+                      <View style={styles.chatAvatarSmall}>
+                        <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.chatAvatarImg} />
+                      </View>
+                    )}
+
+                    <View
+                      style={[
+                        styles.chatBubble,
+                        isNila ? styles.nilaBubble : styles.userBubble,
+                      ]}
+                    >
+                      <Text style={styles.chatBubbleText}>{msg.content}</Text>
+                      {isNila && (
+                        <TouchableOpacity
+                          onPress={() => handlePlayVoice(msg.content, msg.id)}
+                          style={styles.bubbleAudioRow}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons
+                            name={
+                              playingAudioId === msg.id ? 'volume-high' : 'volume-medium-outline'
+                            }
+                            size={14}
+                            color="#C4B5FD"
+                          />
+                          <Text style={styles.bubbleAudioText}>Listen</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+
+              {isReplying && (
+                <View style={[styles.chatRow, styles.chatRowLeft]}>
+                  <View style={styles.chatAvatarSmall}>
+                    <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.chatAvatarImg} />
+                  </View>
+                  <View style={[styles.chatBubble, styles.nilaBubble]}>
+                    <Text style={styles.typingText}>Nila is replying...</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Inline Coach Feedback on Latest User Turn */}
+            {lastTurnFeedback && (
+              <View style={styles.realTalkCoachCard}>
+                <View style={styles.feedbackTopBar}>
+                  <Text style={styles.feedbackTitle}>Live Coach Note</Text>
+                  <View style={styles.scoreBadge}>
+                    <Text style={styles.scoreBadgeText}>{lastTurnFeedback.fluencyScore}/100</Text>
+                  </View>
+                </View>
+                <Text style={styles.feedbackEnglish}>{lastTurnFeedback.explanation}</Text>
+                <Text style={styles.feedbackTamil}>{lastTurnFeedback.tamilExplanation}</Text>
+              </View>
+            )}
+
+            {/* Quick Idea Starters */}
             <View style={styles.sampleBlock}>
-              <Text style={styles.sampleSectionLabel}>TAP TO PREFILL AN IDEA</Text>
+              <Text style={styles.sampleSectionLabel}>CONVERSATION IDEAS</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.sampleChipsRow}>
                   {lesson.speakingChallenge.suggestedAnswers.map((ans, aIdx) => (
                     <TouchableOpacity
                       key={aIdx}
                       style={styles.sampleChip}
-                      onPress={() => setSpokenText(ans)}
+                      onPress={() => setReplyDraft(ans)}
                       activeOpacity={0.8}
                     >
                       <Text style={styles.sampleChipText}>"{ans}"</Text>
@@ -535,48 +820,39 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               </ScrollView>
             </View>
 
-            <TextInput
-              style={[
-                styles.responseInput,
-                spokenText.trim().length > 0 && styles.responseInputActive,
-              ]}
-              placeholder="Write or dictate your response in English..."
-              placeholderTextColor={THEME.colors.textMuted}
-              value={spokenText}
-              onChangeText={setSpokenText}
-              multiline
-              textAlignVertical="top"
-            />
-
-            {speakingFeedback && (
-              <View style={styles.feedbackCard}>
-                <View style={styles.feedbackTopBar}>
-                  <Text style={styles.feedbackTitle}>Response Check</Text>
-                  <View style={styles.scoreBadge}>
-                    <Text style={styles.scoreBadgeText}>{speakingFeedback.fluencyScore}/100</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.feedbackEnglish}>{speakingFeedback.explanation}</Text>
-
-                <View style={styles.feedbackTamilCallout}>
-                  <Text style={styles.feedbackTamilText}>
-                    {speakingFeedback.tamilExplanation}
-                  </Text>
-                </View>
-
-                <View style={styles.rephraseBox}>
-                  <Text style={styles.rephraseLabel}>NATURAL VERSION</Text>
-                  <Text style={styles.rephraseText}>
-                    "{speakingFeedback.nativeIdiomaticVersion}"
-                  </Text>
-                </View>
-              </View>
-            )}
+            {/* Chat Reply Composer */}
+            <View style={styles.talkComposerRow}>
+              <TextInput
+                style={styles.talkInput}
+                placeholder="Reply naturally to Nila..."
+                placeholderTextColor={THEME.colors.textMuted}
+                value={replyDraft}
+                onChangeText={setReplyDraft}
+                multiline
+                maxLength={240}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.talkSendBtn,
+                  (!replyDraft.trim() || isReplying) && styles.talkSendBtnDisabled,
+                ]}
+                onPress={() => handleSendRealTalk()}
+                disabled={!replyDraft.trim() || isReplying}
+                activeOpacity={0.85}
+              >
+                {isReplying ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="send" size={16} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* SLIDE 5: LESSON COMPLETE SUMMARY */}
+        {/* ============================================================ */}
+        {/* STAGE 5: LESSON COMPLETE SUMMARY                             */}
+        {/* ============================================================ */}
         {currentSlide === 'victory' && (
           <View style={styles.victoryContainer}>
             <View style={styles.victoryCrestWrap}>
@@ -587,10 +863,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               />
             </View>
 
-            <Text style={styles.victoryEyebrow}>LESSON COMPLETED</Text>
+            <Text style={styles.victoryEyebrow}>CLASS COMPLETED</Text>
             <Text style={styles.victoryTitle}>{shortTitle}</Text>
             <Text style={styles.victorySubtitle}>
-              Pattern mastered and added to your daily fluency streak.
+              Pattern explained, words matched, Q&amp;A answered, and spoken live with Nila.
             </Text>
 
             <View style={styles.victoryMetricsCard}>
@@ -613,9 +889,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <View style={styles.victoryMetricDivider} />
 
               <View style={styles.victoryMetricItem}>
-                <Text style={[styles.victoryMetricVal, { color: '#FFFFFF' }]}>
-                  {victorySummary?.accuracy ?? 100}%
-                </Text>
+                <Text style={styles.victoryMetricVal}>{victorySummary?.accuracy ?? 100}%</Text>
                 <Text style={styles.victoryMetricLabel}>Accuracy</Text>
               </View>
 
@@ -643,15 +917,15 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         )}
       </ScrollView>
 
-      {/* Pinned Bottom Action / Check Drawer */}
+      {/* Pinned Bottom Action / Feedback Drawer */}
       {currentSlide !== 'victory' && (
         <View style={styles.bottomDrawerWrapper}>
           <View style={styles.bottomDrawerInner}>
             {currentSlide === 'rule' && (
               <ActionButton
-                label="Continue"
+                label="Start Practice"
                 icon="arrow-forward"
-                onPress={() => setCurrentSlide('jumble')}
+                onPress={() => goToSlide('jumble')}
               />
             )}
 
@@ -677,7 +951,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                             { color: isJumbleCorrect ? '#E9D5FF' : '#F3D677' },
                           ]}
                         >
-                          {isJumbleCorrect ? 'Clean sentence structure!' : 'Incorrect word order'}
+                          {isJumbleCorrect ? 'Clean match!' : 'Check word order'}
                         </Text>
                         <TouchableOpacity
                           onPress={() =>
@@ -699,18 +973,18 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       </View>
                       {!isJumbleCorrect && (
                         <Text style={styles.drawerCorrectionText}>
-                          Correct: {lesson.jumble.correctWords.join(' ')}
+                          Correct match: {lesson.jumble.correctWords.join(' ')}
                         </Text>
                       )}
                     </View>
 
                     <ActionButton
-                      label={isJumbleCorrect ? 'Continue' : 'Try Again'}
+                      label={isJumbleCorrect ? 'Next: Q&A Translate' : 'Try Again'}
                       icon={isJumbleCorrect ? 'arrow-forward' : 'refresh'}
                       colors={isJumbleCorrect ? ['#8B5CF6', '#6D28D9'] : ['#2E294D', '#231F3B']}
                       onPress={() => {
                         if (isJumbleCorrect) {
-                          setCurrentSlide('translation');
+                          goToSlide('translation');
                         } else {
                           setAvailableWords([...lesson.jumble.scrambledWords]);
                           setAssembledWords([]);
@@ -721,7 +995,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   </View>
                 ) : (
                   <ActionButton
-                    label="Check Answer"
+                    label="Check Match"
                     disabled={assembledWords.length === 0}
                     onPress={handleCheckJumble}
                   />
@@ -731,31 +1005,31 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
             {currentSlide === 'translation' && (
               <>
-                {transChecked ? (
+                {transEval ? (
                   <View style={styles.feedbackDrawer}>
                     <View
                       style={[
                         styles.feedbackNoticeBox,
-                        isTransCorrect ? styles.noticeCorrect : styles.noticeWrong,
+                        transEval.isCorrect ? styles.noticeCorrect : styles.noticeWrong,
                       ]}
                     >
                       <View style={styles.feedbackHeadlineRow}>
                         <Ionicons
-                          name={isTransCorrect ? 'checkmark-circle' : 'alert-circle'}
+                          name={transEval.isCorrect ? 'checkmark-circle' : 'alert-circle'}
                           size={19}
-                          color={isTransCorrect ? '#C4B5FD' : '#E2B94B'}
+                          color={transEval.isCorrect ? '#C4B5FD' : '#E2B94B'}
                         />
                         <Text
                           style={[
                             styles.feedbackHeadline,
-                            { color: isTransCorrect ? '#E9D5FF' : '#F3D677' },
+                            { color: transEval.isCorrect ? '#E9D5FF' : '#F3D677' },
                           ]}
                         >
-                          {isTransCorrect ? 'Spot on!' : 'Check natural phrasing'}
+                          {transEval.isCorrect ? 'Great English answer!' : 'Natural answer tip'}
                         </Text>
                         <TouchableOpacity
                           onPress={() =>
-                            handlePlayVoice(lesson.translation.expectedEnglish, 'trans-answer')
+                            handlePlayVoice(transEval.expectedEnglish, 'trans-answer')
                           }
                           style={styles.audioIconBtn}
                           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -771,24 +1045,43 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                           />
                         </TouchableOpacity>
                       </View>
-                      <Text style={styles.drawerCorrectionText}>
-                        {lesson.translation.explanation}
-                      </Text>
-                      <Text style={styles.drawerTamilNote}>
-                        {lesson.translation.tamilExplanation}
-                      </Text>
+                      {!transEval.isCorrect && (
+                        <Text style={styles.drawerExpectedText}>
+                          Natural: "{transEval.expectedEnglish}"
+                        </Text>
+                      )}
+                      <Text style={styles.drawerCorrectionText}>{transEval.feedbackEnglish}</Text>
+                      <Text style={styles.drawerTamilNote}>{transEval.tamilExplanation}</Text>
                     </View>
 
-                    <ActionButton
-                      label="Next: Speaking"
-                      icon="mic-outline"
-                      onPress={() => setCurrentSlide('speaking')}
-                    />
+                    <View style={styles.dualBtnRow}>
+                      {!transEval.isCorrect && (
+                        <View style={{ flex: 1 }}>
+                          <ActionButton
+                            label="Retry"
+                            iconLeft="refresh"
+                            colors={['#2E294D', '#231F3B']}
+                            onPress={() => {
+                              setTransEval(null);
+                              setSelectedTransIdx(null);
+                            }}
+                          />
+                        </View>
+                      )}
+                      <View style={{ flex: 1.4 }}>
+                        <ActionButton
+                          label="Next: Real Talk"
+                          icon="chatbubbles-outline"
+                          onPress={() => goToSlide('speaking')}
+                        />
+                      </View>
+                    </View>
                   </View>
                 ) : (
                   <ActionButton
-                    label="Check Answer"
-                    disabled={selectedTransIdx === null}
+                    label="Submit Answer"
+                    disabled={!canCheckTranslation}
+                    loading={isCheckingTrans}
                     onPress={handleCheckTranslation}
                   />
                 )}
@@ -796,24 +1089,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             )}
 
             {currentSlide === 'speaking' && (
-              <>
-                {speakingFeedback ? (
-                  <ActionButton
-                    label={`Complete Lesson (+${lesson.xpReward} XP)`}
-                    iconLeft="checkmark-done"
-                    colors={['#8B5CF6', '#6D28D9']}
-                    onPress={handleFinishLesson}
-                  />
-                ) : (
-                  <ActionButton
-                    label="Check Response"
-                    iconLeft="mic-outline"
-                    disabled={!spokenText.trim()}
-                    loading={isEvaluating}
-                    onPress={handleSubmitSpeaking}
-                  />
-                )}
-              </>
+              <ActionButton
+                label={
+                  userTalkTurns === 0
+                    ? 'Reply to Nila First'
+                    : `Complete Class (+${lesson.xpReward} XP)`
+                }
+                iconLeft={userTalkTurns > 0 ? 'checkmark-done' : 'chatbubble-ellipses-outline'}
+                disabled={userTalkTurns === 0}
+                onPress={handleFinishLesson}
+              />
             )}
           </View>
         </View>
@@ -839,7 +1124,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 18,
     paddingVertical: 14,
-    gap: 12,
+    gap: 10,
   },
   closeBtn: {
     width: 34,
@@ -869,6 +1154,16 @@ const styles = StyleSheet.create({
   segmentTrackActive: {
     backgroundColor: THEME.colors.primary,
   },
+  muteBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#181725',
+    borderWidth: 1,
+    borderColor: '#2A2740',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   heartPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -894,11 +1189,16 @@ const styles = StyleSheet.create({
     maxWidth: MAX_LESSON_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 22,
+    paddingTop: 20,
     paddingBottom: 32,
   },
   slideBody: {
     gap: 14,
+  },
+  stepHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   stepEyebrow: {
     fontFamily: THEME.fonts.bold,
@@ -908,10 +1208,10 @@ const styles = StyleSheet.create({
   },
   slideTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 22,
+    fontSize: 21,
     color: '#FFFFFF',
-    lineHeight: 28,
-    marginTop: -4,
+    lineHeight: 27,
+    marginTop: -2,
   },
   slideSubtitle: {
     fontFamily: THEME.fonts.body,
@@ -920,14 +1220,69 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: -6,
   },
+
+  /* STAGE 1: TEACHER MODE */
+  teacherBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#171625',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2B2842',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+  teacherAvatarRing: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(167, 139, 250, 0.55)',
+    backgroundColor: '#222036',
+  },
+  teacherAvatarImg: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.05 }],
+  },
+  teacherName: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  teacherStatus: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 1,
+  },
+  teacherPlayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2546',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.45)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    gap: 5,
+  },
+  teacherPlayBtnActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: '#C4B5FD',
+  },
+  teacherPlayText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
   ruleExplainText: {
     fontFamily: THEME.fonts.body,
     fontSize: 14.5,
     color: '#D7D3EB',
     lineHeight: 22,
   },
-
-  /* TAMIL INSIGHT CALLOUT (LEFT-ACCENT OBSIDIAN) */
   tamilInsightCard: {
     backgroundColor: '#171625',
     borderRadius: 12,
@@ -949,8 +1304,6 @@ const styles = StyleSheet.create({
     color: '#F1EFFC',
     lineHeight: 24,
   },
-
-  /* CONTRAST PAIR (AVOID VS NATURAL) */
   contrastStack: {
     gap: 10,
     marginTop: 2,
@@ -1013,13 +1366,43 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  /* SENTENCE BUILDER */
+  /* STAGE 2: JUMBLED WORD MATCH */
   tamilPromptCard: {
     backgroundColor: '#171625',
     padding: 15,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#28253D',
+  },
+  promptTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hintTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#221F36',
+    borderWidth: 1,
+    borderColor: '#342F52',
+  },
+  hintToggleText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 10.5,
+    color: '#C4B5FD',
+  },
+  hintBody: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: '#B8B4CF',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   tamilPromptText: {
     fontFamily: THEME.fonts.tamilBold,
@@ -1104,7 +1487,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  /* GUIDED TRANSLATION */
+  /* STAGE 3: ENGLISH Q&A */
+  modeSwitchChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#1B192B',
+    borderWidth: 1,
+    borderColor: '#302C4A',
+  },
+  modeSwitchText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11,
+    color: '#C4B5FD',
+  },
+  qaAnswerInput: {
+    fontFamily: THEME.fonts.bodyMedium,
+    backgroundColor: '#151422',
+    borderRadius: 14,
+    padding: 15,
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    minHeight: 96,
+    borderWidth: 1,
+    borderColor: '#2B2842',
+    lineHeight: 22,
+  },
+  qaAnswerInputActive: {
+    borderColor: THEME.colors.primary,
+  },
   optionsCol: {
     gap: 10,
   },
@@ -1166,45 +1577,133 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  /* SPEAKING STAGE */
-  promptBubbleCard: {
-    backgroundColor: '#171625',
-    padding: 15,
-    borderRadius: 14,
+  /* STAGE 4: REAL TALK CONVERSATION */
+  turnPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#1B192B',
     borderWidth: 1,
-    borderColor: '#292640',
+    borderColor: '#302C4A',
   },
-  promptBubbleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+  turnPillText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 10.5,
+    color: '#C4B5FD',
   },
-  novaMiniAvatar: {
-    width: 30,
-    height: 30,
+  chatThreadCard: {
+    backgroundColor: '#13121E',
     borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#26233B',
+    padding: 13,
+    gap: 11,
+  },
+  chatRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  chatRowLeft: {
+    justifyContent: 'flex-start',
+  },
+  chatRowRight: {
+    justifyContent: 'flex-end',
+  },
+  chatAvatarSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(167, 139, 250, 0.5)',
+    marginRight: 8,
     backgroundColor: '#222036',
   },
-  novaMiniImg: {
+  chatAvatarImg: {
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.05 }],
   },
-  promptSpeakerName: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
-    marginLeft: 9,
-    flex: 1,
+  chatBubble: {
+    maxWidth: '82%',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderRadius: 14,
   },
-  promptQuestionText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 15,
-    color: '#E9D5FF',
-    lineHeight: 22,
+  nilaBubble: {
+    backgroundColor: '#1B192C',
+    borderWidth: 1,
+    borderColor: '#2C2847',
+    borderBottomLeftRadius: 4,
+  },
+  userBubble: {
+    backgroundColor: '#6D28D9',
+    borderBottomRightRadius: 4,
+  },
+  chatBubbleText: {
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+    lineHeight: 20,
+  },
+  bubbleAudioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  bubbleAudioText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 10.5,
+    color: '#C4B5FD',
+  },
+  typingText: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12.5,
+    color: '#A5A1B8',
+  },
+  realTalkCoachCard: {
+    backgroundColor: '#171625',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 4,
+  },
+  feedbackTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  feedbackTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  scoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 7,
+    backgroundColor: 'rgba(127, 67, 254, 0.18)',
+  },
+  scoreBadgeText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#C4B5FD',
+  },
+  feedbackEnglish: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12.5,
+    color: '#D5D0E6',
+    lineHeight: 18,
+  },
+  feedbackTamil: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
+    color: '#F1EFFC',
+    lineHeight: 21,
   },
   sampleBlock: {
     gap: 8,
@@ -1232,91 +1731,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#C7C3DC',
   },
-  responseInput: {
-    fontFamily: THEME.fonts.bodyMedium,
-    backgroundColor: '#151422',
-    borderRadius: 13,
-    padding: 14,
-    color: '#FFFFFF',
-    fontSize: 14,
-    minHeight: 88,
-    borderWidth: 1,
-    borderColor: '#2B2842',
-    lineHeight: 20,
-  },
-  responseInputActive: {
-    borderColor: THEME.colors.primary,
-  },
-  feedbackCard: {
-    backgroundColor: '#171625',
-    borderRadius: 14,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#2B2842',
-    gap: 10,
-  },
-  feedbackTopBar: {
+  talkComposerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 8,
+    backgroundColor: '#151422',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2C2944',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  talkInput: {
+    flex: 1,
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 14,
+    color: '#FFFFFF',
+    minHeight: 38,
+    maxHeight: 90,
+    paddingVertical: 6,
+  },
+  talkSendBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: THEME.colors.primary,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  feedbackTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13.5,
-    color: '#FFFFFF',
-  },
-  scoreBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: 'rgba(6, 182, 212, 0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
-  },
-  scoreBadgeText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
-    color: '#22D3EE',
-  },
-  feedbackEnglish: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 13,
-    color: '#D5D0E6',
-    lineHeight: 19,
-  },
-  feedbackTamilCallout: {
-    backgroundColor: '#1E1B30',
-    borderRadius: 10,
-    borderLeftWidth: 2.5,
-    borderLeftColor: THEME.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  feedbackTamilText: {
-    fontFamily: THEME.fonts.tamilMedium,
-    fontSize: 12.5,
-    color: '#F1EFFC',
-    lineHeight: 22,
-  },
-  rephraseBox: {
-    backgroundColor: 'rgba(6, 182, 212, 0.08)',
-    padding: 11,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.22)',
-  },
-  rephraseLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 9.5,
-    color: THEME.colors.secondary,
-    letterSpacing: 0.7,
-    marginBottom: 3,
-  },
-  rephraseText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 13.5,
-    color: '#FFFFFF',
-    lineHeight: 20,
+  talkSendBtnDisabled: {
+    backgroundColor: '#2A2740',
   },
 
   /* VICTORY SUMMARY */
@@ -1435,6 +1879,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
   },
+  drawerExpectedText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12.5,
+    color: '#FFFFFF',
+    marginTop: 2,
+  },
   drawerCorrectionText: {
     fontFamily: THEME.fonts.body,
     fontSize: 12.5,
@@ -1447,6 +1897,10 @@ const styles = StyleSheet.create({
     color: '#F1EFFC',
     lineHeight: 21,
     marginTop: 2,
+  },
+  dualBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
   primaryBtnOuter: {
     width: '100%',

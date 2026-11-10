@@ -1,4 +1,5 @@
 import { GrammarCorrection, ChatMessage, RoleplayScenario } from '../types';
+import { GuidedTranslation, SupernovaClass } from '../constants/curriculum';
 
 let userGeminiApiKey: string | null = null;
 
@@ -499,4 +500,146 @@ export function generateLocalScenarioReply(
   }
 
   return "Got it! That sounds well explained. What would you like to practice saying next?";
+}
+
+const CONTRACTION_MAP: Array<[RegExp, string]> = [
+  [/\bi'm\b/g, 'i am'],
+  [/\bi've\b/g, 'i have'],
+  [/\bi'd\b/g, 'i would'],
+  [/\bi'll\b/g, 'i will'],
+  [/\bdon't\b/g, 'do not'],
+  [/\bdoesn't\b/g, 'does not'],
+  [/\bdidn't\b/g, 'did not'],
+  [/\bcan't\b/g, 'can not'],
+  [/\bwon't\b/g, 'will not'],
+  [/\bcouldn't\b/g, 'could not'],
+  [/\bshouldn't\b/g, 'should not'],
+  [/\bit's\b/g, 'it is'],
+  [/\bthat's\b/g, 'that is'],
+  [/\bthere's\b/g, 'there is'],
+];
+
+function normalizeForComparison(text: string): string {
+  let clean = text
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  for (const [pattern, expansion] of CONTRACTION_MAP) {
+    clean = clean.replace(pattern, expansion);
+  }
+  return clean.replace(/[']/g, '').replace(/\s+/g, ' ').trim();
+}
+
+const STOPWORDS = new Set(['a', 'an', 'the', 'is', 'am', 'are', 'to', 'of', 'in', 'on', 'for', 'my', 'i']);
+
+export interface TranslationEvalResult {
+  isCorrect: boolean;
+  score: number;
+  feedbackEnglish: string;
+  tamilExplanation: string;
+  expectedEnglish: string;
+}
+
+/** Evaluates a learner's typed English translation against the target prompt and grammar rules. */
+export async function checkLessonTranslation(
+  userAnswer: string,
+  translation: GuidedTranslation
+): Promise<TranslationEvalResult> {
+  const normUser = normalizeForComparison(userAnswer);
+  const normExpected = normalizeForComparison(translation.expectedEnglish);
+
+  if (normUser && normUser === normExpected) {
+    return {
+      isCorrect: true,
+      score: 100,
+      feedbackEnglish: translation.explanation,
+      tamilExplanation: translation.tamilExplanation,
+      expectedEnglish: translation.expectedEnglish,
+    };
+  }
+
+  const grammar = await analyzeSentenceGrammar(userAnswer);
+  const expectedKeywords = normExpected
+    .split(' ')
+    .filter((w) => w.length > 1 && !STOPWORDS.has(w));
+  const userTokenSet = new Set(normUser.split(' '));
+  const matchedCount = expectedKeywords.filter((w) => userTokenSet.has(w)).length;
+  const keywordCoverage = expectedKeywords.length > 0 ? matchedCount / expectedKeywords.length : 0;
+
+  if (!grammar.hasErrors && keywordCoverage >= 0.6) {
+    return {
+      isCorrect: true,
+      score: Math.max(85, grammar.fluencyScore),
+      feedbackEnglish: `Great natural phrasing! ${translation.explanation}`,
+      tamilExplanation: translation.tamilExplanation,
+      expectedEnglish: translation.expectedEnglish,
+    };
+  }
+
+  return {
+    isCorrect: false,
+    score: grammar.fluencyScore,
+    feedbackEnglish: grammar.hasErrors ? grammar.explanation : translation.explanation,
+    tamilExplanation: translation.tamilExplanation,
+    expectedEnglish: translation.expectedEnglish,
+  };
+}
+
+/** Generates Nila's conversational reply + grammar feedback during Lesson Stage 4 (Real Talk). */
+export async function sendLessonRealTalkReply(
+  history: ChatMessage[],
+  userMessage: string,
+  lesson: SupernovaClass
+): Promise<{ reply: string; feedback: GrammarCorrection }> {
+  const feedback = await analyzeSentenceGrammar(userMessage);
+
+  if (userGeminiApiKey) {
+    const contents = [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: `You are Nila, an encouraging English conversation partner for a Tamil speaker finishing "${lesson.title}".
+Goal: ${lesson.speakingChallenge.prompt}
+Target grammar pattern: ${lesson.grammarTopic}
+Respond warmly in natural spoken English (1-2 short sentences) reacting specifically to what the learner said, and ask one simple, engaging follow-up question.`,
+          },
+        ],
+      },
+      ...history.slice(-6).map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      {
+        role: 'user',
+        parts: [{ text: userMessage }],
+      },
+    ];
+
+    const json = await callGeminiWithTimeout(userGeminiApiKey, {
+      contents,
+      generationConfig: { maxOutputTokens: 130, temperature: 0.7 },
+    });
+
+    const aiReply = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (aiReply) {
+      return { reply: aiReply.trim(), feedback };
+    }
+  }
+
+  const userTurnNum = history.filter((m) => m.role === 'user').length;
+  const sampleNative = lesson.speakingChallenge.sampleNativeResponse;
+  const correctionTip = feedback.hasErrors
+    ? `Quick tip: try "${feedback.correctedSentence}". `
+    : '';
+
+  const localReplies = [
+    `${correctionTip}Nice! That sounds natural for "${lesson.grammarTopic}". Can you add one more detail or tell me why?`,
+    `${correctionTip}Awesome conversation flow! For an even more natural touch, natives also say: "${sampleNative}". Ready to wrap up, or want one more turn?`,
+  ];
+
+  const reply = localReplies[Math.min(userTurnNum - 1, localReplies.length - 1)] || localReplies[0];
+  return { reply, feedback };
 }

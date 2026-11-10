@@ -4,6 +4,8 @@ import { STARTER_VOCABULARY } from '../src/api/dictionary';
 import {
   localGrammarDiagnosis,
   generateLocalScenarioReply,
+  checkLessonTranslation,
+  sendLessonRealTalkReply,
 } from '../src/api/supernovaAi';
 import {
   computeLeagueRankName,
@@ -142,6 +144,45 @@ for (const word of STARTER_VOCABULARY) {
   assert(!!word.word && !!word.definition && !!word.tamilMeaning, `Incomplete word entry: ${word.word}`);
 }
 
-console.log(
-  `ALL CHECKS PASSED: ${allClasses.length} classes, ${ruleCases.length} grammar rules, ${SCENARIOS.length} scenarios, dynamic leaderboard, and starter vocabulary verified.`
-);
+// ---------------------------------------------------------------
+// 6. Active Q&A Translation & Real Talk Lesson Engine
+// ---------------------------------------------------------------
+async function runAsyncChecks() {
+  const firstClass = SUPERNOVA_LEVELS[0].classes[0];
+  const exactRes = await checkLessonTranslation(
+    firstClass.translation.expectedEnglish,
+    firstClass.translation
+  );
+  assertEqual(exactRes.isCorrect, true, 'Exact translation answer should pass');
+  assertEqual(exactRes.score, 100, 'Exact translation answer should score 100');
+
+  const secondClass = SUPERNOVA_LEVELS[0].classes[1];
+  const expandedRes = await checkLessonTranslation(
+    'He does not know your phone number.',
+    secondClass.translation
+  );
+  assertEqual(expandedRes.isCorrect, true, 'Contraction expansion ("does not" vs "doesn\'t") should pass');
+
+  const badRes = await checkLessonTranslation(
+    "He don't know your phone number.",
+    secondClass.translation
+  );
+  assertEqual(badRes.isCorrect, false, 'Common error ("He don\'t") must fail Q&A translation');
+
+  const realTalk = await sendLessonRealTalkReply(
+    [{ id: 'u1', role: 'user', content: 'Hi Nila! I am Alex and I work in Chennai.', timestamp: Date.now() }],
+    'Hi Nila! I am Alex and I work in Chennai.',
+    firstClass
+  );
+  assert(realTalk.reply.trim().length > 10, 'Real Talk reply should be non-empty');
+  assert(realTalk.feedback.fluencyScore >= 70, 'Natural intro should receive high fluency score');
+
+  console.log(
+    `ALL CHECKS PASSED: ${allClasses.length} classes, ${ruleCases.length} grammar rules, ${SCENARIOS.length} scenarios, dynamic leaderboard, starter vocabulary, Q&A translation, and Real Talk verified.`
+  );
+}
+
+runAsyncChecks().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
