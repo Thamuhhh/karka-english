@@ -112,14 +112,17 @@ function cacheAudioUri(key: string, uri: string) {
 /** Splits Tamil explanations containing quoted English phrases so offline TTS pronounces both cleanly. */
 function splitMixedTamilEnglishSegments(text: string): BilingualSpeechSegment[] {
   const segments: BilingualSpeechSegment[] = [];
-  const englishPattern = /([A-Za-z][A-Za-z0-9'\-.,!?:/\s]*[A-Za-z0-9!?']|[A-Za-z]+)/g;
+  const tamilOnlyCount = (chunk: string) => chunk.replace(/[\s"'.,!?\-—()]/g, '').length;
+  const englishPattern = /([A-Za-z][A-Za-z0-9'\s.,!?]*[A-Za-z0-9!?']|[A-Za-z]{2,})/g;
   let lastIdx = 0;
   let match: RegExpExecArray | null;
 
   while ((match = englishPattern.exec(text)) !== null) {
     if (match.index > lastIdx) {
       const tamilChunk = text.slice(lastIdx, match.index).replace(/["“”]/g, '').trim();
-      if (tamilChunk) segments.push({ text: tamilChunk, lang: 'ta-IN' });
+      if (tamilChunk && tamilOnlyCount(tamilChunk) >= 3) {
+        segments.push({ text: tamilChunk, lang: 'ta-IN' });
+      }
     }
     const enChunk = match[0].trim();
     if (enChunk) segments.push({ text: enChunk, lang: 'en' });
@@ -128,7 +131,9 @@ function splitMixedTamilEnglishSegments(text: string): BilingualSpeechSegment[] 
 
   if (lastIdx < text.length) {
     const tailChunk = text.slice(lastIdx).replace(/["“”]/g, '').trim();
-    if (tailChunk) segments.push({ text: tailChunk, lang: 'ta-IN' });
+    if (tailChunk && tamilOnlyCount(tailChunk) >= 2) {
+      segments.push({ text: tailChunk, lang: 'ta-IN' });
+    }
   }
 
   return segments.length > 0 ? segments : [{ text, lang: 'ta-IN' }];
@@ -245,7 +250,7 @@ async function speakWithLanguage(
     Speech.speak(text, {
       language,
       ...(voiceId ? { voice: voiceId } : {}),
-      rate: language === 'ta-IN' ? Math.min(baseRate, 0.92) : baseRate,
+      rate: language === 'ta-IN' ? Math.max(baseRate, 1.0) : baseRate,
       pitch: 1.0,
       onDone: finishOnce,
       onStopped: finishOnce,
@@ -289,7 +294,7 @@ async function playCachedOrSynthesizedAudio(
 
     const { sound } = await Audio.Sound.createAsync(
       { uri: wavUri },
-      { shouldPlay: true }
+      { shouldPlay: true, rate: 1.08, shouldCorrectPitch: true }
     );
     if (sequenceToken !== activeSequenceId) {
       await sound.unloadAsync().catch(() => {});

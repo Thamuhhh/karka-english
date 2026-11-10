@@ -1038,8 +1038,8 @@ export async function synthesizeGeminiSpeech(
     accent === 'en-GB' ? 'British' : accent === 'en-AU' ? 'Australian' : 'American';
   const stylePrompt =
     mode === 'tamil-coach'
-      ? 'You are Nila, a warm, friendly Chennai Tamil English tutor speaking naturally to a friend. Speak Tamil phrases in natural everyday spoken Tamil slang, and pronounce English words or quotes in crisp, clear English.'
-      : `You are Nila, a clear and warm English tutor speaking with an authentic, relaxed ${accentLabel} accent.`;
+      ? 'You are Nila, a lively, friendly young Tamil English coach from Chennai. Speak at a brisk, natural conversational pace without dragging or long pauses. Read the Tamil parts in warm everyday Chennai Tamil slang, and switch cleanly to clear English on English words.'
+      : `You are Nila, a lively, clear English tutor speaking at a natural upbeat ${accentLabel} conversational pace.`;
 
   const json = await callGeminiWithTimeout(
     activeKey,
@@ -1053,13 +1053,13 @@ export async function synthesizeGeminiSpeech(
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: 'Kore',
+              voiceName: 'Zephyr',
             },
           },
         },
       },
     },
-    14000,
+    9000,
     {
       models: GEMINI_TTS_MODELS,
       isValidResponse: (data) => Boolean(extractInlineAudio(data)),
