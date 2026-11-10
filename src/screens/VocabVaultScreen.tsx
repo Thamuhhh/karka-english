@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { UserStats, WordDefinition } from '../types';
@@ -29,6 +29,8 @@ interface VocabVaultScreenProps {
 }
 
 type VocabFilter = 'all' | 'review' | 'mastered';
+
+const MAX_CONTENT_WIDTH = 480;
 
 export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
   stats,
@@ -77,6 +79,8 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
     filteredWords.length > 0 ? Math.min(activeCardIndex, filteredWords.length - 1) : 0;
   const currentWord = filteredWords[safeIndex] || wordList[0] || STARTER_VOCABULARY[0];
   const isCurrentMastered = masteredSet.has(currentWord.word.toLowerCase());
+  const masteryPct =
+    wordList.length > 0 ? Math.round((masteredSet.size / wordList.length) * 100) : 0;
 
   const handleSearch = async (overrideWord?: string) => {
     const q = (overrideWord ?? searchQuery).trim();
@@ -106,7 +110,7 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
       } else {
         setSearchError(`Could not find "${q}" in English dictionary. Check spelling and try again.`);
       }
-    } catch (e) {
+    } catch {
       setSearchError('Dictionary service unreachable right now. Please try again.');
     } finally {
       setIsSearching(false);
@@ -150,38 +154,43 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
     handleNextWord();
   };
 
+  const hasQuery = searchQuery.trim().length > 0;
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, embedded && styles.contentEmbedded]}
+      showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      {embedded ? (
-        <View style={styles.embeddedMetaRow}>
-          <Text style={styles.embeddedMetaText}>
+      {/* Corporate Executive Header & Progress Metric */}
+      <View style={[styles.headerRow, embedded && styles.headerRowEmbedded]}>
+        <View style={styles.headerTextBlock}>
+          {!embedded && <Text style={styles.title}>Vocabulary Vault</Text>}
+          <Text style={styles.subtitle}>
             {masteredSet.size} of {wordList.length} words mastered
           </Text>
         </View>
-      ) : (
-        <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="book" size={20} color={THEME.colors.secondary} />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.title}>Vocabulary Vault</Text>
-            <Text style={styles.subtitle}>
-              {masteredSet.size} of {wordList.length} words mastered
-            </Text>
-          </View>
-        </View>
-      )}
+        <Text style={styles.pctStat}>{masteryPct}%</Text>
+      </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={18} color={THEME.colors.textMuted} style={{ marginRight: 8 }} />
+      {/* Thin Executive Progress Hairline */}
+      <View style={styles.progressTrack}>
+        {masteryPct > 0 && (
+          <LinearGradient
+            colors={['#7F43FE', '#A78BFA']}
+            style={[styles.progressFill, { width: `${masteryPct}%` }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        )}
+      </View>
+
+      {/* Minimalist Search Command Bar */}
+      <View style={[styles.searchBar, hasQuery && styles.searchBarActive]}>
+        <Ionicons name="search" size={16} color={THEME.colors.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search any English word (e.g. serendipity)..."
+          placeholder="Look up any word (e.g. leverage, articulate)..."
           placeholderTextColor={THEME.colors.textMuted}
           value={searchQuery}
           onChangeText={(txt) => {
@@ -194,25 +203,32 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
         {isSearching ? (
           <ActivityIndicator size="small" color={THEME.colors.primaryGlow} />
         ) : (
-          <TouchableOpacity onPress={() => handleSearch()} style={styles.searchBtn}>
-            <Text style={styles.searchBtnText}>Look Up</Text>
+          <TouchableOpacity
+            onPress={() => handleSearch()}
+            disabled={!hasQuery}
+            style={[styles.searchBtn, !hasQuery && styles.searchBtnDisabled]}
+            activeOpacity={0.82}
+          >
+            <Text style={[styles.searchBtnText, !hasQuery && styles.searchBtnTextMuted]}>
+              Lookup
+            </Text>
           </TouchableOpacity>
         )}
       </View>
 
       {searchError && (
-        <View style={styles.errorBanner}>
-          <Ionicons name="alert-circle-outline" size={15} color={THEME.colors.warning} />
-          <Text style={styles.errorBannerText}>{searchError}</Text>
+        <View style={styles.errorStrip}>
+          <Ionicons name="alert-circle-outline" size={15} color={THEME.colors.gold} />
+          <Text style={styles.errorText}>{searchError}</Text>
         </View>
       )}
 
-      {/* Filter Pills */}
-      <View style={styles.filterRow}>
+      {/* Corporate Segmented Filter Track */}
+      <View style={styles.filterTrack}>
         {(
           [
             { id: 'all', label: `All (${wordList.length})` },
-            { id: 'review', label: `To Review (${Math.max(0, wordList.length - masteredSet.size)})` },
+            { id: 'review', label: `Review (${Math.max(0, wordList.length - masteredSet.size)})` },
             { id: 'mastered', label: `Mastered (${masteredSet.size})` },
           ] as { id: VocabFilter; label: string }[]
         ).map((tab) => {
@@ -220,14 +236,15 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
           return (
             <TouchableOpacity
               key={tab.id}
-              style={[styles.filterPill, active && styles.filterPillActive]}
+              style={[styles.filterSegment, active && styles.filterSegmentActive]}
               onPress={() => {
                 setFilter(tab.id);
                 setActiveCardIndex(0);
                 setIsFlipped(false);
               }}
+              activeOpacity={0.82}
             >
-              <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+              <Text style={[styles.filterText, active && styles.filterTextActive]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -236,120 +253,138 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
       </View>
 
       {filteredWords.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Ionicons name="checkmark-done-circle-outline" size={34} color={THEME.colors.primaryGlow} />
+        <View style={styles.emptyState}>
+          <Ionicons
+            name="checkmark-done-circle-outline"
+            size={30}
+            color={THEME.colors.primaryGlow}
+          />
           <Text style={styles.emptyTitle}>
-            {filter === 'review' ? 'All current words mastered!' : 'No mastered words yet'}
+            {filter === 'review' ? 'All words mastered' : 'No mastered words yet'}
           </Text>
           <Text style={styles.emptySub}>
             {filter === 'review'
-              ? 'Search a new word above to expand your deck.'
-              : 'Tap "Mastered" on flashcards to track your progress.'}
+              ? 'Look up a new word above to expand your deck.'
+              : 'Tap Mark Mastered on any card to build your deck.'}
           </Text>
         </View>
       ) : (
         <>
-          <View style={styles.cardIndicatorRow}>
+          {/* Card Index & Level Metadata Line */}
+          <View style={styles.metaRow}>
             <Text style={styles.cardCounter}>
-              CARD {safeIndex + 1} OF {filteredWords.length}
+              {String(safeIndex + 1).padStart(2, '0')} / {String(filteredWords.length).padStart(2, '0')}
             </Text>
-            <View style={styles.cardBadgesRight}>
+            <View style={styles.metaRight}>
               {isCurrentMastered && (
-                <View style={styles.masteredTag}>
-                  <Ionicons name="checkmark-circle" size={11} color={THEME.colors.primaryGlow} />
-                  <Text style={styles.masteredTagText}>MASTERED</Text>
+                <View style={styles.masteredStatus}>
+                  <View style={styles.masteredDot} />
+                  <Text style={styles.masteredStatusText}>Mastered</Text>
                 </View>
               )}
-              <View style={styles.cefrTag}>
-                <Text style={styles.cefrTagText}>CEFR {currentWord.cefrLevel}</Text>
-              </View>
+              <Text style={styles.cefrLabel}>CEFR {currentWord.cefrLevel}</Text>
             </View>
           </View>
 
+          {/* Clean Corporate Executive Word Sheet */}
           <TouchableOpacity
-            style={styles.flashcard}
-            activeOpacity={0.9}
+            style={styles.wordSheet}
+            activeOpacity={0.92}
             onPress={() => setIsFlipped(!isFlipped)}
           >
-            <View style={styles.cardInner}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.partOfSpeech}>{currentWord.partOfSpeech}</Text>
-                <TouchableOpacity
-                  style={[styles.audioBtn, isPlayingAudio && styles.audioBtnActive]}
-                  onPress={handlePlayAudio}
-                >
-                  <Ionicons
-                    name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
-                    size={22}
-                    color={THEME.colors.text}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.cardWord}>{currentWord.word}</Text>
-              <Text style={styles.cardPhonetic}>{currentWord.phonetic}</Text>
-
-              {isFlipped ? (
-                <View style={styles.revealedSection}>
-                  <View style={styles.divider} />
-                  <Text style={styles.defLabel}>DEFINITION</Text>
-                  <Text style={styles.defText}>{currentWord.definition}</Text>
-
-                  <View style={styles.tamilBox}>
-                    <Text style={styles.tamilLabel}>தமிழ் அர்த்தம்:</Text>
-                    <Text style={styles.tamilText}>{currentWord.tamilMeaning}</Text>
-                  </View>
-
-                  <Text style={styles.exampleLabel}>EXAMPLE SENTENCE</Text>
-                  <Text style={styles.exampleText}>"{currentWord.example}"</Text>
-
-                  {currentWord.synonyms.length > 0 && (
-                    <View style={styles.synonymsSection}>
-                      <Text style={styles.synonymsLabel}>SYNONYMS</Text>
-                      <View style={styles.synonymsRow}>
-                        {currentWord.synonyms.map((s, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            style={styles.synonymPill}
-                            onPress={() => handleSearch(s)}
-                          >
-                            <Text style={styles.synonymText}>{s}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                </View>
-              ) : (
-                <View style={styles.tapToReveal}>
-                  <MaterialCommunityIcons name="gesture-tap" size={20} color={THEME.colors.primaryGlow} />
-                  <Text style={styles.tapText}>Tap to reveal meaning & Tamil explanation</Text>
-                </View>
-              )}
+            <View style={styles.sheetTopRow}>
+              <Text style={styles.posEyebrow}>{currentWord.partOfSpeech}</Text>
+              <TouchableOpacity
+                style={[styles.audioBtn, isPlayingAudio && styles.audioBtnActive]}
+                onPress={handlePlayAudio}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons
+                  name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
+                  size={18}
+                  color={isPlayingAudio ? '#FFFFFF' : THEME.colors.primaryGlow}
+                />
+              </TouchableOpacity>
             </View>
+
+            <Text style={styles.wordTitle}>{currentWord.word}</Text>
+            {!!currentWord.phonetic && (
+              <Text style={styles.wordPhonetic}>{currentWord.phonetic}</Text>
+            )}
+
+            {isFlipped ? (
+              <View style={styles.detailsStack}>
+                <View style={styles.sheetDivider} />
+
+                <Text style={styles.fieldEyebrow}>DEFINITION</Text>
+                <Text style={styles.defBody}>{currentWord.definition}</Text>
+
+                {/* Left-Accented Tamil Explanation (Zero Heavy Box) */}
+                <View style={styles.tamilStrip}>
+                  <Text style={styles.fieldEyebrow}>TAMIL MEANING</Text>
+                  <Text style={styles.tamilBody}>{currentWord.tamilMeaning}</Text>
+                </View>
+
+                <Text style={styles.fieldEyebrow}>USAGE IN CONTEXT</Text>
+                <Text style={styles.exampleBody}>"{currentWord.example}"</Text>
+
+                {currentWord.synonyms.length > 0 && (
+                  <View style={styles.synonymsWrap}>
+                    <Text style={styles.fieldEyebrow}>SYNONYMS</Text>
+                    <View style={styles.chipsRow}>
+                      {currentWord.synonyms.map((s, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.synonymChip}
+                          onPress={() => handleSearch(s)}
+                          activeOpacity={0.78}
+                        >
+                          <Text style={styles.synonymChipText}>{s}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.revealPrompt}>
+                <Ionicons name="eye-outline" size={16} color={THEME.colors.textMuted} />
+                <Text style={styles.revealText}>Tap card to inspect definition &amp; usage</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
+          {/* Clean Executive Action Bar */}
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.navBtn} onPress={handlePrevWord} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={20} color={THEME.colors.text} />
+            <TouchableOpacity style={styles.navCircle} onPress={handlePrevWord} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={18} color={THEME.colors.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.masteredTouchable} onPress={handleMastered} activeOpacity={0.85}>
-              <LinearGradient
-                colors={THEME.gradients.primary}
-                style={styles.masteredBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.masteredBtnText}>
-                  {isCurrentMastered ? 'Review Again (+5 XP)' : 'Mark Mastered (+15 XP)'}
-                </Text>
-              </LinearGradient>
+            <TouchableOpacity
+              style={styles.masterBtnWrap}
+              onPress={handleMastered}
+              activeOpacity={0.86}
+            >
+              {isCurrentMastered ? (
+                <View style={styles.reviewAgainBtn}>
+                  <Ionicons name="refresh" size={16} color={THEME.colors.primaryGlow} />
+                  <Text style={styles.reviewAgainText}>Review Again (+5 XP)</Text>
+                </View>
+              ) : (
+                <LinearGradient
+                  colors={['#8B5CF6', '#7F43FE']}
+                  style={styles.masteredGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="checkmark" size={17} color="#FFFFFF" />
+                  <Text style={styles.masteredText}>Mark Mastered (+15 XP)</Text>
+                </LinearGradient>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.navBtn} onPress={handleNextWord} activeOpacity={0.8}>
-              <Ionicons name="arrow-forward" size={20} color={THEME.colors.text} />
+            <TouchableOpacity style={styles.navCircle} onPress={handleNextWord} activeOpacity={0.8}>
+              <Ionicons name="arrow-forward" size={18} color={THEME.colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </>
@@ -357,22 +392,23 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
 
       {relatedSynonyms.length > 0 && (
         <View style={styles.relatedSection}>
-          <Text style={styles.relatedHeading}>Related Synonyms (Tap to Look Up)</Text>
-          <View style={styles.relatedRow}>
+          <Text style={styles.fieldEyebrow}>RELATED TERMS</Text>
+          <View style={styles.chipsRow}>
             {relatedSynonyms.map((w, idx) => (
               <TouchableOpacity
                 key={idx}
                 style={styles.relatedChip}
                 onPress={() => handleSearch(w)}
+                activeOpacity={0.78}
               >
-                <Text style={styles.relatedChipText}>+{w}</Text>
+                <Text style={styles.relatedChipText}>{w}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       )}
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 32 }} />
     </ScrollView>
   );
 };
@@ -383,379 +419,396 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   content: {
-    padding: 14,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 24,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
   contentEmbedded: {
-    paddingTop: 8,
+    paddingTop: 10,
   },
-  embeddedMetaRow: {
-    marginBottom: 10,
-  },
-  embeddedMetaText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-  },
-  header: {
+
+  /* CORPORATE HEADER & PROGRESS */
+  headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerRowEmbedded: {
+    marginBottom: 7,
+  },
+  headerTextBlock: {
+    flex: 1,
+    paddingRight: 10,
   },
   title: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 18,
-    color: THEME.colors.text,
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
   subtitle: {
     fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    marginTop: 2,
   },
+  pctStat: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
+    color: THEME.colors.primaryGlow,
+  },
+  progressTrack: {
+    width: '100%',
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#221F33',
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 1,
+  },
+
+  /* SEARCH BAR */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: '#151422',
+    borderRadius: 14,
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     marginBottom: 12,
+    gap: 8,
+  },
+  searchBarActive: {
+    borderColor: 'rgba(167, 139, 250, 0.42)',
   },
   searchInput: {
-    fontFamily: THEME.fonts.bodyMedium,
     flex: 1,
-    color: THEME.colors.text,
+    fontFamily: THEME.fonts.bodyMedium,
+    color: '#FFFFFF',
     fontSize: 13.5,
-    paddingVertical: 8,
+    paddingVertical: 7,
   },
   searchBtn: {
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  searchBtnDisabled: {
+    backgroundColor: '#221F33',
   },
   searchBtnText: {
     fontFamily: THEME.fonts.bold,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     fontSize: 12,
   },
-  errorBanner: {
+  searchBtnTextMuted: {
+    color: '#6E6A85',
+  },
+  errorStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.warningBg,
-    borderRadius: 10,
+    borderLeftWidth: 2.5,
+    borderLeftColor: THEME.colors.gold,
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
     marginBottom: 12,
     gap: 8,
   },
-  errorBannerText: {
+  errorText: {
     fontFamily: THEME.fonts.bodyMedium,
     fontSize: 12,
-    color: THEME.colors.warning,
+    color: THEME.colors.gold,
     flex: 1,
   },
-  filterRow: {
+
+  /* SEGMENTED FILTER */
+  filterTrack: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
+    backgroundColor: '#14131E',
+    borderRadius: 11,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    marginBottom: 16,
   },
-  filterPill: {
+  filterSegment: {
     flex: 1,
-    backgroundColor: THEME.colors.surfaceCard,
     paddingVertical: 7,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  filterPillActive: {
-    backgroundColor: 'rgba(127, 67, 254, 0.16)',
-    borderColor: THEME.colors.primary,
+  filterSegmentActive: {
+    backgroundColor: '#231E3A',
   },
-  filterPillText: {
+  filterText: {
     fontFamily: THEME.fonts.medium,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
+    fontSize: 11.5,
+    color: THEME.colors.textMuted,
   },
-  filterPillTextActive: {
+  filterTextActive: {
     fontFamily: THEME.fonts.bold,
-    color: THEME.colors.primaryGlow,
+    color: '#FFFFFF',
   },
-  emptyCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.lg,
-    padding: 28,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+
+  /* EMPTY STATE */
+  emptyState: {
     alignItems: 'center',
+    paddingVertical: 42,
+    paddingHorizontal: 20,
     gap: 8,
   },
   emptyTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 15,
-    color: THEME.colors.text,
+    fontSize: 15.5,
+    color: '#FFFFFF',
   },
   emptySub: {
     fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontSize: 12.5,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 19,
   },
-  cardIndicatorRow: {
+
+  /* METADATA LINE */
+  metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+    paddingHorizontal: 2,
   },
   cardCounter: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    color: THEME.colors.textSecondary,
-    letterSpacing: 0.8,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.9,
   },
-  cardBadgesRight: {
+  metaRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
   },
-  masteredTag: {
+  masteredStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(127, 67, 254, 0.16)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 4,
+    gap: 5,
   },
-  masteredTagText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.primaryGlow,
+  masteredDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.primaryGlow,
   },
-  cefrTag: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  cefrTagText: {
-    fontFamily: THEME.fonts.bold,
-    color: THEME.colors.primaryGlow,
+  masteredStatusText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
+    color: THEME.colors.primaryGlow,
   },
-  flashcard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.lg,
-    padding: 16,
+  cefrLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.textSecondary,
+    letterSpacing: 0.6,
+  },
+
+  /* EXECUTIVE WORD SHEET */
+  wordSheet: {
+    backgroundColor: '#151422',
+    borderRadius: 18,
+    padding: 20,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    minHeight: 205,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  cardInner: {
-    flex: 1,
-  },
-  cardHeader: {
+  sheetTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  partOfSpeech: {
+  posEyebrow: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
-    color: THEME.colors.secondary,
+    fontSize: 10.5,
+    color: THEME.colors.primaryGlow,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1.1,
   },
   audioBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: THEME.colors.surfaceElevated,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   audioBtnActive: {
     backgroundColor: THEME.colors.primary,
   },
-  cardWord: {
+  wordTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 24,
-    color: THEME.colors.text,
+    fontSize: 28,
+    color: '#FFFFFF',
     marginTop: 8,
+    letterSpacing: -0.2,
   },
-  cardPhonetic: {
+  wordPhonetic: {
     fontFamily: THEME.fonts.body,
-    fontSize: 14,
+    fontSize: 13.5,
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
-  tapToReveal: {
+  revealPrompt: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 32,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 8,
+    gap: 7,
+    marginTop: 26,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
-  tapText: {
-    fontFamily: THEME.fonts.semiBold,
+  revealText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 12.5,
-    color: THEME.colors.primaryGlow,
-    marginLeft: 6,
+    color: THEME.colors.textMuted,
   },
-  revealedSection: {
-    marginTop: 14,
+  detailsStack: {
+    marginTop: 16,
   },
-  divider: {
+  sheetDivider: {
     height: 1,
-    backgroundColor: THEME.colors.border,
-    marginBottom: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    marginBottom: 14,
   },
-  defLabel: {
+  fieldEyebrow: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.9,
+    marginBottom: 4,
   },
-  defText: {
+  defBody: {
     fontFamily: THEME.fonts.bodyMedium,
     fontSize: 14.5,
-    color: THEME.colors.text,
-    lineHeight: 21,
-    marginTop: 2,
+    color: '#FFFFFF',
+    lineHeight: 22,
+    marginBottom: 14,
   },
-  tamilBox: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 10,
+  tamilStrip: {
+    borderLeftWidth: 2.5,
+    borderLeftColor: THEME.colors.primary,
+    paddingLeft: 12,
+    marginBottom: 14,
   },
-  tamilLabel: {
-    fontFamily: THEME.fonts.tamilBold,
-    fontSize: 10.5,
-    color: THEME.colors.gold,
-    lineHeight: 17,
-  },
-  tamilText: {
+  tamilBody: {
     fontFamily: THEME.fonts.tamilMedium,
     fontSize: 13.5,
-    color: THEME.colors.text,
-    marginTop: 2,
+    color: '#EFEBFD',
     lineHeight: 23,
   },
-  exampleLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
-    marginTop: 12,
-  },
-  exampleText: {
+  exampleBody: {
     fontFamily: THEME.fonts.body,
     fontSize: 13,
-    color: THEME.colors.text,
-    marginTop: 2,
-    lineHeight: 18,
+    color: '#C9C5DE',
+    lineHeight: 20,
   },
-  synonymsSection: {
-    marginTop: 12,
+  synonymsWrap: {
+    marginTop: 14,
   },
-  synonymsLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
-    marginBottom: 6,
-  },
-  synonymsRow: {
+  chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 7,
+    marginTop: 4,
   },
-  synonymPill: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+  synonymChip: {
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
-  synonymText: {
-    fontFamily: THEME.fonts.bodyMedium,
+  synonymChipText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 12,
-    color: THEME.colors.primaryGlow,
+    color: '#C4B5FD',
   },
+
+  /* ACTION BAR */
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 16,
+    gap: 10,
   },
-  navBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.colors.surfaceCard,
+  navCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#151422',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
   },
-  masteredTouchable: {
-    borderRadius: 14,
+  masterBtnWrap: {
+    flex: 1,
+    borderRadius: 12,
     overflow: 'hidden',
   },
-  masteredBtnGradient: {
+  masteredGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 14,
+    justifyContent: 'center',
+    gap: 7,
+    height: 42,
+    borderRadius: 12,
   },
-  masteredBtnText: {
+  masteredText: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 13,
   },
+  reviewAgainBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#1A172D',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.35)',
+  },
+  reviewAgainText: {
+    fontFamily: THEME.fonts.bold,
+    color: '#C4B5FD',
+    fontSize: 13,
+  },
+
+  /* RELATED TERMS */
   relatedSection: {
     marginTop: 22,
   },
-  relatedHeading: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: THEME.colors.text,
-    marginBottom: 10,
-  },
-  relatedRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
   relatedChip: {
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.045)',
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderRadius: 999,
   },
   relatedChipText: {
     fontFamily: THEME.fonts.medium,
     fontSize: 12,
-    color: THEME.colors.secondary,
+    color: '#D5D0E6',
   },
 });
