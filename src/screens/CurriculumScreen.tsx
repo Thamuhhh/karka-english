@@ -26,15 +26,15 @@ interface CurriculumScreenProps {
   onOpenLeague?: () => void;
 }
 
-const MAX_CONTENT_WIDTH = 520;
-const MAP_HORIZONTAL_PAD = 16;
-const NODE_SIZE = 72;
+const MAX_CONTENT_WIDTH = 480;
+const MAP_HORIZONTAL_PAD = 14;
+const NODE_SIZE = 56;
 const NODE_RADIUS = NODE_SIZE / 2;
-const CARD_HEIGHT = 76;
-const CARD_GAP = 14;
-const ROW_STEP = 148;
-const TOP_OFFSET = 52;
-const TROPHY_SIZE = 82;
+const CARD_HEIGHT = 60;
+const CARD_GAP = 12;
+const ROW_STEP = 122;
+const TOP_OFFSET = 38;
+const TROPHY_SIZE = 66;
 
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
@@ -61,10 +61,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       (cls) => !completedClasses.includes(cls.id)
     )?.id || null;
 
-  const leftNodeCx = NODE_RADIUS + 4;
-  const rightNodeCx = mapWidth - NODE_RADIUS - 4;
+  const leftNodeCx = NODE_RADIUS + 2;
+  const rightNodeCx = mapWidth - NODE_RADIUS - 2;
   const midX = mapWidth / 2;
-  const cardWidth = Math.max(160, mapWidth - NODE_SIZE - CARD_GAP - 8);
+  const cardWidth = Math.max(160, mapWidth - NODE_SIZE - CARD_GAP - 4);
 
   const scrollToUnit = (levelNumber: number) => {
     const y = unitYPositions.current[levelNumber];
@@ -138,18 +138,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Map Overview & Quick-Jump Compass Strip */}
+        {/* Slim Unit Quick-Jump Compass Bar */}
         <View style={styles.compassStrip}>
-          <View style={styles.compassTopRow}>
-            <View style={styles.compassTitleGroup}>
-              <Ionicons name="map-outline" size={16} color={THEME.colors.primaryGlow} />
-              <Text style={styles.compassTitle}>Fluency Journey Map</Text>
-            </View>
-            <Text style={styles.compassProgressLabel}>
-              {completedCount}/{totalClassesCount} ({overallPercent}%)
-            </Text>
-          </View>
-
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -173,6 +163,9 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
               );
             })}
           </ScrollView>
+          <Text style={styles.compassProgressLabel}>
+            {overallPercent}%
+          </Text>
         </View>
 
         {SUPERNOVA_LEVELS.map((level) => {
@@ -195,12 +188,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
           const lastPoint = nodePoints[nodePoints.length - 1];
           const trophyX = midX;
-          const trophyY = lastPoint ? lastPoint.cy + ROW_STEP - 12 : TOP_OFFSET + 60;
+          const trophyY = lastPoint ? lastPoint.cy + ROW_STEP - 8 : TOP_OFFSET + 48;
           const allPoints = [
             ...nodePoints.map((p) => ({ x: p.cx, y: p.cy })),
             { x: trophyX, y: trophyY },
           ];
-          const canvasHeight = trophyY + TROPHY_SIZE / 2 + 46;
+          const canvasHeight = trophyY + TROPHY_SIZE / 2 + 38;
 
           return (
             <View
@@ -268,14 +261,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   {allPoints.slice(0, -1).map((pt, segIdx) => {
                     const next = allPoints[segIdx + 1];
                     const dy = next.y - pt.y;
-                    const cpOffset = dy * 0.56;
+                    const cpOffset = dy * 0.58;
                     const d = `M ${pt.x} ${pt.y} C ${pt.x} ${pt.y + cpOffset}, ${next.x} ${next.y - cpOffset}, ${next.x} ${next.y}`;
                     return (
                       <Path
                         key={`casing-${segIdx}`}
                         d={d}
                         stroke="#1A172B"
-                        strokeWidth={20}
+                        strokeWidth={14}
                         strokeLinecap="round"
                         fill="none"
                       />
@@ -286,7 +279,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   {allPoints.slice(0, -1).map((pt, segIdx) => {
                     const next = allPoints[segIdx + 1];
                     const dy = next.y - pt.y;
-                    const cpOffset = dy * 0.56;
+                    const cpOffset = dy * 0.58;
                     const d = `M ${pt.x} ${pt.y} C ${pt.x} ${pt.y + cpOffset}, ${next.x} ${next.y - cpOffset}, ${next.x} ${next.y}`;
 
                     const segSourceClass = level.classes[segIdx];
@@ -304,8 +297,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                             ? THEME.colors.primaryGlow
                             : '#373254'
                         }
-                        strokeWidth={isSegCompleted ? 5.5 : isSegActive ? 4.5 : 3.5}
-                        strokeDasharray={isSegCompleted ? undefined : '8 8'}
+                        strokeWidth={isSegCompleted ? 4.5 : isSegActive ? 3.5 : 2.5}
+                        strokeDasharray={isSegCompleted ? undefined : '6 7'}
                         strokeLinecap="round"
                         fill="none"
                       />
@@ -320,7 +313,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   const isCurrent = cls.id === nextActiveClassId;
 
                   const emblemSource = getLessonNodeEmblem(cls.id);
-                  const cardLeft = isLeft ? NODE_SIZE + CARD_GAP + 4 : 4;
+                  const cardLeft = isLeft ? NODE_SIZE + CARD_GAP + 2 : 2;
                   const bridgeLeft = isLeft
                     ? cx + NODE_RADIUS - 2
                     : cardLeft + cardWidth - 2;
@@ -642,10 +635,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,
+    overflow: 'hidden',
   },
   mapBackdropImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.65,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.45,
   },
   mapBackdropScrim: {
     ...StyleSheet.absoluteFillObject,
@@ -662,7 +660,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   hudLeftGroup: {
     flexDirection: 'row',
@@ -675,15 +673,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statIcon: {
-    marginRight: 4,
+    marginRight: 3,
   },
   statPillStreak: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 30,
+    height: 26,
     backgroundColor: THEME.colors.goldLight,
-    paddingHorizontal: 9,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
   },
@@ -695,10 +693,10 @@ const styles = StyleSheet.create({
   statPillGems: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 30,
+    height: 26,
     backgroundColor: THEME.colors.secondaryLight,
-    paddingHorizontal: 9,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: 'rgba(6, 182, 212, 0.4)',
   },
@@ -710,10 +708,10 @@ const styles = StyleSheet.create({
   statPillHearts: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 30,
+    height: 26,
     backgroundColor: THEME.colors.errorLight,
-    paddingHorizontal: 9,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.4)',
   },
@@ -725,10 +723,10 @@ const styles = StyleSheet.create({
   statPillLeague: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 30,
+    height: 26,
     backgroundColor: 'rgba(251, 191, 36, 0.12)',
-    paddingHorizontal: 9,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
   },
@@ -740,28 +738,28 @@ const styles = StyleSheet.create({
   missNovaHeaderPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 30,
+    height: 26,
     backgroundColor: THEME.colors.primaryLight,
-    paddingHorizontal: 8,
-    borderRadius: 15,
+    paddingHorizontal: 7,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: THEME.colors.primaryGlow,
   },
   headerAvatarWrap: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     overflow: 'hidden',
   },
   missNovaAvatar: {
-    width: 20,
-    height: 20,
-    transform: [{ scale: 1.08 }],
+    width: 18,
+    height: 18,
+    transform: [{ scale: 1.04 }],
   },
   onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: THEME.colors.accent,
     marginLeft: 4,
   },
@@ -776,55 +774,44 @@ const styles = StyleSheet.create({
   },
   roadmapContent: {
     paddingHorizontal: MAP_HORIZONTAL_PAD,
-    paddingTop: 14,
+    paddingTop: 10,
   },
   compassStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(24, 23, 36, 0.9)',
-    borderRadius: THEME.radius.lg,
-    padding: 12,
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    marginBottom: 18,
-  },
-  compassTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  compassTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  compassTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: THEME.colors.text,
+    marginBottom: 12,
+    gap: 8,
   },
   compassProgressLabel: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.colors.accent,
+    paddingHorizontal: 6,
   },
   unitJumpRow: {
-    gap: 8,
+    gap: 6,
   },
   unitJumpPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: THEME.colors.borderLight,
-    gap: 6,
+    gap: 5,
   },
   jumpDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   unitJumpText: {
     fontFamily: THEME.fonts.semiBold,
@@ -837,25 +824,27 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   levelSection: {
-    marginBottom: 28,
+    marginBottom: 20,
   },
   unitBannerCard: {
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
-    height: 178,
-    borderWidth: 1.5,
+    height: 126,
+    borderWidth: 1.25,
     borderColor: 'rgba(127, 67, 254, 0.45)',
-    marginBottom: 6,
+    marginBottom: 4,
     backgroundColor: THEME.colors.surfaceCard,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
     justifyContent: 'space-between',
   },
   unitBannerBgImage: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    top: 0,
     width: '100%',
     height: '100%',
   },
@@ -866,50 +855,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
   },
   cefrBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 7,
   },
   cefrBadgeText: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 10,
+    fontSize: 9,
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   unitNumberPill: {
     backgroundColor: 'rgba(14, 14, 20, 0.72)',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.14)',
   },
   unitNumberText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontSize: 9,
     color: THEME.colors.text,
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
   },
   unitBannerFooter: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
   },
   unitTitleText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 17,
+    fontSize: 15,
     color: '#FFFFFF',
     marginBottom: 2,
   },
   unitDescText: {
     fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontSize: 11,
     color: '#D2CEE3',
-    lineHeight: 16,
-    marginBottom: 10,
+    lineHeight: 14,
+    marginBottom: 7,
   },
   unitProgressContainer: {
     flexDirection: 'row',
@@ -917,19 +906,19 @@ const styles = StyleSheet.create({
   },
   unitProgressBarBg: {
     flex: 1,
-    height: 7,
+    height: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginRight: 10,
+    marginRight: 8,
   },
   unitProgressBarFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   unitProgressText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11,
+    fontSize: 10,
     color: THEME.colors.accent,
   },
 
@@ -953,7 +942,7 @@ const styles = StyleSheet.create({
     height: NODE_SIZE,
     borderRadius: NODE_RADIUS,
     backgroundColor: THEME.colors.surfaceCard,
-    borderBottomWidth: 5,
+    borderBottomWidth: 4,
     borderBottomColor: '#0E0E14',
     justifyContent: 'center',
     alignItems: 'center',
@@ -961,23 +950,23 @@ const styles = StyleSheet.create({
   },
   steppingStoneCompleted: {
     borderColor: THEME.colors.accent,
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderBottomColor: THEME.colors.accentBorder,
     shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
   },
   steppingStoneCurrent: {
     borderColor: THEME.colors.primary,
-    borderWidth: 3.5,
+    borderWidth: 3,
     borderBottomColor: THEME.colors.primaryBorder,
     shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.65,
-    shadowRadius: 14,
-    elevation: 9,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8,
   },
   steppingStoneLocked: {
     borderColor: '#363252',
@@ -985,37 +974,37 @@ const styles = StyleSheet.create({
     borderBottomColor: '#141320',
   },
   nodeImageClip: {
-    width: NODE_SIZE - 8,
-    height: NODE_SIZE - 8,
-    borderRadius: (NODE_SIZE - 8) / 2,
+    width: NODE_SIZE - 6,
+    height: NODE_SIZE - 6,
+    borderRadius: (NODE_SIZE - 6) / 2,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
   nodeArtworkImage: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.09 }],
+    transform: [{ scale: 1.04 }],
   },
   completedBadgeCheck: {
     position: 'absolute',
     right: -2,
     bottom: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 19,
+    height: 19,
+    borderRadius: 9.5,
     backgroundColor: THEME.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#0E0E14',
   },
   lockedBadgeSeal: {
     position: 'absolute',
     right: -2,
     bottom: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 19,
+    height: 19,
+    borderRadius: 9.5,
     backgroundColor: '#242138',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1029,17 +1018,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(24, 23, 36, 0.94)',
-    borderRadius: 16,
-    borderWidth: 1.25,
+    borderRadius: 14,
+    borderWidth: 1,
     borderColor: THEME.colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     zIndex: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 4,
   },
   stationCardCompleted: {
     borderColor: 'rgba(16, 185, 129, 0.45)',
@@ -1059,54 +1048,54 @@ const styles = StyleSheet.create({
   stationMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   stationIndexText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontSize: 9.5,
     color: THEME.colors.textMuted,
-    letterSpacing: 0.7,
+    letterSpacing: 0.6,
   },
   statusPillNext: {
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
   },
   statusPillTextLight: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 9,
+    fontSize: 8.5,
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   statusPillDone: {
     backgroundColor: 'rgba(16, 185, 129, 0.16)',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
   },
   statusPillTextDone: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 9,
+    fontSize: 8.5,
     color: THEME.colors.accent,
     letterSpacing: 0.5,
   },
   stationDurationText: {
     fontFamily: THEME.fonts.medium,
-    fontSize: 10,
+    fontSize: 9.5,
     color: THEME.colors.textSecondary,
   },
   stationTitleText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13,
+    fontSize: 12.5,
     color: THEME.colors.text,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   stationActionChevron: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1119,38 +1108,38 @@ const styles = StyleSheet.create({
     height: TROPHY_SIZE,
     borderRadius: TROPHY_SIZE / 2,
     backgroundColor: '#181724',
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: THEME.colors.gold,
-    borderBottomWidth: 5,
+    borderBottomWidth: 4,
     borderBottomColor: THEME.colors.goldBorder,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
     zIndex: 4,
   },
   chestImageClip: {
-    width: TROPHY_SIZE - 10,
-    height: TROPHY_SIZE - 10,
-    borderRadius: (TROPHY_SIZE - 10) / 2,
+    width: TROPHY_SIZE - 8,
+    height: TROPHY_SIZE - 8,
+    borderRadius: (TROPHY_SIZE - 8) / 2,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
   chestImage: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.08 }],
+    transform: [{ scale: 1.04 }],
   },
   chestLabelPill: {
     position: 'absolute',
     backgroundColor: 'rgba(251, 191, 36, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
-    paddingVertical: 5,
-    borderRadius: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
     alignItems: 'center',
   },
   chestLabel: {

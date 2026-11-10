@@ -213,21 +213,21 @@ export const LiveVoiceCallScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.rippleRing,
-            { width: 230, height: 230, borderRadius: 115, opacity: 0.15, transform: [{ scale: pulseAnim3 }] },
+            { width: 172, height: 172, borderRadius: 86, opacity: 0.14, transform: [{ scale: pulseAnim3 }] },
           ]}
         />
         {/* Animated Ripple 2 */}
         <Animated.View
           style={[
             styles.rippleRing,
-            { width: 190, height: 190, borderRadius: 95, opacity: 0.25, transform: [{ scale: pulseAnim2 }] },
+            { width: 146, height: 146, borderRadius: 73, opacity: 0.24, transform: [{ scale: pulseAnim2 }] },
           ]}
         />
         {/* Animated Ripple 1 */}
         <Animated.View
           style={[
             styles.rippleRing,
-            { width: 150, height: 150, borderRadius: 75, opacity: 0.4, transform: [{ scale: pulseAnim1 }] },
+            { width: 120, height: 120, borderRadius: 60, opacity: 0.36, transform: [{ scale: pulseAnim1 }] },
           ]}
         />
 
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   avatarStage: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 30,
+    paddingVertical: 16,
     position: 'relative',
   },
   rippleRing: {
@@ -421,11 +421,11 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
   missNovaCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: 'rgba(127, 67, 254, 0.25)',
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -433,29 +433,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   missNovaAvatarImg: {
-    width: 120,
-    height: 120,
-    transform: [{ scale: 1.08 }],
+    width: 96,
+    height: 96,
+    transform: [{ scale: 1.04 }],
   },
   endCallIcon: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
   },
   bubbleMicIcon: {
-    width: 34,
-    height: 34,
+    width: 28,
+    height: 28,
   },
   missNovaName: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 22,
+    fontSize: 18,
     color: THEME.colors.text,
-    marginTop: 14,
+    marginTop: 10,
   },
   statusLabel: {
     fontFamily: THEME.fonts.medium,
-    fontSize: 13,
+    fontSize: 12,
     color: THEME.colors.primaryGlow,
-    marginTop: 4,
+    marginTop: 2,
   },
   subtitleBox: {
     backgroundColor: THEME.colors.surfaceCard,
@@ -576,17 +576,17 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   bigMicBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: THEME.colors.primaryGlow,
     shadowColor: THEME.colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
     elevation: 6,
   },
   bigMicBtnActive: {

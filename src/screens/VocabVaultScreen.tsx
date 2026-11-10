@@ -238,24 +238,27 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   content: {
-    padding: 16,
+    padding: 14,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(6, 182, 212, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: THEME.colors.text,
   },
   subtitle: {
@@ -319,10 +322,10 @@ const styles = StyleSheet.create({
   flashcard: {
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: THEME.radius.lg,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    minHeight: 250,
+    minHeight: 205,
   },
   cardInner: {
     flex: 1,
@@ -352,9 +355,9 @@ const styles = StyleSheet.create({
   },
   cardWord: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 30,
+    fontSize: 24,
     color: THEME.colors.text,
-    marginTop: 10,
+    marginTop: 8,
   },
   cardPhonetic: {
     fontFamily: THEME.fonts.body,

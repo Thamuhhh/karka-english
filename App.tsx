@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -75,7 +74,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar style="light" backgroundColor={THEME.colors.background} />
 
         {/* Dedicated Full-Screen Lesson Player (Hides tabs when in a class) */}
@@ -99,11 +98,13 @@ export default function App() {
               {activeTab === 'call' && <LiveVoiceCallScreen />}
               {activeTab === 'grammar' && <GrammarNovaScreen />}
               {activeTab === 'vocab' && <VocabVaultScreen />}
-              {activeTab === 'league' && <LeaderboardScreen />}
+              {activeTab === 'league' && (
+                <LeaderboardScreen onBack={() => setActiveTab('learn')} />
+              )}
               {activeTab === 'profile' && <ProfileScreen />}
             </View>
 
-            {/* Ultra-Premium Supernova Bottom Navigation Bar */}
+            {/* Compact Mobile-Scaled Bottom Navigation Bar */}
             <View style={styles.bottomNavWrapper}>
               <View style={styles.bottomNav}>
                 <TouchableOpacity
@@ -113,7 +114,7 @@ export default function App() {
                 >
                   <MaterialCommunityIcons
                     name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
-                    size={24}
+                    size={21}
                     color={activeTab === 'learn' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
                   />
                   <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
@@ -128,7 +129,7 @@ export default function App() {
                 >
                   <MaterialCommunityIcons
                     name={activeTab === 'grammar' ? 'chat-question' : 'chat-question-outline'}
-                    size={22}
+                    size={20}
                     color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
                   />
                   <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
@@ -148,7 +149,7 @@ export default function App() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <Ionicons name="mic" size={24} color="#FFFFFF" />
+                    <Ionicons name="mic" size={20} color="#FFFFFF" />
                   </LinearGradient>
                   <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveCall]}>
                     Speak
@@ -162,7 +163,7 @@ export default function App() {
                 >
                   <Ionicons
                     name={activeTab === 'vocab' ? 'book' : 'book-outline'}
-                    size={22}
+                    size={20}
                     color={activeTab === 'vocab' ? THEME.colors.accent : THEME.colors.textMuted}
                   />
                   <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveAccent]}>
@@ -177,7 +178,7 @@ export default function App() {
                 >
                   <Ionicons
                     name={activeTab === 'profile' ? 'person' : 'person-outline'}
-                    size={22}
+                    size={20}
                     color={activeTab === 'profile' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
                   />
                   <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
@@ -208,25 +209,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomNavWrapper: {
-    backgroundColor: THEME.colors.background,
+    backgroundColor: THEME.colors.surfaceDark,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
   },
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surfaceDark,
-    paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 22 : 10,
+    paddingVertical: 6,
+    paddingBottom: 6,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingVertical: 4,
-    borderRadius: 14,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
   navItemActive: {
     backgroundColor: 'rgba(127, 67, 254, 0.08)',
@@ -235,23 +239,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
   callTabGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginTop: -22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginTop: -16,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#A78BFA',
     shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
-    borderBottomWidth: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
+    borderBottomWidth: 3,
     borderBottomColor: '#5B21B6',
   },
   navText: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+
+interface LeaderboardScreenProps {
+  onBack?: () => void;
+}
 
 interface LeaderboardUser {
   rank: number;
@@ -35,11 +39,20 @@ const LEADERBOARD_DATA: LeaderboardUser[] = [
   { rank: 10, name: 'Swetha K.', initials: 'SK', color: '#6366F1', xp: 720, streak: 2 },
 ];
 
-export const LeaderboardScreen: React.FC = () => {
-  const [activeLeague, setActiveLeague] = useState<'bronze' | 'silver' | 'gold'>('gold');
-
+export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {onBack && (
+        <View style={styles.topBackRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+            <Ionicons name="chevron-back" size={16} color={THEME.colors.text} />
+            <Text style={styles.backBtnText}>Course</Text>
+          </TouchableOpacity>
+          <Text style={styles.screenHeaderTitle}>Leaderboard</Text>
+          <View style={{ width: 68 }} />
+        </View>
+      )}
+
       {/* League Header Banner */}
       <LinearGradient
         colors={THEME.gradients.banner}
@@ -53,7 +66,7 @@ export const LeaderboardScreen: React.FC = () => {
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.leagueLabel}>CURRENT LEAGUE</Text>
-            <Text style={styles.leagueTitle}>Gold Supernova League</Text>
+            <Text style={styles.leagueTitle}>Gold League</Text>
             <Text style={styles.leagueSubtitle}>Top 5 advance to Diamond League</Text>
           </View>
         </View>
@@ -159,24 +172,54 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   content: {
-    padding: 16,
+    padding: 14,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+  },
+  topBackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceCard,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  backBtnText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12,
+    color: THEME.colors.text,
+    marginLeft: 2,
+  },
+  screenHeaderTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 15,
+    color: THEME.colors.text,
   },
   leagueBanner: {
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: THEME.radius.lg,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   leagueTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   leagueIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#181724',
     borderWidth: 2,
     borderColor: 'rgba(251, 191, 36, 0.5)',
@@ -187,7 +230,7 @@ const styles = StyleSheet.create({
   leagueTrophyImg: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.08 }],
+    transform: [{ scale: 1.04 }],
   },
   leagueLabel: {
     fontFamily: THEME.fonts.bold,
@@ -197,27 +240,27 @@ const styles = StyleSheet.create({
   },
   leagueTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 18,
+    fontSize: 16,
     color: THEME.colors.text,
     marginTop: 2,
   },
   leagueSubtitle: {
     fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
   timerBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
   },
   timerText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.colors.primaryGlow,
     marginLeft: 6,
   },
@@ -227,20 +270,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: THEME.radius.lg,
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   podiumCol: {
     alignItems: 'center',
     width: '30%',
   },
   podiumAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: THEME.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
@@ -249,11 +292,11 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   podiumAvatarGold: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderColor: THEME.colors.gold,
-    borderWidth: 3,
+    borderWidth: 2.5,
   },
   podiumInitials: {
     fontFamily: THEME.fonts.bold,
