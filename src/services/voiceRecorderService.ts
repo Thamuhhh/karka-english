@@ -108,16 +108,17 @@ export async function finishAudioCapture(
     const uri = recording.getURI();
 
     await recording.stopAndUnloadAsync();
-    await Audio.setAudioModeAsync({
+    const restoreAudioPromise = Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
     }).catch(() => {});
 
     if (!uri || (durationMs > 0 && durationMs < 350)) {
+      await restoreAudioPromise;
       return null;
     }
 
-    const blob = await loadUriAsBlob(uri);
+    const [blob] = await Promise.all([loadUriAsBlob(uri), restoreAudioPromise]);
     const base64 = await readBlobAsBase64(blob);
     if (!base64 || base64.length < 800) {
       return null;

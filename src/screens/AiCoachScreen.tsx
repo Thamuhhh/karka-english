@@ -81,10 +81,9 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
       };
 
       setMessages([...newHistory, botMsg]);
-      await incrementMetric('conversationsDone', 1);
-
-      // Automatically play assistant audio for immersive listening
+      // Automatically play assistant audio immediately without waiting for AsyncStorage
       speakAssistantMessage(botMsg.id, reply);
+      await incrementMetric('conversationsDone', 1);
     } catch (e) {
       console.warn('Chat error:', e);
     } finally {

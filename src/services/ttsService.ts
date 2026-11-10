@@ -21,6 +21,11 @@ async function ensureVoicesLoaded(): Promise<Speech.Voice[]> {
   }
 }
 
+/** Preloads available device speech voices so first spoken turn starts without discovery delay. */
+export function warmupVoices(): void {
+  void ensureVoicesLoaded();
+}
+
 async function pickPreferredVoiceId(language: string): Promise<string | undefined> {
   const voices = await ensureVoicesLoaded();
   if (voices.length === 0) return undefined;
@@ -38,7 +43,8 @@ async function pickPreferredVoiceId(language: string): Promise<string | undefine
     const id = `${v.identifier} ${v.name}`.toLowerCase();
     if ((v.language || '').toLowerCase() === targetLower) score += 30;
     if (v.quality === Speech.VoiceQuality.Enhanced) score += 40;
-    if (id.includes('network') || id.includes('neural') || id.includes('wavenet')) score += 25;
+    // Prefer instant on-device voices; Android -network voices add 1-3s streaming lag
+    if (id.includes('network')) score -= 35;
     if (
       id.includes('samantha') ||
       id.includes('karen') ||

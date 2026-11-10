@@ -19,7 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { playSoundEffect } from '../services/soundEffectsService';
-import { speakText, stopAllAudio } from '../services/ttsService';
+import { speakText, stopAllAudio, warmupVoices } from '../services/ttsService';
 import {
   beginAudioCapture,
   finishAudioCapture,
@@ -172,6 +172,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   }, [isAiSpeaking, isUserSpeaking, pulseAnim1, pulseAnim2, waveAnim]);
 
   useEffect(() => {
+    warmupVoices();
     speakAiMessage(messages[0].content);
     return () => {
       stopAllAudio();
@@ -244,11 +245,10 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
       };
 
       setMessages([...newHistory, botMsg]);
+      speakAiMessage(reply);
       await addXp(10);
       const updated = await incrementMetric('conversationsDone', 1);
       onStatsUpdate?.(updated);
-
-      speakAiMessage(reply);
     } catch (e) {
       console.warn('Call error:', e);
       setIsAiSpeaking(false);
@@ -327,11 +327,10 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
       setLastFeedback(result.feedback);
       setMessages((prev) => [...prev, userMsg, botMsg]);
+      speakAiMessage(result.reply);
       await addXp(15);
       const updated = await incrementMetric('conversationsDone', 1);
       onStatsUpdate?.(updated);
-
-      speakAiMessage(result.reply);
     } finally {
       setIsProcessingAudio(false);
     }

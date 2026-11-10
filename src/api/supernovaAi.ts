@@ -62,6 +62,26 @@ function extractCandidateText(data: any): string {
     .trim();
 }
 
+function getModelThinkingLevel(model: string): 'MINIMAL' | 'LOW' {
+  return model.includes('lite') ? 'MINIMAL' : 'LOW';
+}
+
+function withModelPayload(model: string, payload: Record<string, any>): Record<string, any> {
+  if (!payload.generationConfig?.thinkingConfig) {
+    return payload;
+  }
+  return {
+    ...payload,
+    generationConfig: {
+      ...payload.generationConfig,
+      thinkingConfig: {
+        ...payload.generationConfig.thinkingConfig,
+        thinkingLevel: getModelThinkingLevel(model),
+      },
+    },
+  };
+}
+
 interface ProviderAttemptResult {
   data: any | null;
   authOrKeyRejected: boolean;
@@ -70,7 +90,7 @@ interface ProviderAttemptResult {
 
 async function tryEndpointProvider(
   apiKey: string,
-  payload: object,
+  payload: Record<string, any>,
   timeoutMs: number,
   buildEndpoint: EndpointBuilder
 ): Promise<ProviderAttemptResult> {
@@ -87,7 +107,7 @@ async function tryEndpointProvider(
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(withModelPayload(model, payload)),
         ...(controller ? { signal: controller.signal } : {}),
       });
 
@@ -154,7 +174,7 @@ async function tryEndpointProvider(
 
 async function callGeminiWithTimeout(
   apiKey: string,
-  payload: object,
+  payload: Record<string, any>,
   timeoutMs = 10000
 ): Promise<any | null> {
   lastGeminiError = null;
@@ -260,6 +280,7 @@ Respond ONLY with valid JSON without markdown backticks:
     const json = await callGeminiWithTimeout(activeKey, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
+        maxOutputTokens: 320,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingLevel: 'LOW' },
       },
@@ -510,8 +531,8 @@ export function localGrammarDiagnosis(sentence: string): GrammarCorrection {
   const native = hasErrors
     ? corrected
     : baseNoPunct.endsWith('?')
-    ? corrected
-    : `To put it clearly, ${lowerStart}.`;
+      ? corrected
+      : `To put it clearly, ${lowerStart}.`;
 
   return {
     originalSentence: sentence,
@@ -532,26 +553,90 @@ export function localGrammarDiagnosis(sentence: string): GrammarCorrection {
   };
 }
 
-function buildConversationContents(
-  setupPrompt: string,
+async function requestSingleTurnCoachReply(
+  activeKey: string,
+  contextInstruction: string,
   history: ChatMessage[],
   userMessage: string
-) {
-  const recent = history.slice(-6);
+): Promise<{ reply: string; feedback: GrammarCorrection } | null> {
+  const recent = history.slice(-5);
   const last = recent[recent.length - 1];
-  const tail =
+  const prior =
     last && last.role === 'user' && last.content.trim() === userMessage.trim()
       ? recent.slice(0, -1)
       : recent;
+  const recentLines = prior
+    .slice(-4)
+    .map((m) => `${m.role === 'assistant' ? 'Coach' : 'Learner'}: ${m.content}`)
+    .join('\n');
 
-  return [
-    { role: 'user', parts: [{ text: setupPrompt }] },
-    ...tail.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-    { role: 'user', parts: [{ text: userMessage }] },
-  ];
+  const prompt = `${contextInstruction}
+Recent Conversation:
+${recentLines || '(First turn)'}
+Learner just said: "${userMessage}"
+
+Keep explanation and tamilExplanation concise (<=12 words each), reply to 1-2 short natural sentences + one question.
+Respond ONLY with valid JSON:
+{
+  "reply": "string",
+  "hasErrors": boolean,
+  "correctedSentence": "string",
+  "explanation": "concise English grammar note",
+  "tamilExplanation": "concise Tamil grammar note",
+  "nativeIdiomaticVersion": "natural native phrasing",
+  "fluencyScore": number between 40 and 100
+}`;
+
+  const json = await callGeminiWithTimeout(activeKey, {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: 320,
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingLevel: 'LOW' },
+    },
+  });
+
+  const rawText = extractCandidateText(json);
+  if (!rawText) return null;
+
+  try {
+    const parsed = parseModelJson(rawText);
+    const reply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
+    if (!reply) return null;
+
+    const corrected =
+      typeof parsed.correctedSentence === 'string' && parsed.correctedSentence.trim()
+        ? parsed.correctedSentence.trim()
+        : userMessage;
+    const native =
+      typeof parsed.nativeIdiomaticVersion === 'string' && parsed.nativeIdiomaticVersion.trim()
+        ? parsed.nativeIdiomaticVersion.trim()
+        : corrected;
+
+    return {
+      reply,
+      feedback: {
+        originalSentence: userMessage,
+        correctedSentence: corrected,
+        hasErrors: Boolean(parsed.hasErrors),
+        explanation:
+          typeof parsed.explanation === 'string' && parsed.explanation.trim()
+            ? parsed.explanation.trim()
+            : 'Clear and natural phrasing!',
+        tamilExplanation:
+          typeof parsed.tamilExplanation === 'string' && parsed.tamilExplanation.trim()
+            ? parsed.tamilExplanation.trim()
+            : 'நன்றாக உள்ளது! தொடர்ந்து பேசுங்கள்.',
+        formalVersion: corrected,
+        casualVersion: native,
+        nativeIdiomaticVersion: native,
+        fluencyScore: Math.max(40, Math.min(100, Number(parsed.fluencyScore) || 85)),
+      },
+    };
+  } catch (e) {
+    console.warn('Gemini coach JSON parse fallback triggered:', e);
+    return null;
+  }
 }
 
 // -------------------------------------------------------------
@@ -564,35 +649,21 @@ export async function sendChatMessage(
 ): Promise<{ reply: string; feedback: GrammarCorrection }> {
   const activeKey = resolveGeminiKey();
   if (activeKey) {
-    const contents = buildConversationContents(
-      `Roleplay Setup:
+    const combined = await requestSingleTurnCoachReply(
+      activeKey,
+      `You are an English coach in roleplay:
 Role: ${scenario.persona}
 Scenario: ${scenario.description}
-System Prompt: ${scenario.systemPrompt}
-Keep replies natural, encouraging, concise (1-3 sentences), and end with an engaging follow-up question.`,
+Style: ${scenario.systemPrompt}`,
       history,
       userMessage
     );
-
-    const [feedback, json] = await Promise.all([
-      analyzeSentenceGrammar(userMessage),
-      callGeminiWithTimeout(activeKey, {
-        contents,
-        generationConfig: {
-          maxOutputTokens: 512,
-          thinkingConfig: { thinkingLevel: 'LOW' },
-        },
-      }),
-    ]);
-
-    const reply = extractCandidateText(json);
-    if (reply) {
-      return { reply: reply.trim(), feedback };
+    if (combined) {
+      return combined;
     }
-    return { reply: generateLocalScenarioReply(userMessage, scenario, history.length), feedback };
   }
 
-  const feedback = await analyzeSentenceGrammar(userMessage);
+  const feedback = localGrammarDiagnosis(userMessage);
   const reply = generateLocalScenarioReply(userMessage, scenario, history.length);
   return { reply, feedback };
 }
@@ -756,37 +827,21 @@ export async function sendLessonRealTalkReply(
   lesson: SupernovaClass
 ): Promise<{ reply: string; feedback: GrammarCorrection }> {
   const activeKey = resolveGeminiKey();
-  let feedback: GrammarCorrection;
-
   if (activeKey) {
-    const contents = buildConversationContents(
-      `You are Nila, an encouraging English conversation partner for a Tamil speaker finishing "${lesson.title}".
+    const combined = await requestSingleTurnCoachReply(
+      activeKey,
+      `You are Nila, an English partner for a Tamil speaker finishing "${lesson.title}".
 Goal: ${lesson.speakingChallenge.prompt}
-Target grammar pattern: ${lesson.grammarTopic}
-Respond warmly in natural spoken English (1-2 short sentences) reacting specifically to what the learner said, and ask one simple, engaging follow-up question.`,
+Target grammar pattern: ${lesson.grammarTopic}`,
       history,
       userMessage
     );
-
-    const [grammarResult, json] = await Promise.all([
-      analyzeSentenceGrammar(userMessage),
-      callGeminiWithTimeout(activeKey, {
-        contents,
-        generationConfig: {
-          maxOutputTokens: 512,
-          thinkingConfig: { thinkingLevel: 'LOW' },
-        },
-      }),
-    ]);
-
-    feedback = grammarResult;
-    const aiReply = extractCandidateText(json);
-    if (aiReply) {
-      return { reply: aiReply, feedback };
+    if (combined) {
+      return combined;
     }
-  } else {
-    feedback = await analyzeSentenceGrammar(userMessage);
   }
+
+  const feedback = localGrammarDiagnosis(userMessage);
 
   const userTurnNum = history.filter((m) => m.role === 'user').length;
   const sampleNative = lesson.speakingChallenge.sampleNativeResponse;
@@ -827,37 +882,29 @@ export async function analyzeAndReplySpokenAudio(
   }
 
   const recentLines = history
-    .slice(-6)
+    .slice(-4)
     .map((m) => `${m.role === 'assistant' ? 'Coach' : 'Learner'}: ${m.content}`)
     .join('\n');
 
   const roleContext =
     context.mode === 'scenario'
-      ? `Roleplay Persona: ${context.scenario.persona}\nScenario: ${context.scenario.description}\nStyle: ${context.scenario.systemPrompt}`
-      : `Lesson: ${context.lesson.title}\nGoal: ${context.lesson.speakingChallenge.prompt}\nGrammar Target: ${context.lesson.grammarTopic}`;
+      ? `Persona: ${context.scenario.persona} | Scenario: ${context.scenario.description}`
+      : `Lesson: ${context.lesson.title} | Goal: ${context.lesson.speakingChallenge.prompt} | Target: ${context.lesson.grammarTopic}`;
 
-  const prompt = `Listen carefully to the learner's English speech audio (spoken by a Tamil-native learner).
-${roleContext}
-Recent Conversation:
-${recentLines || '(First learner turn)'}
+  const prompt = `Listen to this Tamil learner's spoken English. ${roleContext}
+Recent:
+${recentLines || '(First turn)'}
 
-Tasks:
-1. Transcribe accurately what the learner actually spoke in the audio (keep empty string "" if audio is silent or unintelligible).
-2. Score fluency & pronunciation clarity from 40 to 100.
-3. Give a short actionable pronunciationTip (1 concise sentence on clarity, syllable stress, or pacing).
-4. Correct grammar/phrasing naturally if needed, and explain briefly in English and Tamil.
-5. Write a warm, natural 1-2 sentence reply continuing this conversation with one clear follow-up question.
-
-Respond ONLY with valid JSON without markdown backticks:
+Return JSON only (<=12 words for tips/explanations, 1-2 short spoken sentences + 1 question for reply):
 {
-  "transcript": "string",
+  "transcript": "exact spoken words or \"\" if silent",
   "fluencyScore": number,
-  "pronunciationTip": "string",
+  "pronunciationTip": "short clarity/stress tip",
   "hasErrors": boolean,
   "correctedSentence": "string",
-  "explanation": "string",
-  "tamilExplanation": "string",
-  "reply": "string"
+  "explanation": "short English grammar note",
+  "tamilExplanation": "short Tamil grammar note",
+  "reply": "natural reply"
 }`;
 
   const json = await callGeminiWithTimeout(
@@ -873,6 +920,7 @@ Respond ONLY with valid JSON without markdown backticks:
         },
       ],
       generationConfig: {
+        maxOutputTokens: 340,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingLevel: 'LOW' },
       },
