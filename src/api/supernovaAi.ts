@@ -23,8 +23,17 @@ export function isGeminiConfigured(): boolean {
   return !!resolveGeminiKey();
 }
 
-const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
+const MODEL_COOLDOWN_MS = 180_000;
+const modelCooldownUntil: Record<string, number> = {};
 let lastGeminiError: string | null = null;
+
+function getOrderedModels(): string[] {
+  const now = Date.now();
+  const ready = GEMINI_MODELS.filter((m) => (modelCooldownUntil[m] || 0) <= now);
+  const cooling = GEMINI_MODELS.filter((m) => (modelCooldownUntil[m] || 0) > now);
+  return [...ready, ...cooling];
+}
 
 type EndpointBuilder = (model: string) => string;
 
@@ -67,7 +76,7 @@ async function tryEndpointProvider(
 ): Promise<ProviderAttemptResult> {
   const modelErrors: string[] = [];
 
-  for (const model of GEMINI_MODELS) {
+  for (const model of getOrderedModels()) {
     const endpoint = buildEndpoint(model);
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -83,6 +92,7 @@ async function tryEndpointProvider(
       });
 
       if (res.ok) {
+        delete modelCooldownUntil[model];
         const json = await res.json();
         if (extractCandidateText(json)) {
           return { data: json, authOrKeyRejected: false, error: null };
@@ -107,6 +117,10 @@ async function tryEndpointProvider(
       modelErrors.push(`${model}: ${errSnippet}`);
       console.warn('Gemini request error:', model, errSnippet);
 
+      if (res.status === 503 || res.status === 429) {
+        modelCooldownUntil[model] = Date.now() + MODEL_COOLDOWN_MS;
+      }
+
       const isKeyRejection =
         res.status === 401 ||
         res.status === 403 ||
@@ -115,12 +129,15 @@ async function tryEndpointProvider(
         return { data: null, authOrKeyRejected: true, error: errSnippet };
       }
     } catch (e: any) {
-      const catchMsg =
-        e?.name === 'AbortError'
-          ? `Timed out after ${Math.round(timeoutMs / 1000)}s`
-          : typeof e?.message === 'string'
-            ? e.message
-            : 'Network request failed';
+      const isTimeout = e?.name === 'AbortError';
+      if (isTimeout) {
+        modelCooldownUntil[model] = Date.now() + MODEL_COOLDOWN_MS;
+      }
+      const catchMsg = isTimeout
+        ? `Timed out after ${Math.round(timeoutMs / 1000)}s`
+        : typeof e?.message === 'string'
+          ? e.message
+          : 'Network request failed';
       modelErrors.push(`${model}: ${catchMsg}`);
       console.warn('Gemini request error:', model, catchMsg);
     } finally {
@@ -138,7 +155,7 @@ async function tryEndpointProvider(
 async function callGeminiWithTimeout(
   apiKey: string,
   payload: object,
-  timeoutMs = 15000
+  timeoutMs = 10000
 ): Promise<any | null> {
   lastGeminiError = null;
 
@@ -191,7 +208,7 @@ export async function validateGeminiApiKey(key: string): Promise<{ ok: boolean; 
         thinkingConfig: { thinkingLevel: 'LOW' },
       },
     },
-    12000
+    10000
   );
 
   if (extractCandidateText(res)) {
@@ -545,8 +562,6 @@ export async function sendChatMessage(
   userMessage: string,
   scenario: RoleplayScenario
 ): Promise<{ reply: string; feedback: GrammarCorrection }> {
-  const feedback = await analyzeSentenceGrammar(userMessage);
-
   const activeKey = resolveGeminiKey();
   if (activeKey) {
     const contents = buildConversationContents(
@@ -559,20 +574,25 @@ Keep replies natural, encouraging, concise (1-3 sentences), and end with an enga
       userMessage
     );
 
-    const json = await callGeminiWithTimeout(activeKey, {
-      contents,
-      generationConfig: {
-        maxOutputTokens: 512,
-        thinkingConfig: { thinkingLevel: 'LOW' },
-      },
-    });
+    const [feedback, json] = await Promise.all([
+      analyzeSentenceGrammar(userMessage),
+      callGeminiWithTimeout(activeKey, {
+        contents,
+        generationConfig: {
+          maxOutputTokens: 512,
+          thinkingConfig: { thinkingLevel: 'LOW' },
+        },
+      }),
+    ]);
 
     const reply = extractCandidateText(json);
     if (reply) {
       return { reply: reply.trim(), feedback };
     }
+    return { reply: generateLocalScenarioReply(userMessage, scenario, history.length), feedback };
   }
 
+  const feedback = await analyzeSentenceGrammar(userMessage);
   const reply = generateLocalScenarioReply(userMessage, scenario, history.length);
   return { reply, feedback };
 }
@@ -735,9 +755,9 @@ export async function sendLessonRealTalkReply(
   userMessage: string,
   lesson: SupernovaClass
 ): Promise<{ reply: string; feedback: GrammarCorrection }> {
-  const feedback = await analyzeSentenceGrammar(userMessage);
-
   const activeKey = resolveGeminiKey();
+  let feedback: GrammarCorrection;
+
   if (activeKey) {
     const contents = buildConversationContents(
       `You are Nila, an encouraging English conversation partner for a Tamil speaker finishing "${lesson.title}".
@@ -748,18 +768,24 @@ Respond warmly in natural spoken English (1-2 short sentences) reacting specific
       userMessage
     );
 
-    const json = await callGeminiWithTimeout(activeKey, {
-      contents,
-      generationConfig: {
-        maxOutputTokens: 512,
-        thinkingConfig: { thinkingLevel: 'LOW' },
-      },
-    });
+    const [grammarResult, json] = await Promise.all([
+      analyzeSentenceGrammar(userMessage),
+      callGeminiWithTimeout(activeKey, {
+        contents,
+        generationConfig: {
+          maxOutputTokens: 512,
+          thinkingConfig: { thinkingLevel: 'LOW' },
+        },
+      }),
+    ]);
 
+    feedback = grammarResult;
     const aiReply = extractCandidateText(json);
     if (aiReply) {
       return { reply: aiReply, feedback };
     }
+  } else {
+    feedback = await analyzeSentenceGrammar(userMessage);
   }
 
   const userTurnNum = history.filter((m) => m.role === 'user').length;
@@ -786,7 +812,7 @@ export type SpokenAudioResult =
   | { ok: false; reason: 'no_key' | 'unintelligible' | 'network'; detail?: string };
 
 /**
- * Evaluates a real recorded user voice turn via Gemini 3.8 Flash multimodal audio:
+ * Evaluates a real recorded user voice turn via Gemini Flash multimodal audio:
  * transcribes speech, coaches pronunciation & grammar (EN + Tamil), and generates Nila's reply.
  */
 export async function analyzeAndReplySpokenAudio(
@@ -851,7 +877,7 @@ Respond ONLY with valid JSON without markdown backticks:
         thinkingConfig: { thinkingLevel: 'LOW' },
       },
     },
-    25000
+    14000
   );
 
   const rawText = extractCandidateText(json);

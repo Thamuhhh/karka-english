@@ -46,6 +46,28 @@ function inferMimeType(uri: string): string {
   return 'audio/m4a';
 }
 
+const SPEECH_CAPTURE_OPTIONS: Audio.RecordingOptions = {
+  ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+  isMeteringEnabled: false,
+  android: {
+    ...Audio.RecordingOptionsPresets.HIGH_QUALITY.android,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 32000,
+  },
+  ios: {
+    ...Audio.RecordingOptionsPresets.HIGH_QUALITY.ios,
+    audioQuality: Audio.IOSAudioQuality.MEDIUM,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 32000,
+  },
+  web: {
+    ...Audio.RecordingOptionsPresets.HIGH_QUALITY.web,
+    bitsPerSecond: 32000,
+  },
+};
+
 /** Requests mic access and begins capturing user speech using expo-av. */
 export async function beginAudioCapture(): Promise<StartCaptureResult> {
   try {
@@ -60,10 +82,16 @@ export async function beginAudioCapture(): Promise<StartCaptureResult> {
       playsInSilentModeIOS: true,
     });
 
-    const { recording } = await Audio.Recording.createAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY
-    );
-    return { ok: true, recording };
+    try {
+      const { recording } = await Audio.Recording.createAsync(SPEECH_CAPTURE_OPTIONS);
+      return { ok: true, recording };
+    } catch {
+      // Fall back to standard preset if hardware encoder rejects custom speech rate
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      return { ok: true, recording };
+    }
   } catch (err) {
     console.warn('Microphone capture start failed:', err);
     return { ok: false, reason: 'error' };
