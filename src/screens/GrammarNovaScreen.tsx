@@ -80,7 +80,7 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name="chat-question-outline" size={22} color={THEME.colors.gold} />
+          <Ionicons name="sparkles" size={20} color={THEME.colors.primaryGlow} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.title}>Ask Miss Nova</Text>
@@ -324,7 +324,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
