@@ -75,6 +75,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   const activeUnitIdxRef = useRef(0);
   const unitStartYRef = useRef<number[]>([]);
   const unitSwapAnim = useRef(new Animated.Value(1)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const showScrollTopRef = useRef(false);
+  const scrollTopAnim = useRef(new Animated.Value(0)).current;
 
   const completedClasses = stats.completedClasses;
   const mapWidth = Math.min(windowWidth - 36, MAX_CONTENT_WIDTH - 36);
@@ -121,6 +125,21 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         useNativeDriver: USE_NATIVE_DRIVER,
       }).start();
     }
+
+    const shouldShowTop = scrollY > 240;
+    if (shouldShowTop !== showScrollTopRef.current) {
+      showScrollTopRef.current = shouldShowTop;
+      setShowScrollTop(shouldShowTop);
+      Animated.timing(scrollTopAnim, {
+        toValue: shouldShowTop ? 1 : 0,
+        duration: 180,
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }).start();
+    }
+  };
+
+  const handleScrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   // Precompute global sequential lesson number for each class ID
@@ -230,6 +249,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
         {/* Continuous Open Obsidian Course Map (Zero Opaque Cutout Blocks) */}
         <ScrollView
+          ref={scrollViewRef}
           style={styles.courseScroll}
           contentContainerStyle={styles.courseContent}
           onScroll={handleMapScroll}
@@ -486,6 +506,35 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           style={styles.topFeatherEdge}
           pointerEvents="none"
         />
+
+        {/* Circular Scroll-To-Top Button (Bottom-Right) */}
+        <Animated.View
+          pointerEvents={showScrollTop ? 'auto' : 'none'}
+          style={[
+            styles.scrollTopWrap,
+            {
+              right: Math.max(18, (windowWidth - MAX_CONTENT_WIDTH) / 2 + 18),
+              opacity: scrollTopAnim,
+              transform: [
+                {
+                  scale: scrollTopAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.scrollTopBtn}
+            onPress={handleScrollToTop}
+            activeOpacity={0.85}
+            accessibilityLabel="Scroll to top"
+          >
+            <Ionicons name="arrow-up" size={19} color="#FFFFFF" />
+          </TouchableOpacity>
+        </Animated.View>
       </View>
 
       {/* Ultra-Minimal Quick Popover Lesson Card */}
@@ -947,5 +996,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#141320',
     letterSpacing: 0.5,
+  },
+  scrollTopWrap: {
+    position: 'absolute',
+    bottom: 18,
+    zIndex: 12,
+  },
+  scrollTopBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1B1633',
+    borderWidth: 1.5,
+    borderColor: 'rgba(167, 139, 250, 0.48)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
 });
