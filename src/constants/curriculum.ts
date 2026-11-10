@@ -1,355 +1,527 @@
-export interface ClassLesson {
+export interface DoAndDont {
+  incorrect: string;
+  correct: string;
+  whyTamil: string;
+  whyEnglish: string;
+}
+
+export interface DialogueTurn {
+  speaker: string;
+  avatar: string;
+  text: string;
+  tamilMeaning: string;
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  tamilExplanation: string;
+}
+
+export interface DeepClassLesson {
   id: string;
+  levelNumber: number;
+  classNumber: number;
   title: string;
   subtitle: string;
-  tamilConcept: string;
   duration: string;
   grammarFocus: string;
-  dialoguePrompt: string;
-  keyPhrases: string[];
-  quiz: {
-    question: string;
-    options: string[];
-    correctIndex: number;
-    explanation: string;
-    tamilExplanation: string;
-  };
+  status: 'locked' | 'unlocked' | 'completed';
+  
+  // 1. Concept Stage
+  conceptSummary: string;
+  tamilMentalModel: string;
+  
+  // 2. Do's and Don'ts Stage
+  dosAndDonts: DoAndDont[];
+
+  // 3. Dialogue & Shadowing Stage
+  dialogue: DialogueTurn[];
+  shadowingPhrases: {
+    english: string;
+    phonetic: string;
+    tamilContext: string;
+  }[];
+
+  // 4. Multi-question Quiz Stage
+  quizQuestions: QuizQuestion[];
 }
 
-export interface LevelCourse {
+export interface DeepLevelCourse {
   levelNumber: number;
   levelTitle: string;
+  subtitle: string;
   cefrTag: string;
-  icon: string;
+  planetColor: string;
   badge: string;
-  description: string;
-  classes: ClassLesson[];
+  classes: DeepClassLesson[];
 }
 
-export const SUPERNOVA_CURRICULUM: LevelCourse[] = [
+export const DEEP_CURRICULUM: DeepLevelCourse[] = [
   {
     levelNumber: 1,
-    levelTitle: 'Star Cadet: Foundations & Basics',
+    levelTitle: 'Planet Origin: Foundations',
+    subtitle: 'Break Tamil-to-English hesitation & master daily core rules',
     cefrTag: 'A1 - A2',
-    icon: 'compass',
+    planetColor: '#6366F1',
     badge: 'Beginner',
-    description: 'Master sentence basics, introductions, and eliminate common hesitation.',
     classes: [
       {
-        id: 'class-1-1',
-        title: 'Class 1: Confident Self-Introduction',
-        subtitle: 'Break the hesitation when introducing yourself',
-        tamilConcept: 'எப்போதுமே "Myself John" என்று ஆரம்பிக்க கூடாது; "Hi, I am John" அல்லது "My name is John" என்று சொல்ல வேண்டும்.',
-        duration: '5 mins',
-        grammarFocus: 'Present Simple + Personal Pronouns',
-        dialoguePrompt: 'Introduce yourself: your name, where you are from, and what you do.',
-        keyPhrases: [
-          'Hi, my name is Alex.',
-          'I am based in Chennai, India.',
-          'I currently work as a software engineer.',
-          'In my free time, I love reading and exploring tech.',
-        ],
-        quiz: {
-          question: 'Which is the natural way to introduce yourself?',
-          options: ['Myself Alex, coming from Chennai.', 'Hi, I am Alex from Chennai.', 'Me is Alex Chennai.'],
-          correctIndex: 1,
-          explanation: 'Native speakers avoid "Myself [Name]" because myself is a reflexive pronoun.',
-          tamilExplanation: 'ஆங்கிலத்தில் அறிமுகப்படுத்தும்போது "Myself..." என்று தொடங்காமல் "Hi, I am..." என்று சொல்வதே சரியானது.',
-        },
-      },
-      {
-        id: 'class-1-2',
-        title: 'Class 2: Subject-Verb Agreement',
-        subtitle: 'He does vs He do, She has vs She have',
-        tamilConcept: 'He, She, It வந்தால் வினைச்சொல்லுடன் "s" அல்லது "es" சேர வேண்டும் (He knows, She works).',
-        duration: '6 mins',
-        grammarFocus: 'Singular/Plural Verb Agreement',
-        dialoguePrompt: 'Describe what your friend or manager does at work every day.',
-        keyPhrases: [
-          'He doesn\'t know the answer.',
-          'She works from home on Fridays.',
-          'Everyone likes this new feature.',
-          'Does it make sense to you?',
-        ],
-        quiz: {
-          question: 'Choose the correct sentence:',
-          options: ['He don\'t know about the meeting.', 'He doesn\'t know about the meeting.', 'He not know about the meeting.'],
-          correctIndex: 1,
-          explanation: 'He, She, It take "doesn\'t", never "don\'t".',
-          tamilExplanation: 'He / She / It வந்தாலே "doesn\'t" தான் வரும்; "don\'t" வரக்கூடாது.',
-        },
-      },
-      {
-        id: 'class-1-3',
-        title: 'Class 3: Prepositions Master (In, On, At)',
-        subtitle: 'Never confuse in Monday vs on Monday again',
-        tamilConcept: 'At = குறிப்பிட்ட நேரம்/இடம் (at 5 PM, at home). On = நாட்கள்/மேற்பரப்பு (on Monday, on the table). In = மாதங்கள்/பெரிய இடம் (in Chennai, in July).',
-        duration: '6 mins',
-        grammarFocus: 'Prepositions of Time & Place',
-        dialoguePrompt: 'Tell someone when and where your next meeting will happen.',
-        keyPhrases: [
-          'The call is scheduled at 4:30 PM.',
-          'We have a team demo on Thursday.',
-          'I was born in 2002 in Coimbatore.',
-          'She is currently at the office.',
-        ],
-        quiz: {
-          question: 'I will submit the assignment ______ Monday.',
-          options: ['at', 'in', 'on'],
-          correctIndex: 2,
-          explanation: 'Use "on" before days of the week (on Monday, on Friday).',
-          tamilExplanation: 'நாட்களைக் குறிப்பிடும்போது "on Monday" என்று தான் சொல்ல வேண்டும்.',
-        },
-      },
-      {
-        id: 'class-1-4',
-        title: 'Class 4: Did + Base Verb Fix',
-        subtitle: 'Fixing the "didn\'t went" mistake forever',
-        tamilConcept: '"Did" அல்லது "Didn\'t" கடந்த காலத்தை ஏற்கனவே குறிப்பதால், அதற்குப் பின் வரும் வினைச்சொல் முதல் நிலையில் (base verb) மட்டுமே இருக்க வேண்டும்.',
+        id: 'cls-1-1',
+        levelNumber: 1,
+        classNumber: 1,
+        title: 'Class 1: Self-Introduction Without Hesitation',
+        subtitle: 'Never say "Myself Alex" again - sound sharp & confident',
         duration: '7 mins',
-        grammarFocus: 'Past Negative & Questions with DID',
-        dialoguePrompt: 'Explain why you could not attend an event yesterday.',
-        keyPhrases: [
-          'I didn\'t see the message yesterday.',
-          'Why didn\'t you come to college?',
-          'She did not go to the market.',
-          'Did you find the document?',
+        grammarFocus: 'Present Simple + Reflexive Pronoun fix',
+        status: 'unlocked',
+        conceptSummary:
+          'When meeting someone or in an interview, the first 10 seconds create 90% of the impression. In Tamil, we often think "Ennodhu peyar..." and accidentally translate it as "Myself John", which sounds ungrammatical in standard English.',
+        tamilMentalModel:
+          'தமிழில் "என்னோட பேரு..." என்று சொல்வது போல ஆங்கிலத்தில் "Myself..." என்று தொடங்கக் கூடாது. "Myself" என்பது reflexive pronoun (தான்/தன்னை). எனவே எப்போதுமே "Hi, I am..." அல்லது "My name is..." என்று தொடங்குவதே சரியான ஆங்கில முறை.',
+        dosAndDonts: [
+          {
+            incorrect: 'Myself Vignesh, I am coming from Madurai.',
+            correct: 'Hi, I am Vignesh. I am from Madurai.',
+            whyTamil: '"Myself" தவறு; "coming from" என்பதை விட "I am from" என்பது இயல்பானது.',
+            whyEnglish: 'Avoid "myself" as subject. Use "I am from" instead of present continuous "coming from".',
+          },
+          {
+            incorrect: 'I am having 3 years experience in IT.',
+            correct: 'I have 3 years of experience in IT.',
+            whyTamil: 'அனுபவம் மற்றும் உடைமைகளுக்கு "am having" என்று வராது; "I have" தான் வரும்.',
+            whyEnglish: 'Possession and ongoing attributes use stative verb "have", not continuous "am having".',
+          },
         ],
-        quiz: {
-          question: 'Find the mistake: "She didn\'t went to the clinic yesterday."',
-          options: ['Change "didn\'t went" to "didn\'t go"', 'Change "yesterday" to "today"', 'Sentence has no mistake'],
-          correctIndex: 0,
-          explanation: 'After "didn\'t", the verb must revert to base form "go".',
-          tamilExplanation: '"Didn\'t went" என்பது தவறு; "didn\'t go" என்பதே சரி.',
-        },
+        dialogue: [
+          {
+            speaker: 'Sarah (HR Manager)',
+            avatar: '👩‍💼',
+            text: 'Good morning! Thanks for joining today. Could you start by introducing yourself?',
+            tamilMeaning: 'காலை வணக்கம்! உங்களை சுருக்கமாக அறிமுகப்படுத்த முடியுமா?',
+          },
+          {
+            speaker: 'You (Candidate)',
+            avatar: '🧑‍💻',
+            text: 'Good morning, Sarah. My name is Alex. I am a software engineer based in Chennai with a passion for web apps.',
+            tamilMeaning: 'காலை வணக்கம். என் பெயர் அலெக்ஸ். நான் சென்னையில் உள்ள மென்பொருள் பொறியாளர்.',
+          },
+          {
+            speaker: 'Sarah (HR Manager)',
+            avatar: '👩‍💼',
+            text: 'Fantastic! That is crystal clear. What do you enjoy working on the most?',
+            tamilMeaning: 'அற்புதம்! மிக தெளிவாக சொன்னீர்கள். எதில் வேலை செய்வது உங்களுக்கு மிகவும் பிடிக்கும்?',
+          },
+        ],
+        shadowingPhrases: [
+          {
+            english: 'Hi, I am Alex. Nice to meet you.',
+            phonetic: '/haɪ aɪ æm ˈæl.ɪks naɪs tuː miːt juː/',
+            tamilContext: 'அனைத்து அறிமுகங்களுக்கும் ஏற்ற இயல்பான தொடக்கம்.',
+          },
+          {
+            english: 'I am currently based in Chennai.',
+            phonetic: '/aɪ æm ˈkʌr.ənt.li beɪst ɪn tʃɛˈnaɪ/',
+            tamilContext: 'நீங்கள் வசிக்கும் இடத்தை தொழில்முறையாக குறிப்பிடுதல்.',
+          },
+          {
+            english: 'I have two years of experience in mobile development.',
+            phonetic: '/aɪ hæv tuː jɪəz ɒv ɪkˈspɪə.ri.əns/',
+            tamilContext: 'உங்களது பணி அனுபவத்தை "have" பயன்படுத்தி சொல்லுதல்.',
+          },
+        ],
+        quizQuestions: [
+          {
+            question: 'Which of the following is the most natural introduction in an interview?',
+            options: [
+              'Myself Alex, coming from Bangalore.',
+              'Hello, I am Alex, and I am from Bangalore.',
+              'Me Alex, living Bangalore.',
+            ],
+            correctIndex: 1,
+            explanation: '"I am [Name]" is direct, grammatically sound, and globally recognized.',
+            tamilExplanation: '"Myself" தவிர்த்து "I am Alex..." என்று சொல்வதே நேர்த்தியானது.',
+          },
+          {
+            question: 'How do you describe your work experience correctly?',
+            options: [
+              'I am having 4 years experience in Python.',
+              'I have 4 years of experience in Python.',
+              'Experience is 4 years having in Python.',
+            ],
+            correctIndex: 1,
+            explanation: 'Use "I have [X] years of experience", not "am having".',
+            tamilExplanation: 'அனுபவத்திற்கு "I have..." பயன்படுத்த வேண்டும்.',
+          },
+        ],
+      },
+      {
+        id: 'cls-1-2',
+        levelNumber: 1,
+        classNumber: 2,
+        title: 'Class 2: Subject-Verb Agreement Mastery',
+        subtitle: 'Fix "He don\'t know" & "She work" permanently',
+        duration: '8 mins',
+        grammarFocus: 'Third-person singular -s/-es inflection',
+        status: 'unlocked',
+        conceptSummary:
+          'In English, third-person singular subjects (He, She, It, Everyone, Someone) REQUIRE the verb to take an "-s" or "-es" in Present Simple. When negating, you must use "doesn\'t", never "don\'t".',
+        tamilMentalModel:
+          'தமிழில் "அவன் செய்வான் / அவள் செய்வாள்" என்பது போல, ஆங்கிலத்தில் He / She / It வந்தால் வினைச்சொல்லோடு "s" சேர வேண்டும் (He works, She speaks). எதிர்மறையாக பேசும்போது "doesn\'t" மட்டுமே வர வேண்டும்.',
+        dosAndDonts: [
+          {
+            incorrect: 'He don\'t know how to deploy the code.',
+            correct: 'He doesn\'t know how to deploy the code.',
+            whyTamil: 'He-க்கு பிறகு "doesn\'t" தான் வரும்; "don\'t" வரக்கூடாது.',
+            whyEnglish: 'He/She/It are singular; use auxiliary "does not" / "doesn\'t".',
+          },
+          {
+            incorrect: 'Everyone in our team have a laptop.',
+            correct: 'Everyone in our team has a laptop.',
+            whyTamil: '"Everyone" என்பது பலரை குறித்தாலும் ஆங்கிலத்தில் ஒருமையாக (singular) கருதப்படும்.',
+            whyEnglish: '"Everyone", "everybody", "someone" take singular verbs ("has", "is").',
+          },
+        ],
+        dialogue: [
+          {
+            speaker: 'Priya (Team Lead)',
+            avatar: '👩‍💻',
+            text: 'Does John know about the sprint deadline change?',
+            tamilMeaning: 'ஸ்ப்ரின்ட் காலக்கெடு மாற்றத்தைப் பற்றி ஜானுக்கு தெரியுமா?',
+          },
+          {
+            speaker: 'You (Teammate)',
+            avatar: '🧑‍💻',
+            text: 'No, he doesn\'t know yet. I will inform him right away.',
+            tamilMeaning: 'இல்லை, அவருக்கு இன்னும் தெரியாது. நான் உடனே சொல்லி விடுகிறேன்.',
+          },
+          {
+            speaker: 'Priya (Team Lead)',
+            avatar: '👩‍💻',
+            text: 'Great! Make sure everyone stays on the same page.',
+            tamilMeaning: 'சிறப்பு! அனைவரும் ஒரே புரிதலில் இருப்பதை உறுதி செய்து கொள்ளுங்கள்.',
+          },
+        ],
+        shadowingPhrases: [
+          {
+            english: 'He doesn\'t have the latest design file.',
+            phonetic: '/hiː ˈdʌz.nt hæv ðə ˈleɪ.tɪst dɪˈzaɪn faɪl/',
+            tamilContext: 'அவரிடம் சமீபத்திய ஃபைல் இல்லை என்பதை தெரிவித்தல்.',
+          },
+          {
+            english: 'She always delivers her tasks on time.',
+            phonetic: '/ʃiː ˈɔːl.weɪz dɪˈlɪv.əz hɜː tɑːsks ɒn taɪm/',
+            tamilContext: 'She வந்ததால் deliver உடன் "s" (delivers) சேர்க்கப்பட்டுள்ளது.',
+          },
+          {
+            english: 'Does anyone have any questions?',
+            phonetic: '/dʌz ˈɛn.i.wʌn hæv ˈɛn.i ˈkwɛs.tʃənz/',
+            tamilContext: 'கூட்டத்தில் யாரிடமாவது கேள்விகள் உள்ளதா என கேட்டல்.',
+          },
+        ],
+        quizQuestions: [
+          {
+            question: 'Complete the sentence: "My manager ______ agree with this design."',
+            options: ['don\'t', 'doesn\'t', 'is not'],
+            correctIndex: 1,
+            explanation: '"My manager" is third-person singular (he/she), so use "doesn\'t".',
+            tamilExplanation: 'மேலாளர் ஒருமை என்பதால் "doesn\'t" பயன்படுத்த வேண்டும்.',
+          },
+          {
+            question: 'Which sentence is grammatically correct?',
+            options: [
+              'Everyone want to go home early.',
+              'Everyone wants to go home early.',
+              'Everyone wanting go home early.',
+            ],
+            correctIndex: 1,
+            explanation: '"Everyone" is grammatically singular and takes the singular verb "wants".',
+            tamilExplanation: '"Everyone" ஒருமை என்பதால் "wants" என்பதே சரி.',
+          },
+        ],
+      },
+      {
+        id: 'cls-1-3',
+        levelNumber: 1,
+        classNumber: 3,
+        title: 'Class 3: Did + Base Verb Rule',
+        subtitle: 'Banish "didn\'t went" & "did you saw" forever',
+        duration: '7 mins',
+        grammarFocus: 'Past tense auxiliary inversion (did + V1)',
+        status: 'unlocked',
+        conceptSummary:
+          'The auxiliary verb "DID" already carries the past tense. Therefore, the main verb that follows MUST stay in its base/infinitive form (V1). Never use two past tense markers together!',
+        tamilMentalModel:
+          '"Did" என்பது ஏற்கனவே கடந்த காலத்தை தெளிவாக சொல்லிவிடுகிறது. எனவே அதற்குப் பின் வரும் சொல் முதல் நிலை சொல் (go, see, know) தான் வர வேண்டும். "didn\'t went" என்று இரண்டு முறை கடந்த காலம் வரக்கூடாது.',
+        dosAndDonts: [
+          {
+            incorrect: 'I didn\'t went to the meeting yesterday.',
+            correct: 'I didn\'t go to the meeting yesterday.',
+            whyTamil: 'Didn\'t வந்தவுடன் went வரக்கூடாது; go தான் வர வேண்டும்.',
+            whyEnglish: '"Did" already marks the past tense. The lexical verb must be base form "go".',
+          },
+          {
+            incorrect: 'Did you saw the email I forwarded?',
+            correct: 'Did you see the email I forwarded?',
+            whyTamil: 'Did வந்ததால் saw வரக்கூடாது; see தான் வர வேண்டும்.',
+            whyEnglish: 'Questions with "Did" always use base verb "see".',
+          },
+        ],
+        dialogue: [
+          {
+            speaker: 'Karthik (Manager)',
+            avatar: '👨‍💼',
+            text: 'Why didn\'t you attend the retrospective yesterday?',
+            tamilMeaning: 'நேற்று ஏன் மீட்டிங்கில் கலந்து கொள்ளவில்லை?',
+          },
+          {
+            speaker: 'You (Developer)',
+            avatar: '🧑‍💻',
+            text: 'I didn\'t get the calendar invite, Karthik. My network was down as well.',
+            tamilMeaning: 'எனக்கு கேலெண்டர் அழைப்பு வரவில்லை கார்த்திக். நெட்வொர்க்கும் வேலை செய்யவில்லை.',
+          },
+          {
+            speaker: 'Karthik (Manager)',
+            avatar: '👨‍💼',
+            text: 'No problem. Did you check the meeting summary notes?',
+            tamilMeaning: 'பரவாயில்லை. மீட்டிங் குறிப்புகளை பார்த்தீர்களா?',
+          },
+        ],
+        shadowingPhrases: [
+          {
+            english: 'I didn\'t know about the updated policy.',
+            phonetic: '/aɪ ˈdɪd.nt nəʊ əˈbaʊt ðə ʌpˈdeɪ.tɪd ˈpɒl.ə.si/',
+            tamilContext: 'எனக்கு கொள்கை மாற்றம் தெரியாது என்பதை கூறுதல்.',
+          },
+          {
+            english: 'Did you speak to the client this morning?',
+            phonetic: '/dɪd juː spiːk tuː ðə ˈklaɪ.ənt ðɪs ˈmɔː.nɪŋ/',
+            tamilContext: 'Did வந்ததால் speak (base verb) வந்துள்ளது.',
+          },
+        ],
+        quizQuestions: [
+          {
+            question: 'Choose the correct question to ask a colleague:',
+            options: [
+              'Did you completed the task?',
+              'Did you complete the task?',
+              'Did you completing the task?',
+            ],
+            correctIndex: 1,
+            explanation: '"Did" requires the base form "complete", not past "completed".',
+            tamilExplanation: '"Did" வந்ததால் "complete" என்பதே சரியானது.',
+          },
+        ],
       },
     ],
   },
   {
     levelNumber: 2,
-    levelTitle: 'Solar Voyager: Conversational Fluency',
+    levelTitle: 'Planet Orbit: Daily Fluency',
+    subtitle: 'Everyday conversations, social interactions & dining out',
     cefrTag: 'B1',
-    icon: 'chatbubbles',
+    planetColor: '#06B6D4',
     badge: 'Intermediate',
-    description: 'Speak smoothly in daily social, shopping, travel, and casual encounters.',
     classes: [
       {
-        id: 'class-2-1',
+        id: 'cls-2-1',
+        levelNumber: 2,
+        classNumber: 1,
         title: 'Class 1: Past Simple vs Present Perfect',
-        subtitle: 'Yesterday I saw vs I have seen',
-        tamilConcept: 'குறிப்பிட்ட நேரம் (Yesterday, last week) சொன்னால் Simple Past (saw). நேரம் குறிப்பிடாமல் அனுபவத்தை சொன்னால் Present Perfect (have seen).',
-        duration: '8 mins',
-        grammarFocus: 'Completed Past vs Ongoing Experience',
-        dialoguePrompt: 'Talk about a movie you watched last week vs places you have visited in life.',
-        keyPhrases: [
-          'I saw that movie last Friday.',
-          'I have watched that movie three times.',
-          'Yesterday, we deployed the code.',
-          'Have you ever traveled abroad?',
+        subtitle: 'Understand "Yesterday I saw" vs "I have seen"',
+        duration: '9 mins',
+        grammarFocus: 'Specific past time vs Lifetime experience',
+        status: 'unlocked',
+        conceptSummary:
+          'This is the single biggest confusion for Tamil speakers. When a SPECIFIC time in the past is mentioned (yesterday, last week, in 2021), use Simple Past. When talking about life experience without a specific past time, use Present Perfect (have + V3).',
+        tamilMentalModel:
+          '"நேத்து பார்த்தேன்" (Yesterday) என்று குறிப்பிட்ட நேரத்தை சொன்னால் Simple Past (I saw). நேரம் சொல்லாமல் "நான் அந்த படத்தை பார்த்திருக்கிறேன்" என்று அனுபவத்தை சொன்னால் Present Perfect (I have seen).',
+        dosAndDonts: [
+          {
+            incorrect: 'Yesterday only I have sent the quotation.',
+            correct: 'I sent the quotation yesterday.',
+            whyTamil: 'Yesterday வந்ததால் "have sent" வரக்கூடாது; "sent" தான் வர வேண்டும்.',
+            whyEnglish: 'Specific past time marker "yesterday" cannot take Present Perfect.',
+          },
+          {
+            incorrect: 'I saw that movie already many times.',
+            correct: 'I have already seen that movie many times.',
+            whyTamil: 'பலமுறை பார்த்த அனுபவத்தை குறிக்க "have seen" பயன்படுகிறது.',
+            whyEnglish: 'Life experience with "already" and "many times" naturally uses Present Perfect.',
+          },
         ],
-        quiz: {
-          question: 'Yesterday, I ______ my old school teacher.',
-          options: ['have met', 'met', 'had have met'],
-          correctIndex: 1,
-          explanation: 'Specific past time "Yesterday" requires Simple Past "met".',
-          tamilExplanation: '"Yesterday" என்று குறிப்பிட்ட நேரம் வந்ததால் "met" பயன்படுத்த வேண்டும்.',
-        },
+        dialogue: [
+          {
+            speaker: 'Elena (Colleague)',
+            avatar: '👩‍🦰',
+            text: 'Have you ever visited Singapore before?',
+            tamilMeaning: 'இதற்கு முன் எப்போதாவது சிங்கப்பூர் சென்றுள்ளீர்களா?',
+          },
+          {
+            speaker: 'You',
+            avatar: '🧑‍💻',
+            text: 'Yes, I went there in 2022 for a holiday.',
+            tamilMeaning: 'ஆம், 2022-ல் விடுமுறைக்காக அங்கு சென்றேன்.',
+          },
+          {
+            speaker: 'Elena (Colleague)',
+            avatar: '👩‍🦰',
+            text: 'Awesome! Did you try the famous street food there?',
+            tamilMeaning: 'அருமை! அங்குள்ள புகழ்பெற்ற தெருவோர உணவுகளை சாப்பிட்டு பார்த்தீர்களா?',
+          },
+        ],
+        shadowingPhrases: [
+          {
+            english: 'I have already completed the documentation.',
+            phonetic: '/aɪ hæv ɔːlˈrɛd.i kəmˈpliː.tɪd ðə ˌdɒk.jʊ.mɛnˈteɪ.ʃən/',
+            tamilContext: 'நான் ஏற்கனவே டாக்குமெண்டேஷனை முடித்துவிட்டேன்.',
+          },
+          {
+            english: 'We finished the code review an hour ago.',
+            phonetic: '/wiː ˈfɪn.ɪʃt ðə kəʊd rɪˈvjuː ən ˈaʊə əˈɡəʊ/',
+            tamilContext: '"an hour ago" குறிப்பிட்ட நேரம் என்பதால் Simple Past (finished).',
+          },
+        ],
+        quizQuestions: [
+          {
+            question: '"Last month, we ______ a new feature to production."',
+            options: ['have deployed', 'deployed', 'deploying'],
+            correctIndex: 1,
+            explanation: '"Last month" points to a finished past time, so use Simple Past "deployed".',
+            tamilExplanation: '"Last month" குறிப்பிட்ட கடந்த காலம் என்பதால் "deployed" மட்டுமே சரி.',
+          },
+        ],
       },
       {
-        id: 'class-2-2',
-        title: 'Class 2: Ordering at Cafes & Restaurants',
-        subtitle: 'Sound natural without sounding abrupt or rude',
-        tamilConcept: '"Give me coffee" என்று கட்டளையாக கேட்காமல், "Could I get a coffee, please?" அல்லது "I\'d like a coffee" என்று பணிவாக கேட்க வேண்டும்.',
-        duration: '6 mins',
-        grammarFocus: 'Polite Requests (Could I have / Would you mind)',
-        dialoguePrompt: 'Order your breakfast and ask if they have dairy-free alternatives.',
-        keyPhrases: [
-          'Could I get a medium cappuccino, please?',
-          'Do you have any oat milk or almond milk options?',
-          'Could you make it less sweet?',
-          'Can we get the bill, please?',
-        ],
-        quiz: {
-          question: 'Which request sounds the most polite and natural?',
-          options: ['Give one cappuccino fast.', 'I would like a cappuccino with oat milk, please.', 'Bring cappuccino.'],
-          correctIndex: 1,
-          explanation: '"I would like..." or "Could I get..." is standard polite conversational English.',
-          tamilExplanation: 'உணவகங்களில் "I would like a..." என்று கேட்பது நாகரீகமான முறை.',
-        },
-      },
-      {
-        id: 'class-2-3',
-        title: 'Class 3: Airport Check-in & Directions',
-        subtitle: 'Confidence while traveling abroad',
-        tamilConcept: 'பயணத்தின்போது கேட்கப்படும் கேள்விகளுக்கு சுருக்கமாகவும் தெளிவாகவும் பதிலளிக்கும் முறை.',
+        id: 'cls-2-2',
+        levelNumber: 2,
+        classNumber: 2,
+        title: 'Class 2: Cafe & Restaurant Ordering Elegance',
+        subtitle: 'Sound polite and natural instead of blunt or commanding',
         duration: '7 mins',
-        grammarFocus: 'Directional verbs & Purpose of Visit clauses',
-        dialoguePrompt: 'Tell the immigration officer why you are visiting and where you are staying.',
-        keyPhrases: [
-          'I am here on a two-week tourist vacation.',
-          'I will be staying at the Grand Hotel in Downtown.',
-          'Here is my return flight ticket confirmation.',
-          'Excuse me, which way is terminal 3?',
+        grammarFocus: 'Polite modals (Could I get, Would you have, I\'d like)',
+        status: 'unlocked',
+        conceptSummary:
+          'In English cafes, saying "Give me coffee" sounds very aggressive or rude. Native speakers always cushion requests using polite modal structures like "Could I get...", "I would like...", or "Do you happen to have...".',
+        tamilMentalModel:
+          '"காபி குடு" என்று நேரடியாக கட்டளையிடாமல், "ஒரு காபி கிடைக்குமா?" என்று பணிவாக கேட்பது போல ஆங்கிலத்தில் "Could I get a coffee, please?" என்று கேட்க வேண்டும்.',
+        dosAndDonts: [
+          {
+            incorrect: 'Give one black coffee fast.',
+            correct: 'Could I get a black coffee, please?',
+            whyTamil: '"Give me" ஆணை இடுவது போல் ஒலிக்கும்; "Could I get..." நாகரிகமானது.',
+            whyEnglish: '"Could I get..." transforms a command into a warm, polite request.',
+          },
         ],
-        quiz: {
-          question: 'Officer asks: "What is the purpose of your trip?" Best answer:',
-          options: ['Why you ask?', 'I am attending a tech conference for 5 days.', 'For moving around.'],
-          correctIndex: 1,
-          explanation: 'State purpose and duration clearly and politely.',
-          tamilExplanation: 'பயணத்தின் நோக்கத்தை தெளிவாக குறிப்பிடுதல்.',
-        },
-      },
-      {
-        id: 'class-2-4',
-        title: 'Class 4: Polite Disagreements & Giving Opinions',
-        subtitle: 'Saying "I see your point, but..." without offending',
-        tamilConcept: 'நேரடியாக "You are wrong" என்று சொல்லாமல் "I see what you mean, but from my perspective..." என்று பேச வேண்டும்.',
-        duration: '8 mins',
-        grammarFocus: 'Diplomatic hedging & Softeners',
-        dialoguePrompt: 'Politely disagree with a colleague regarding a deadline.',
-        keyPhrases: [
-          'I understand where you are coming from, but...',
-          'From my perspective, this might take a bit more time.',
-          'I\'m not entirely sure that will work because...',
-          'How about we test both approaches?',
+        dialogue: [
+          {
+            speaker: 'Barista',
+            avatar: '☕',
+            text: 'Welcome! What can I make fresh for you today?',
+            tamilMeaning: 'வணக்கம்! இன்று உங்களுக்கு என்ன தயாரித்து தரட்டும்?',
+          },
+          {
+            speaker: 'You',
+            avatar: '🧑‍💻',
+            text: 'Hi! Could I please get a medium oat milk latte with light ice?',
+            tamilMeaning: 'வணக்கம்! ஒரு மீடியம் ஓட் மில்க் லட்டே குறைந்த பனிக்கட்டியுடன் கிடைக்குமா?',
+          },
+          {
+            speaker: 'Barista',
+            avatar: '☕',
+            text: 'You got it! Would you like any warm pastries to go with that?',
+            tamilMeaning: 'நிச்சயமாக! அத்துடன் சாப்பிட சூடான பேஸ்ட்ரி ஏதேனும் விருப்பமா?',
+          },
         ],
-        quiz: {
-          question: 'How do you politely disagree in a team meeting?',
-          options: ['You are totally wrong.', 'I see your point, but we might run into server issues.', 'No way, shut up.'],
-          correctIndex: 1,
-          explanation: '"I see your point, but..." acknowledges the speaker while offering your viewpoint.',
-          tamilExplanation: 'எதிர்கருத்தை மரியாதையாகவும் மென்மையாகவும் தெரிவிக்கும் உத்தி.',
-        },
+        shadowingPhrases: [
+          {
+            english: 'Could I get the bill, please?',
+            phonetic: '/kʊd aɪ ɡɛt ðə bɪl pliːz/',
+            tamilContext: 'உணவகத்தில் பில் கேட்கும் நாகரிகமான முறை.',
+          },
+          {
+            english: 'Do you have any vegan options on the menu?',
+            phonetic: '/duː juː hæv ˈɛn.i ˈviː.ɡən ˈɒp.ʃənz/',
+            tamilContext: 'மெனுவில் சிறப்பு உணவுகள் உள்ளதா என கேட்டல்.',
+          },
+        ],
+        quizQuestions: [
+          {
+            question: 'Which is the most natural way to order breakfast at a cafe?',
+            options: [
+              'I want sandwich now.',
+              'Could I have a grilled cheese sandwich, please?',
+              'Bring sandwich to my table.',
+            ],
+            correctIndex: 1,
+            explanation: '"Could I have..., please?" is polite and pleasant.',
+            tamilExplanation: '"Could I have... please" என்பது பணிவான அணுகுமுறை.',
+          },
+        ],
       },
     ],
   },
   {
     levelNumber: 3,
-    levelTitle: 'Nebula Master: Workplace & Career English',
+    levelTitle: 'Planet Apex: Workplace & Leadership',
+    subtitle: 'Ace tech interviews, lead standups & write executive emails',
     cefrTag: 'B2',
-    icon: 'briefcase',
+    planetColor: '#F59E0B',
     badge: 'Advanced',
-    description: 'Crush tech interviews, lead team meetings, and write crisp professional emails.',
     classes: [
       {
-        id: 'class-3-1',
-        title: 'Class 1: Tech Job Interview Behavioral Qs',
-        subtitle: 'STAR method: Situation, Task, Action, Result',
-        tamilConcept: 'இன்டர்வியூவில் "In my last project..." என்று ஆரம்பித்து, என்ன பிரச்சனை, நீங்கள் என்ன தீர்வு தந்தீர்கள் என்பதை தெளிவாக எடுத்துரைப்பது.',
+        id: 'cls-3-1',
+        levelNumber: 3,
+        classNumber: 1,
+        title: 'Class 1: Behavioral Tech Interview (STAR Framework)',
+        subtitle: 'Structure your answers to impress engineering managers',
         duration: '10 mins',
-        grammarFocus: 'Action Verbs + Impact Metrics',
-        dialoguePrompt: 'Explain a difficult bug or challenge you resolved in your code.',
-        keyPhrases: [
-          'In my previous role, we encountered high database latency.',
-          'My responsibility was to optimize the backend API pipelines.',
-          'I implemented Redis caching, which reduced load times by 40%.',
-          'That experience taught me the importance of proactive monitoring.',
+        grammarFocus: 'Action verbs + Result metrics (STAR Method)',
+        status: 'unlocked',
+        conceptSummary:
+          'Top tech companies (Google, Microsoft, Amazon) evaluate candidates using the STAR framework: Situation, Task, Action, and Result. Avoid vague answers; use concrete action verbs and measurable business impacts.',
+        tamilMentalModel:
+          'இன்டர்வியூவில் "பிரச்சனை இருந்துச்சு, சால்வ் பண்ணிட்டேன்" என்று ஒற்றை வரியில் சொல்லாமல்: என்ன பிரச்சனை (Situation), உங்கள் பணி என்ன (Task), நீங்கள் என்ன நடவடிக்கை எடுத்தீர்கள் (Action), அதன் மூலம் கிடைத்த சதவீதம் அல்லது வெற்றி என்ன (Result) என்பதை விளக்குங்கள்.',
+        dosAndDonts: [
+          {
+            incorrect: 'My team had bugs, so we fixed it somehow.',
+            correct: 'When production latency spiked by 30%, I profiled the database queries and indexed key tables, reducing response times by 45%.',
+            whyTamil: 'பொதுவான பதிலுக்கு பதிலாக, நீங்கள் எடுத்த குறிப்பிட்ட செயலையும் அதன் சதவீத பயனையும் சொல்லுங்கள்.',
+            whyEnglish: 'Use power verbs (profiled, indexed, reduced) and specific percentage metrics.',
+          },
         ],
-        quiz: {
-          question: 'When asked "Tell me about a challenge", what is best to focus on?',
-          options: ['Blame colleagues for mistakes.', 'The problem, the specific action YOU took, and the positive result.', 'Say you never faced any challenges.'],
-          correctIndex: 1,
-          explanation: 'The STAR framework highlights your competence and problem-solving skills.',
-          tamilExplanation: 'பிரச்சனை, நீங்கள் எடுத்த தீர்வு நடவடிக்கை, கிடைத்த வெற்றிகரமான முடிவு என வரிசையாக விளக்குதல்.',
-        },
-      },
-      {
-        id: 'class-3-2',
-        title: 'Class 2: Professional Email Etiquette',
-        subtitle: 'Stop saying "Please do the needful" and sound modern',
-        tamilConcept: 'பழைய பிரிட்டிஷ் காலத்து "Please do the needful" என்பதை தவிர்த்து, "Could you please review this when you have a moment?" என்று எழுதுங்கள்.',
-        duration: '8 mins',
-        grammarFocus: 'Modal Verbs (Would, Could, Should) for Business',
-        dialoguePrompt: 'Write a follow-up email asking your manager for code review approval.',
-        keyPhrases: [
-          'I hope you are having a productive week.',
-          'Just following up on the pull request I shared yesterday.',
-          'Could you please take a look when you have a moment?',
-          'Please let me know if any changes are required.',
+        dialogue: [
+          {
+            speaker: 'Interviewer',
+            avatar: '👨‍💼',
+            text: 'Tell me about a time you handled a critical system outage under tight pressure.',
+            tamilMeaning: 'நெருக்கடியான நேரத்தில் சிஸ்டம் செயலிழந்ததை எப்படி கையாண்டீர்கள் என கூறுங்கள்.',
+          },
+          {
+            speaker: 'You (Candidate)',
+            avatar: '🧑‍💻',
+            text: 'During our Black Friday sale, our payment gateway failed. I immediately rolled back the recent release, communicated status to stakeholders, and identified a memory leak within 20 minutes.',
+            tamilMeaning: 'விற்பனை உச்சத்தில் பேமெண்ட் கேட்வே நின்றது. நான் உடனடியாக முந்தைய வெர்ஷனுக்கு ரோல்பேக் செய்து, 20 நிமிடங்களில் காரணத்தை கண்டறிந்தேன்.',
+          },
         ],
-        quiz: {
-          question: 'Replace the outdated phrase "Please do the needful":',
-          options: ['Do it fast.', 'Could you please assist with this request?', 'Needful is required.'],
-          correctIndex: 1,
-          explanation: 'Modern corporate communication prefers clear, direct, and polite requests.',
-          tamilExplanation: 'நவீன அலுவலக மின்னஞ்சல்களில் "Could you please assist with this?" என எழுதுவது நன்று.',
-        },
-      },
-      {
-        id: 'class-3-3',
-        title: 'Class 3: Agile Daily Standups & Demos',
-        subtitle: 'Yesterday I did, Today I am doing, Blockers',
-        tamilConcept: 'டெய்லி ஸ்டாண்ட்-அப்பில் நீளமாக பேசாமல், சுருக்கமாக 3 விஷயங்களை மட்டும் பேசுவது.',
-        duration: '7 mins',
-        grammarFocus: 'Present Continuous & Future Plans',
-        dialoguePrompt: 'Deliver your daily standup update to your engineering team.',
-        keyPhrases: [
-          'Yesterday, I wrapped up the authentication screens.',
-          'Today, I will be integrating the Gemini API service.',
-          'I am currently blocked waiting for the API keys approval.',
-          'I should be ready for testing by this evening.',
+        shadowingPhrases: [
+          {
+            english: 'My primary responsibility was to optimize the backend pipeline.',
+            phonetic: '/maɪ ˈpraɪ.mə.ri rɪˌspɒn.səˈbɪl.ə.ti wɒz tuː ˈɒp.tɪ.maɪz/',
+            tamilContext: 'எனது முதன்மை பொறுப்பு பின்தளத்தை மேம்படுத்துவதாகும்.',
+          },
         ],
-        quiz: {
-          question: 'If you are waiting for someone to unblock you, you say:',
-          options: ['I am blocked waiting for backend endpoints.', 'I stopped doing work.', 'Nobody gives me keys.'],
-          correctIndex: 0,
-          explanation: '"I am blocked on/waiting for..." is standard agile team terminology.',
-          tamilExplanation: 'பணியில் தடை ஏற்படும்போது "I am blocked on..." என்று சொல்வது வழக்கம்.',
-        },
-      },
-    ],
-  },
-  {
-    levelNumber: 4,
-    levelTitle: 'Supernova Legend: Native Nuances & Mastery',
-    cefrTag: 'C1 - C2',
-    icon: 'sparkles',
-    badge: 'Mastery',
-    description: 'Think in English, master idioms, phrasal verbs, and speak like a native.',
-    classes: [
-      {
-        id: 'class-4-1',
-        title: 'Class 1: Top 20 Everyday Phrasal Verbs',
-        subtitle: 'Figure out, call off, catch up, run into',
-        tamilConcept: 'ஆங்கிலேயர்கள் பெரிய வார்த்தைகளை விட "phrasal verbs" (e.g. figure out = understand) அதிகம் பயன்படுத்துவார்கள்.',
-        duration: '9 mins',
-        grammarFocus: 'Verb + Preposition Idiomatic Combinations',
-        dialoguePrompt: 'Use "figure out" and "catch up" in a sentence talking about weekend plans.',
-        keyPhrases: [
-          'We need to figure out why this error is happening.',
-          'Let\'s catch up over coffee this Saturday.',
-          'They decided to call off the meeting due to rain.',
-          'I ran into an old college friend at the airport.',
+        quizQuestions: [
+          {
+            question: 'What does the "R" in the STAR interview technique stand for?',
+            options: ['Reason', 'Result', 'Reaction'],
+            correctIndex: 1,
+            explanation: 'R stands for Result—the measurable positive outcome of your action.',
+            tamilExplanation: 'R என்பது Result (அளவிடக்கூடிய சாதகமான முடிவு).',
+          },
         ],
-        quiz: {
-          question: 'What does "to figure out" mean?',
-          options: ['To draw a figure', 'To understand or solve a problem', 'To calculate numbers only'],
-          correctIndex: 1,
-          explanation: '"Figure out" means to solve, understand, or find a solution.',
-          tamilExplanation: '"Figure out" என்றால் ஒரு சிக்கலை புரிந்துகொண்டு தீர்ப்பது.',
-        },
-      },
-      {
-        id: 'class-4-2',
-        title: 'Class 2: Natural Connected Speech & Reductions',
-        subtitle: 'Gonna, wanna, gotta, shoulda in natural rhythm',
-        tamilConcept: 'இயல்பாக பேசும்போது வார்த்தைகள் ஒன்றோடு ஒன்று இணைந்து ஒலிக்கும் (Going to -> gonna, want to -> wanna).',
-        duration: '8 mins',
-        grammarFocus: 'Phonological assimilation & linking words',
-        dialoguePrompt: 'Practice saying: "What do you want to do?" naturally as "Whaddya wanna do?"',
-        keyPhrases: [
-          'I\'m gonna wrap up this feature today.',
-          'Do you wanna grab some lunch?',
-          'I gotta finish this deployment before 5.',
-          'You should\'ve seen his reaction!',
-        ],
-        quiz: {
-          question: 'In conversational spoken English, "going to" often links as:',
-          options: ['gonner', 'gonna', 'gone to'],
-          correctIndex: 1,
-          explanation: '"Gonna" is the casual spoken reduction of "going to".',
-          tamilExplanation: 'பேச்சு வழக்கில் "going to" என்பது "gonna" என சுருங்கி ஒலிக்கும்.',
-        },
       },
     ],
   },
