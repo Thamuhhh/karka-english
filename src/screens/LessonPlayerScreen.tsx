@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
@@ -38,6 +38,64 @@ interface LessonPlayerProps {
 
 type SlideType = 'rule' | 'jumble' | 'translation' | 'speaking' | 'victory';
 
+const LESSON_STEPS: Exclude<SlideType, 'victory'>[] = ['rule', 'jumble', 'translation', 'speaking'];
+const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
+const MAX_LESSON_WIDTH = 500;
+
+function formatShortLessonTitle(fullTitle: string): string {
+  return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
+}
+
+interface ActionButtonProps {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  colors?: readonly [string, string];
+  icon?: keyof typeof Ionicons.glyphMap;
+  iconLeft?: keyof typeof Ionicons.glyphMap;
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({
+  label,
+  onPress,
+  disabled = false,
+  loading = false,
+  colors = ['#8B5CF6', '#6D28D9'],
+  icon,
+  iconLeft,
+}) => (
+  <TouchableOpacity
+    style={[styles.primaryBtnOuter, disabled && styles.primaryBtnDisabled]}
+    activeOpacity={0.85}
+    onPress={onPress}
+    disabled={disabled || loading}
+  >
+    <LinearGradient
+      colors={disabled ? ['#2A2740', '#211E33'] : colors}
+      style={styles.primaryBtnGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      ) : (
+        <View style={styles.btnRowContent}>
+          {iconLeft && (
+            <Ionicons name={iconLeft} size={17} color="#FFFFFF" style={{ marginRight: 8 }} />
+          )}
+          <Text style={[styles.primaryBtnText, disabled && styles.primaryBtnTextDisabled]}>
+            {label}
+          </Text>
+          {icon && (
+            <Ionicons name={icon} size={17} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          )}
+        </View>
+      )}
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
 export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   lesson,
   initialHearts,
@@ -61,7 +119,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
   // Slide 2: Jumble State
   const [assembledWords, setAssembledWords] = useState<string[]>([]);
-  const [availableWords, setAvailableWords] = useState<string[]>([...lesson.jumble.scrambledWords]);
+  const [availableWords, setAvailableWords] = useState<string[]>([
+    ...lesson.jumble.scrambledWords,
+  ]);
   const [jumbleChecked, setJumbleChecked] = useState(false);
   const [isJumbleCorrect, setIsJumbleCorrect] = useState(false);
 
@@ -85,11 +145,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     speakText(text, () => setPlayingAudioId(null));
   };
 
-  // Exit Confirmation
   const handleExit = () => {
     Alert.alert(
       'Leave Lesson?',
-      'You are in the middle of a class! If you leave now, your lesson progress will not be saved.',
+      'Your current progress in this lesson will not be saved.',
       [
         { text: 'Keep Learning', style: 'cancel' },
         {
@@ -112,7 +171,6 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     });
   };
 
-  // Jumble Handlers
   const handleTapBankWord = (word: string, index: number) => {
     if (jumbleChecked) return;
     playSoundEffect('button');
@@ -203,181 +261,164 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     setCurrentSlide('victory');
   };
 
-  // Calculate Progress Percentage for Top Bar
-  const getProgressPercent = () => {
-    switch (currentSlide) {
-      case 'rule':
-        return '25%';
-      case 'jumble':
-        return '50%';
-      case 'translation':
-        return '75%';
-      case 'speaking':
-        return '90%';
-      case 'victory':
-        return '100%';
-    }
-  };
+  const currentStepIdx = LESSON_STEPS.indexOf(
+    currentSlide === 'victory' ? 'speaking' : currentSlide
+  );
+  const isTransCorrect = selectedTransIdx === lesson.translation.correctOptionIndex;
+  const shortTitle = formatShortLessonTitle(lesson.title);
 
   return (
     <View style={styles.fullscreen}>
-      {/* Top Header Bar: Exit X, Progress Bar, Hearts */}
+      {/* Minimalist Top Bar: Close, 4-Step Segment Bar, Hearts */}
       {currentSlide !== 'victory' && (
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={handleExit} style={styles.closeBtn}>
-            <Ionicons name="close" size={26} color={THEME.colors.textSecondary} />
-          </TouchableOpacity>
+        <View style={styles.topBarWrapper}>
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              onPress={handleExit}
+              style={styles.closeBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close" size={18} color="#B8B4CF" />
+            </TouchableOpacity>
 
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: getProgressPercent() }]} />
-          </View>
+            <View style={styles.segmentTrackRow}>
+              {LESSON_STEPS.map((stepKey, idx) => {
+                const isDone = idx < currentStepIdx;
+                const isCurrent = idx === currentStepIdx;
+                return (
+                  <View
+                    key={stepKey}
+                    style={[
+                      styles.segmentTrackPill,
+                      isDone && styles.segmentTrackDone,
+                      isCurrent && styles.segmentTrackActive,
+                    ]}
+                  />
+                );
+              })}
+            </View>
 
-          <View style={styles.heartRow}>
-            <Ionicons
-              name={hearts > 0 ? 'heart' : 'shield-checkmark'}
-              size={19}
-              color={hearts > 0 ? '#EF4444' : THEME.colors.accent}
-            />
-            <Text style={[styles.heartCount, hearts === 0 && { color: THEME.colors.accent }]}>
-              {hearts > 0 ? hearts : 'Shield'}
-            </Text>
+            <View style={styles.heartPill}>
+              <Ionicons
+                name={hearts > 0 ? 'heart' : 'shield-checkmark'}
+                size={13.5}
+                color={hearts > 0 ? '#F43F5E' : THEME.colors.accent}
+              />
+              <Text style={[styles.heartCount, hearts === 0 && { color: THEME.colors.accent }]}>
+                {hearts > 0 ? hearts : 'Shield'}
+              </Text>
+            </View>
           </View>
         </View>
       )}
 
-      {/* Main Content Area */}
-      <ScrollView style={styles.slideScroll} contentContainerStyle={styles.slideContent}>
-        {/* ========================================================== */}
-        {/* SLIDE 1: PATTERN & TAMIL MENTAL MODEL */}
-        {/* ========================================================== */}
+      {/* Centered Editorial Lesson Stage */}
+      <ScrollView
+        style={styles.slideScroll}
+        contentContainerStyle={styles.slideContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* SLIDE 1: CORE PATTERN */}
         {currentSlide === 'rule' && (
-          <View style={styles.slideCard}>
-            <View style={styles.slideHeaderPill}>
-              <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color={THEME.colors.gold} />
-              <Text style={styles.slideHeaderPillText}>RULE 1 OF 4</Text>
-            </View>
-
-            {/* Miss Nova Coach Advice */}
-            <View style={styles.novaCoachCard}>
-              <View style={styles.novaCoachAvatarWrap}>
-                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaCoachAvatar} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.novaCoachTitle}>Miss Nova</Text>
-                <Text style={styles.novaCoachText}>
-                  Focus on how native speakers build this sentence. Do not translate word-by-word.
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.lessonBigTitle}>{lesson.rule.heading}</Text>
+          <View style={styles.slideBody}>
+            <Text style={styles.stepEyebrow}>STEP 01 · CORE PATTERN</Text>
+            <Text style={styles.slideTitle}>{lesson.rule.heading}</Text>
             <Text style={styles.ruleExplainText}>{lesson.rule.englishExplanation}</Text>
 
-            {/* Tamil Mental Model Box */}
-            <View style={styles.tamilModelCard}>
-              <View style={styles.tamilModelHeader}>
-                <MaterialCommunityIcons name="translate" size={16} color={THEME.colors.gold} />
-                <Text style={styles.tamilModelTitle}>Tamil Mental Model:</Text>
-              </View>
-              <Text style={styles.tamilModelBody}>{lesson.rule.tamilMentalModel}</Text>
+            <View style={styles.tamilInsightCard}>
+              <Text style={styles.tamilInsightEyebrow}>TAMIL MENTAL MODEL</Text>
+              <Text style={styles.tamilInsightBody}>{lesson.rule.tamilMentalModel}</Text>
             </View>
 
-            {/* Do's and Don'ts Comparison */}
-            <View style={styles.comparisonBox}>
-              <View style={styles.wrongBox}>
-                <View style={styles.statusRow}>
-                  <Ionicons name="close-circle" size={16} color={THEME.colors.error} />
-                  <Text style={styles.wrongLabel}>AVOID (தவறு):</Text>
+            <View style={styles.contrastStack}>
+              <View style={styles.avoidCard}>
+                <View style={styles.contrastHeaderRow}>
+                  <Ionicons name="close-circle" size={15} color="#F87171" />
+                  <Text style={styles.avoidLabel}>AVOID (தவறு)</Text>
                 </View>
-                <Text style={styles.wrongSentence}>"{lesson.rule.doAndDont.wrong}"</Text>
+                <Text style={styles.avoidSentence}>"{lesson.rule.doAndDont.wrong}"</Text>
               </View>
 
-              <View style={styles.rightBox}>
-                <View style={styles.statusRow}>
-                  <Ionicons name="checkmark-circle" size={16} color={THEME.colors.success} />
-                  <Text style={styles.rightLabel}>SAY THIS (சரி):</Text>
+              <View style={styles.naturalCard}>
+                <View style={styles.contrastHeaderRow}>
+                  <Ionicons name="checkmark-circle" size={15} color="#34D399" />
+                  <Text style={styles.naturalLabel}>SAY NATURALLY (சரி)</Text>
                   <TouchableOpacity
-                    style={styles.speakerBtn}
+                    style={styles.audioIconBtn}
                     onPress={() => handlePlayVoice(lesson.rule.doAndDont.right, 'right-audio')}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   >
                     <Ionicons
                       name={playingAudioId === 'right-audio' ? 'volume-high' : 'volume-medium-outline'}
-                      size={20}
+                      size={18}
                       color={THEME.colors.primaryGlow}
                     />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.rightSentence}>"{lesson.rule.doAndDont.right}"</Text>
+                <Text style={styles.naturalSentence}>"{lesson.rule.doAndDont.right}"</Text>
               </View>
 
-              <View style={styles.whyNoteRow}>
-                <Ionicons name="information-circle-outline" size={14} color={THEME.colors.textSecondary} style={{ marginRight: 6, marginTop: 1 }} />
-                <Text style={styles.whyNote}>{lesson.rule.doAndDont.whyTamil}</Text>
-              </View>
+              <Text style={styles.whyNote}>{lesson.rule.doAndDont.whyTamil}</Text>
             </View>
           </View>
         )}
 
-        {/* ========================================================== */}
-        {/* SLIDE 2: SENTENCE SCRAMBLE */}
-        {/* ========================================================== */}
+        {/* SLIDE 2: SENTENCE BUILDER */}
         {currentSlide === 'jumble' && (
-          <View style={styles.slideCard}>
-            <View style={[styles.slideHeaderPill, { borderColor: THEME.colors.secondary }]}>
-              <MaterialCommunityIcons name="puzzle-outline" size={16} color={THEME.colors.secondary} />
-              <Text style={[styles.slideHeaderPillText, { color: THEME.colors.secondary }]}>
-                STEP 2 OF 4 • SENTENCE BUILDER
-              </Text>
+          <View style={styles.slideBody}>
+            <Text style={styles.stepEyebrow}>STEP 02 · SENTENCE BUILDER</Text>
+            <Text style={styles.slideTitle}>Arrange in Natural English</Text>
+            <Text style={styles.slideSubtitle}>Tap words in order to form the sentence.</Text>
+
+            <View style={styles.tamilPromptCard}>
+              <Text style={styles.tamilInsightEyebrow}>TAMIL THOUGHT</Text>
+              <Text style={styles.tamilPromptText}>{lesson.jumble.tamilSentence}</Text>
             </View>
 
-            <Text style={styles.lessonBigTitle}>Arrange in Natural English</Text>
-            <Text style={styles.promptSubtitle}>Tap the word tiles in correct order</Text>
-
-            {/* Tamil Prompt Card */}
-            <View style={styles.tamilThoughtBanner}>
-              <Text style={styles.tamilThoughtLabel}>TAMIL THOUGHT</Text>
-              <Text style={styles.tamilThoughtText}>{lesson.jumble.tamilSentence}</Text>
-            </View>
-
-            {/* Assembled Sentence Slot Line */}
-            <View style={styles.slotLineArea}>
-              <View style={styles.slotHeaderRow}>
-                <Text style={styles.slotHint}>YOUR SENTENCE</Text>
+            <View style={styles.answerDropzone}>
+              <View style={styles.dropzoneTopRow}>
+                <Text style={styles.dropzoneLabel}>YOUR SENTENCE</Text>
                 {assembledWords.length > 0 && !jumbleChecked && (
-                  <TouchableOpacity onPress={handleResetJumble} style={styles.resetTilesBtn}>
-                    <Ionicons name="refresh" size={12} color={THEME.colors.textSecondary} />
-                    <Text style={styles.resetTilesText}>Reset</Text>
+                  <TouchableOpacity onPress={handleResetJumble} style={styles.resetChip}>
+                    <Ionicons name="refresh" size={12} color="#B8B4CF" />
+                    <Text style={styles.resetChipText}>Reset</Text>
                   </TouchableOpacity>
                 )}
               </View>
+
               <View style={styles.wordsWrapRow}>
                 {assembledWords.length === 0 ? (
-                  <Text style={styles.emptySlotPlaceholder}>Tap words below to build...</Text>
+                  <Text style={styles.emptySlotPlaceholder}>
+                    Tap word chips below to build your sentence
+                  </Text>
                 ) : (
                   assembledWords.map((word, wIdx) => (
                     <TouchableOpacity
-                      key={wIdx}
-                      style={styles.slotTile}
+                      key={`${word}-${wIdx}`}
+                      style={styles.selectedWordChip}
                       onPress={() => handleTapSlotWord(word, wIdx)}
+                      activeOpacity={0.8}
                     >
-                      <Text style={styles.slotTileText}>{word}</Text>
-                      <Ionicons name="close" size={12} color="#E2E8F0" style={{ marginLeft: 4 }} />
+                      <Text style={styles.selectedWordText}>{word}</Text>
+                      {!jumbleChecked && (
+                        <Ionicons name="close" size={12} color="#E9D5FF" style={{ marginLeft: 5 }} />
+                      )}
                     </TouchableOpacity>
                   ))
                 )}
               </View>
             </View>
 
-            {/* Word Bank Area */}
-            <View style={styles.wordBankWrap}>
+            <View style={styles.wordBankArea}>
               <View style={styles.wordsWrapRow}>
                 {availableWords.map((word, bIdx) => (
                   <TouchableOpacity
-                    key={bIdx}
-                    style={styles.bankTile}
+                    key={`${word}-${bIdx}`}
+                    style={styles.bankWordChip}
                     onPress={() => handleTapBankWord(word, bIdx)}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.bankTileText}>{word}</Text>
+                    <Text style={styles.bankWordText}>{word}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -385,51 +426,58 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           </View>
         )}
 
-        {/* ========================================================== */}
         {/* SLIDE 3: GUIDED TRANSLATION */}
-        {/* ========================================================== */}
         {currentSlide === 'translation' && (
-          <View style={styles.slideCard}>
-            <View style={[styles.slideHeaderPill, { borderColor: THEME.colors.gold }]}>
-              <MaterialCommunityIcons name="translate" size={16} color={THEME.colors.gold} />
-              <Text style={[styles.slideHeaderPillText, { color: THEME.colors.gold }]}>
-                STEP 3 OF 4 • TRANSLATION
-              </Text>
-            </View>
+          <View style={styles.slideBody}>
+            <Text style={styles.stepEyebrow}>STEP 03 · NATURAL PHRASING</Text>
+            <Text style={styles.slideTitle}>Choose the Best Fit</Text>
+            <Text style={styles.slideSubtitle}>
+              Pick the option a fluent speaker would naturally say.
+            </Text>
 
-            <Text style={styles.lessonBigTitle}>Pick Natural English</Text>
-            <Text style={styles.promptSubtitle}>Select how a native speaker would say this</Text>
-
-            <View style={styles.tamilThoughtBanner}>
-              <Text style={styles.tamilThoughtLabel}>TAMIL SENTENCE</Text>
-              <Text style={styles.tamilThoughtText}>{lesson.translation.tamilPrompt}</Text>
+            <View style={styles.tamilPromptCard}>
+              <Text style={styles.tamilInsightEyebrow}>TAMIL MEANING</Text>
+              <Text style={styles.tamilPromptText}>{lesson.translation.tamilPrompt}</Text>
             </View>
 
             <View style={styles.optionsCol}>
               {lesson.translation.options.map((opt, oIdx) => {
                 const isSelected = selectedTransIdx === oIdx;
-                const isCorrect = oIdx === lesson.translation.correctOptionIndex;
+                const isRightOption = oIdx === lesson.translation.correctOptionIndex;
 
-                let optStyle: any = styles.transOptionCard;
+                let cardModifier = null;
+                let badgeModifier = null;
                 if (transChecked) {
-                  if (isCorrect) optStyle = [styles.transOptionCard, styles.cardCorrect];
-                  else if (isSelected) optStyle = [styles.transOptionCard, styles.cardWrong];
+                  if (isRightOption) {
+                    cardModifier = styles.optionCardCorrect;
+                    badgeModifier = styles.optionLetterCorrect;
+                  } else if (isSelected) {
+                    cardModifier = styles.optionCardWrong;
+                    badgeModifier = styles.optionLetterWrong;
+                  }
                 } else if (isSelected) {
-                  optStyle = [styles.transOptionCard, styles.cardSelected];
+                  cardModifier = styles.optionCardSelected;
+                  badgeModifier = styles.optionLetterSelected;
                 }
 
                 return (
                   <TouchableOpacity
                     key={oIdx}
-                    style={optStyle}
+                    style={[styles.optionCard, cardModifier]}
                     onPress={() => {
-                      if (!transChecked) setSelectedTransIdx(oIdx);
+                      if (!transChecked) {
+                        playSoundEffect('button');
+                        setSelectedTransIdx(oIdx);
+                      }
                     }}
+                    activeOpacity={0.8}
                   >
-                    <View style={styles.optionRadioCircle}>
-                      {isSelected && <View style={styles.optionRadioDot} />}
+                    <View style={[styles.optionLetterBox, badgeModifier]}>
+                      <Text style={styles.optionLetterText}>
+                        {OPTION_LETTERS[oIdx] || String(oIdx + 1)}
+                      </Text>
                     </View>
-                    <Text style={styles.transOptionCardText}>{opt}</Text>
+                    <Text style={styles.optionText}>{opt}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -437,402 +485,337 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           </View>
         )}
 
-        {/* ========================================================== */}
-        {/* SLIDE 4: FREE SPEAKING WITH MISS NOVA */}
-        {/* ========================================================== */}
+        {/* SLIDE 4: PRACTICE SPEAKING */}
         {currentSlide === 'speaking' && (
-          <View style={styles.slideCard}>
-            <View style={[styles.slideHeaderPill, { borderColor: THEME.colors.primaryGlow }]}>
-              <MaterialCommunityIcons name="microphone-outline" size={16} color={THEME.colors.primaryGlow} />
-              <Text style={[styles.slideHeaderPillText, { color: THEME.colors.primaryGlow }]}>
-                STEP 4 OF 4 • SPEAKING
-              </Text>
-            </View>
+          <View style={styles.slideBody}>
+            <Text style={styles.stepEyebrow}>STEP 04 · SPEAK IT OUT</Text>
+            <Text style={styles.slideTitle}>Respond in Your Own Words</Text>
+            <Text style={styles.slideSubtitle}>{lesson.speakingChallenge.prompt}</Text>
 
-            <Text style={styles.lessonBigTitle}>Speak with Miss Nova</Text>
-            <Text style={styles.promptSubtitle}>{lesson.speakingChallenge.prompt}</Text>
-
-            {/* Miss Nova Card */}
-            <View style={styles.missNovaBubbleCard}>
-              <View style={styles.missNovaHeaderRow}>
-                <View style={styles.missNovaAvatarSmall}>
-                  <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatarSmallImg} />
+            <View style={styles.promptBubbleCard}>
+              <View style={styles.promptBubbleHeader}>
+                <View style={styles.novaMiniAvatar}>
+                  <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaMiniImg} />
                 </View>
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={styles.missNovaTitle}>Miss Nova</Text>
-                  <Text style={styles.missNovaSub}>AI English Coach</Text>
-                </View>
+                <Text style={styles.promptSpeakerName}>Nova</Text>
                 <TouchableOpacity
-                  style={styles.speakerBtn}
-                  onPress={() => handlePlayVoice(lesson.speakingChallenge.missNovaQuestion, 'nova-q')}
+                  style={styles.audioIconBtn}
+                  onPress={() =>
+                    handlePlayVoice(lesson.speakingChallenge.missNovaQuestion, 'nova-q')
+                  }
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
                   <Ionicons
                     name={playingAudioId === 'nova-q' ? 'volume-high' : 'volume-medium-outline'}
-                    size={22}
+                    size={19}
                     color={THEME.colors.primaryGlow}
                   />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.missNovaSpeechText}>"{lesson.speakingChallenge.missNovaQuestion}"</Text>
+              <Text style={styles.promptQuestionText}>
+                "{lesson.speakingChallenge.missNovaQuestion}"
+              </Text>
             </View>
 
-            {/* Suggested Answer Chips */}
-            <Text style={styles.suggestLabel}>SAMPLE RESPONSES</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {lesson.speakingChallenge.suggestedAnswers.map((ans, aIdx) => (
-                <TouchableOpacity
-                  key={aIdx}
-                  style={styles.suggestPill}
-                  onPress={() => setSpokenText(ans)}
-                >
-                  <Text style={styles.suggestPillText} numberOfLines={1}>"{ans}"</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <View style={styles.sampleBlock}>
+              <Text style={styles.sampleSectionLabel}>TAP TO PREFILL AN IDEA</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.sampleChipsRow}>
+                  {lesson.speakingChallenge.suggestedAnswers.map((ans, aIdx) => (
+                    <TouchableOpacity
+                      key={aIdx}
+                      style={styles.sampleChip}
+                      onPress={() => setSpokenText(ans)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.sampleChipText}>"{ans}"</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
 
-            {/* Text Input for Speech */}
             <TextInput
-              style={styles.speakingInput}
-              placeholder="Speak or type your answer in English..."
+              style={[
+                styles.responseInput,
+                spokenText.trim().length > 0 && styles.responseInputActive,
+              ]}
+              placeholder="Write or dictate your response in English..."
               placeholderTextColor={THEME.colors.textMuted}
               value={spokenText}
               onChangeText={setSpokenText}
               multiline
-              numberOfLines={3}
+              textAlignVertical="top"
             />
 
-            {/* Real-Time AI Feedback Result */}
             {speakingFeedback && (
-              <View style={styles.aiResultCard}>
-                <View style={styles.aiScoreRow}>
-                  <Ionicons name="analytics-outline" size={18} color={THEME.colors.secondary} />
-                  <Text style={styles.aiScoreText}>
-                    Fluency Score: {speakingFeedback.fluencyScore}/100
+              <View style={styles.feedbackCard}>
+                <View style={styles.feedbackTopBar}>
+                  <Text style={styles.feedbackTitle}>Response Check</Text>
+                  <View style={styles.scoreBadge}>
+                    <Text style={styles.scoreBadgeText}>{speakingFeedback.fluencyScore}/100</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.feedbackEnglish}>{speakingFeedback.explanation}</Text>
+
+                <View style={styles.feedbackTamilCallout}>
+                  <Text style={styles.feedbackTamilText}>
+                    {speakingFeedback.tamilExplanation}
                   </Text>
                 </View>
-                <Text style={styles.aiExplainText}>{speakingFeedback.explanation}</Text>
-                <View style={styles.whyNoteRow}>
-                  <Ionicons name="information-circle-outline" size={14} color={THEME.colors.gold} style={{ marginRight: 6, marginTop: 2 }} />
-                  <Text style={styles.aiTamilExplainText}>{speakingFeedback.tamilExplanation}</Text>
-                </View>
-                <View style={styles.nativeRephraseBox}>
-                  <Text style={styles.nativeLabel}>NATURAL REPHRASING</Text>
-                  <Text style={styles.nativeText}>"{speakingFeedback.nativeIdiomaticVersion}"</Text>
+
+                <View style={styles.rephraseBox}>
+                  <Text style={styles.rephraseLabel}>NATURAL VERSION</Text>
+                  <Text style={styles.rephraseText}>
+                    "{speakingFeedback.nativeIdiomaticVersion}"
+                  </Text>
                 </View>
               </View>
             )}
           </View>
         )}
 
-        {/* ========================================================== */}
-        {/* SLIDE 5: LESSON VICTORY CELEBRATION */}
-        {/* ========================================================== */}
+        {/* SLIDE 5: LESSON COMPLETE SUMMARY */}
         {currentSlide === 'victory' && (
           <View style={styles.victoryContainer}>
-            <View style={styles.victoryTrophyCircle}>
-              <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.victoryTrophyImg} resizeMode="cover" />
+            <View style={styles.victoryCrestWrap}>
+              <Image
+                source={SUPERNOVA_IMAGES.trophyNova}
+                style={styles.victoryCrestImg}
+                resizeMode="cover"
+              />
             </View>
 
-            <Text style={styles.victoryTitle}>Lesson Complete!</Text>
+            <Text style={styles.victoryEyebrow}>LESSON COMPLETED</Text>
+            <Text style={styles.victoryTitle}>{shortTitle}</Text>
             <Text style={styles.victorySubtitle}>
-              You completed "{lesson.title}". Keep building your daily fluency streak.
+              Pattern mastered and added to your daily fluency streak.
             </Text>
 
-            <View style={styles.statsCardGrid}>
-              <View style={styles.victoryStatCard}>
-                <Ionicons name="flash" size={22} color={THEME.colors.secondary} />
-                <Text style={styles.victoryStatVal}>+{victorySummary?.awardedXp ?? lesson.xpReward} XP</Text>
-                <Text style={styles.victoryStatLabel}>XP Earned</Text>
-              </View>
-              <View style={styles.victoryStatCard}>
-                <MaterialCommunityIcons name="fire" size={24} color={THEME.colors.gold} />
-                <Text style={styles.victoryStatVal}>
-                  {(victorySummary?.streakDays ?? 1) === 1
-                    ? '1 Day'
-                    : `${victorySummary?.streakDays} Days`}
+            <View style={styles.victoryMetricsCard}>
+              <View style={styles.victoryMetricItem}>
+                <Text style={styles.victoryMetricVal}>
+                  +{victorySummary?.awardedXp ?? lesson.xpReward}
                 </Text>
-                <Text style={styles.victoryStatLabel}>Day Streak</Text>
+                <Text style={styles.victoryMetricLabel}>XP Earned</Text>
               </View>
-              <View style={styles.victoryStatCard}>
-                <Ionicons name="checkmark-done-circle" size={22} color={THEME.colors.success} />
-                <Text style={styles.victoryStatVal}>{victorySummary?.accuracy ?? 100}%</Text>
-                <Text style={styles.victoryStatLabel}>Accuracy</Text>
+
+              <View style={styles.victoryMetricDivider} />
+
+              <View style={styles.victoryMetricItem}>
+                <Text style={[styles.victoryMetricVal, { color: THEME.colors.gold }]}>
+                  {victorySummary?.streakDays ?? 1}d
+                </Text>
+                <Text style={styles.victoryMetricLabel}>Streak</Text>
               </View>
-            </View>
-            <View style={styles.victoryBonusPill}>
-              <Ionicons name="diamond" size={14} color={THEME.colors.secondary} />
-              <Text style={styles.victoryBonusText}>+{victorySummary?.awardedGems ?? 5} Gems added to wallet</Text>
+
+              <View style={styles.victoryMetricDivider} />
+
+              <View style={styles.victoryMetricItem}>
+                <Text style={[styles.victoryMetricVal, { color: THEME.colors.accent }]}>
+                  {victorySummary?.accuracy ?? 100}%
+                </Text>
+                <Text style={styles.victoryMetricLabel}>Accuracy</Text>
+              </View>
+
+              <View style={styles.victoryMetricDivider} />
+
+              <View style={styles.victoryMetricItem}>
+                <Text style={[styles.victoryMetricVal, { color: THEME.colors.secondary }]}>
+                  +{victorySummary?.awardedGems ?? 5}
+                </Text>
+                <Text style={styles.victoryMetricLabel}>Gems</Text>
+              </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.finishContinueTouchable}
-              activeOpacity={0.85}
-              onPress={() => {
-                stopAllAudio();
-                onClose();
-              }}
-            >
-              <LinearGradient
-                colors={THEME.gradients.primary}
-                style={styles.finishContinueBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.finishContinueBtnText}>CONTINUE TO ROADMAP</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
-              </LinearGradient>
-            </TouchableOpacity>
+            <View style={{ width: '100%' }}>
+              <ActionButton
+                label="Back to Course"
+                icon="arrow-forward"
+                onPress={() => {
+                  stopAllAudio();
+                  onClose();
+                }}
+              />
+            </View>
           </View>
         )}
       </ScrollView>
 
-      {/* ========================================================== */}
-      {/* BOTTOM ACTION / CHECK DRAWER */}
-      {/* ========================================================== */}
+      {/* Pinned Bottom Action / Check Drawer */}
       {currentSlide !== 'victory' && (
-        <View style={styles.bottomActionDrawer}>
-          {/* Slide 1 Continue */}
-          {currentSlide === 'rule' && (
-            <TouchableOpacity
-              style={styles.actionBtnTouchable}
-              activeOpacity={0.85}
-              onPress={() => setCurrentSlide('jumble')}
-            >
-              <LinearGradient
-                colors={THEME.gradients.primary}
-                style={styles.actionButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <View style={styles.btnRowContent}>
-                  <Text style={styles.actionBtnText}>CONTINUE</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+        <View style={styles.bottomDrawerWrapper}>
+          <View style={styles.bottomDrawerInner}>
+            {currentSlide === 'rule' && (
+              <ActionButton
+                label="Continue"
+                icon="arrow-forward"
+                onPress={() => setCurrentSlide('jumble')}
+              />
+            )}
 
-          {/* Slide 2 Check Jumble */}
-          {currentSlide === 'jumble' && (
-            <>
-              {jumbleChecked ? (
-                <View style={styles.feedbackDrawerContent}>
-                  <View style={styles.feedbackHeadlineRow}>
-                    <Ionicons
-                      name={isJumbleCorrect ? 'checkmark-circle' : 'close-circle'}
-                      size={22}
-                      color={isJumbleCorrect ? THEME.colors.success : THEME.colors.error}
-                    />
-                    <Text
+            {currentSlide === 'jumble' && (
+              <>
+                {jumbleChecked ? (
+                  <View style={styles.feedbackDrawer}>
+                    <View
                       style={[
-                        styles.feedbackHeadline,
-                        { color: isJumbleCorrect ? THEME.colors.success : THEME.colors.error, flex: 1 },
+                        styles.feedbackNoticeBox,
+                        isJumbleCorrect ? styles.noticeCorrect : styles.noticeWrong,
                       ]}
                     >
-                      {isJumbleCorrect ? 'Spot on! Correct sentence.' : 'Incorrect word order'}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() =>
-                        handlePlayVoice(lesson.jumble.correctWords.join(' '), 'jumble-answer')
-                      }
-                      style={styles.speakerBtn}
-                    >
-                      <Ionicons
-                        name={playingAudioId === 'jumble-answer' ? 'volume-high' : 'volume-medium-outline'}
-                        size={20}
-                        color={THEME.colors.primaryGlow}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  {!isJumbleCorrect && (
-                    <Text style={styles.jumbleCorrectionNote}>Correct order: {lesson.jumble.correctWords.join(' ')}</Text>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.actionBtnTouchable, { marginTop: 10 }]}
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      if (isJumbleCorrect) {
-                        setCurrentSlide('translation');
-                      } else {
-                        setAvailableWords([...lesson.jumble.scrambledWords]);
-                        setAssembledWords([]);
-                        setJumbleChecked(false);
-                      }
-                    }}
-                  >
-                    <LinearGradient
-                      colors={isJumbleCorrect ? THEME.gradients.primary : ['#EF4444', '#DC2626']}
-                      style={styles.actionButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      <View style={styles.btnRowContent}>
-                        <Text style={styles.actionBtnText}>
-                          {isJumbleCorrect ? 'CONTINUE' : 'TRY AGAIN'}
-                        </Text>
+                      <View style={styles.feedbackHeadlineRow}>
                         <Ionicons
-                          name={isJumbleCorrect ? 'arrow-forward' : 'refresh'}
-                          size={18}
-                          color="#FFFFFF"
-                          style={{ marginLeft: 8 }}
+                          name={isJumbleCorrect ? 'checkmark-circle' : 'close-circle'}
+                          size={19}
+                          color={isJumbleCorrect ? '#34D399' : '#F87171'}
                         />
+                        <Text
+                          style={[
+                            styles.feedbackHeadline,
+                            { color: isJumbleCorrect ? '#34D399' : '#F87171' },
+                          ]}
+                        >
+                          {isJumbleCorrect ? 'Clean sentence structure!' : 'Incorrect word order'}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            handlePlayVoice(lesson.jumble.correctWords.join(' '), 'jumble-answer')
+                          }
+                          style={styles.audioIconBtn}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons
+                            name={
+                              playingAudioId === 'jumble-answer'
+                                ? 'volume-high'
+                                : 'volume-medium-outline'
+                            }
+                            size={18}
+                            color={THEME.colors.primaryGlow}
+                          />
+                        </TouchableOpacity>
                       </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.actionBtnTouchable, assembledWords.length === 0 && styles.btnDisabled]}
-                  activeOpacity={0.85}
-                  onPress={handleCheckJumble}
-                  disabled={assembledWords.length === 0}
-                >
-                  <LinearGradient
-                    colors={assembledWords.length > 0 ? THEME.gradients.primary : ['#3D395C', '#28253E']}
-                    style={styles.actionButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <Text style={styles.actionBtnText}>CHECK ANSWER</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
+                      {!isJumbleCorrect && (
+                        <Text style={styles.drawerCorrectionText}>
+                          Correct: {lesson.jumble.correctWords.join(' ')}
+                        </Text>
+                      )}
+                    </View>
 
-          {/* Slide 3 Check Translation */}
-          {currentSlide === 'translation' && (
-            <>
-              {transChecked ? (
-                <View style={styles.feedbackDrawerContent}>
-                  <View style={styles.feedbackHeadlineRow}>
-                    <Ionicons
-                      name={
-                        selectedTransIdx === lesson.translation.correctOptionIndex
-                          ? 'checkmark-circle'
-                          : 'close-circle'
-                      }
-                      size={22}
-                      color={
-                        selectedTransIdx === lesson.translation.correctOptionIndex
-                          ? THEME.colors.success
-                          : THEME.colors.error
-                      }
+                    <ActionButton
+                      label={isJumbleCorrect ? 'Continue' : 'Try Again'}
+                      icon={isJumbleCorrect ? 'arrow-forward' : 'refresh'}
+                      colors={isJumbleCorrect ? ['#8B5CF6', '#6D28D9'] : ['#EF4444', '#DC2626']}
+                      onPress={() => {
+                        if (isJumbleCorrect) {
+                          setCurrentSlide('translation');
+                        } else {
+                          setAvailableWords([...lesson.jumble.scrambledWords]);
+                          setAssembledWords([]);
+                          setJumbleChecked(false);
+                        }
+                      }}
                     />
-                    <Text
+                  </View>
+                ) : (
+                  <ActionButton
+                    label="Check Answer"
+                    disabled={assembledWords.length === 0}
+                    onPress={handleCheckJumble}
+                  />
+                )}
+              </>
+            )}
+
+            {currentSlide === 'translation' && (
+              <>
+                {transChecked ? (
+                  <View style={styles.feedbackDrawer}>
+                    <View
                       style={[
-                        styles.feedbackHeadline,
-                        {
-                          flex: 1,
-                          color:
-                            selectedTransIdx === lesson.translation.correctOptionIndex
-                              ? THEME.colors.success
-                              : THEME.colors.error,
-                        },
+                        styles.feedbackNoticeBox,
+                        isTransCorrect ? styles.noticeCorrect : styles.noticeWrong,
                       ]}
                     >
-                      {selectedTransIdx === lesson.translation.correctOptionIndex
-                        ? 'Great job! Exactly right.'
-                        : 'Review this rule:'}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handlePlayVoice(lesson.translation.expectedEnglish, 'trans-answer')}
-                      style={styles.speakerBtn}
-                    >
-                      <Ionicons
-                        name={playingAudioId === 'trans-answer' ? 'volume-high' : 'volume-medium-outline'}
-                        size={20}
-                        color={THEME.colors.primaryGlow}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.jumbleCorrectionNote}>{lesson.translation.explanation}</Text>
-                  <Text style={styles.jumbleTamilNote}>{lesson.translation.tamilExplanation}</Text>
-                  <TouchableOpacity
-                    style={[styles.actionBtnTouchable, { marginTop: 10 }]}
-                    activeOpacity={0.85}
-                    onPress={() => setCurrentSlide('speaking')}
-                  >
-                    <LinearGradient
-                      colors={THEME.gradients.primary}
-                      style={styles.actionButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      <View style={styles.btnRowContent}>
-                        <Text style={styles.actionBtnText}>PRACTICE SPEAKING</Text>
-                        <Ionicons name="mic" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                      <View style={styles.feedbackHeadlineRow}>
+                        <Ionicons
+                          name={isTransCorrect ? 'checkmark-circle' : 'close-circle'}
+                          size={19}
+                          color={isTransCorrect ? '#34D399' : '#F87171'}
+                        />
+                        <Text
+                          style={[
+                            styles.feedbackHeadline,
+                            { color: isTransCorrect ? '#34D399' : '#F87171' },
+                          ]}
+                        >
+                          {isTransCorrect ? 'Spot on!' : 'Check natural phrasing'}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            handlePlayVoice(lesson.translation.expectedEnglish, 'trans-answer')
+                          }
+                          style={styles.audioIconBtn}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons
+                            name={
+                              playingAudioId === 'trans-answer'
+                                ? 'volume-high'
+                                : 'volume-medium-outline'
+                            }
+                            size={18}
+                            color={THEME.colors.primaryGlow}
+                          />
+                        </TouchableOpacity>
                       </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.actionBtnTouchable, selectedTransIdx === null && styles.btnDisabled]}
-                  activeOpacity={0.85}
-                  onPress={handleCheckTranslation}
-                  disabled={selectedTransIdx === null}
-                >
-                  <LinearGradient
-                    colors={selectedTransIdx !== null ? THEME.gradients.primary : ['#3D395C', '#28253E']}
-                    style={styles.actionButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <Text style={styles.actionBtnText}>CHECK ANSWER</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* Slide 4 Speaking Action */}
-          {currentSlide === 'speaking' && (
-            <>
-              {speakingFeedback ? (
-                <TouchableOpacity
-                  style={styles.actionBtnTouchable}
-                  activeOpacity={0.85}
-                  onPress={handleFinishLesson}
-                >
-                  <LinearGradient
-                    colors={THEME.gradients.accent}
-                    style={styles.actionButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <View style={styles.btnRowContent}>
-                      <Ionicons name="trophy" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                      <Text style={styles.actionBtnText}>COMPLETE LESSON (+{lesson.xpReward} XP)</Text>
+                      <Text style={styles.drawerCorrectionText}>
+                        {lesson.translation.explanation}
+                      </Text>
+                      <Text style={styles.drawerTamilNote}>
+                        {lesson.translation.tamilExplanation}
+                      </Text>
                     </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.actionBtnTouchable, !spokenText.trim() && styles.btnDisabled]}
-                  activeOpacity={0.85}
-                  onPress={handleSubmitSpeaking}
-                  disabled={!spokenText.trim() || isEvaluating}
-                >
-                  <LinearGradient
-                    colors={spokenText.trim() ? THEME.gradients.primary : ['#3D395C', '#28253E']}
-                    style={styles.actionButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    {isEvaluating ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <View style={styles.btnRowContent}>
-                        <Ionicons name="mic" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.actionBtnText}>CHECK RESPONSE</Text>
-                      </View>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
+
+                    <ActionButton
+                      label="Next: Speaking"
+                      icon="mic-outline"
+                      onPress={() => setCurrentSlide('speaking')}
+                    />
+                  </View>
+                ) : (
+                  <ActionButton
+                    label="Check Answer"
+                    disabled={selectedTransIdx === null}
+                    onPress={handleCheckTranslation}
+                  />
+                )}
+              </>
+            )}
+
+            {currentSlide === 'speaking' && (
+              <>
+                {speakingFeedback ? (
+                  <ActionButton
+                    label={`Complete Lesson (+${lesson.xpReward} XP)`}
+                    iconLeft="checkmark-done"
+                    colors={['#10B981', '#059669']}
+                    onPress={handleFinishLesson}
+                  />
+                ) : (
+                  <ActionButton
+                    label="Check Response"
+                    iconLeft="mic-outline"
+                    disabled={!spokenText.trim()}
+                    loading={isEvaluating}
+                    onPress={handleSubmitSpeaking}
+                  />
+                )}
+              </>
+            )}
+          </View>
         </View>
       )}
     </View>
@@ -844,667 +827,653 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
+  topBarWrapper: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+  },
   topBar: {
+    width: '100%',
+    maxWidth: MAX_LESSON_WIDTH,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 12,
   },
   closeBtn: {
-    padding: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#181725',
+    borderWidth: 1,
+    borderColor: '#2A2740',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  progressBarTrack: {
+  segmentTrackRow: {
     flex: 1,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: THEME.colors.surfaceElevated,
-    marginHorizontal: 14,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: THEME.colors.accent,
-    borderRadius: 5,
-  },
-  heartRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
+  },
+  segmentTrackPill: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#232036',
+  },
+  segmentTrackDone: {
+    backgroundColor: THEME.colors.accent,
+  },
+  segmentTrackActive: {
+    backgroundColor: THEME.colors.primary,
+  },
+  heartPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 30,
+    paddingHorizontal: 9,
+    borderRadius: 10,
+    backgroundColor: '#181725',
+    borderWidth: 1,
+    borderColor: '#2A2740',
+    gap: 4,
   },
   heartCount: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 14,
-    color: '#EF4444',
-    marginLeft: 4,
+    fontSize: 12,
+    color: '#FFFFFF',
   },
+
   slideScroll: {
     flex: 1,
   },
   slideContent: {
-    padding: 18,
-    paddingBottom: 40,
+    width: '100%',
+    maxWidth: MAX_LESSON_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 32,
   },
-  slideCard: {
-    gap: 12,
+  slideBody: {
+    gap: 14,
   },
-  slideHeaderPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.colors.gold,
-  },
-  slideHeaderPillText: {
+  stepEyebrow: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.gold,
-    letterSpacing: 0.8,
-    marginLeft: 6,
+    fontSize: 10.5,
+    color: '#A78BFA',
+    letterSpacing: 1.0,
   },
-  lessonBigTitle: {
+  slideTitle: {
     fontFamily: THEME.fonts.bold,
     fontSize: 22,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
+    lineHeight: 28,
+    marginTop: -4,
+  },
+  slideSubtitle: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 13.5,
+    color: THEME.colors.textSecondary,
+    lineHeight: 20,
+    marginTop: -6,
   },
   ruleExplainText: {
     fontFamily: THEME.fonts.body,
-    fontSize: 15,
-    color: THEME.colors.text,
+    fontSize: 14.5,
+    color: '#D7D3EB',
     lineHeight: 22,
   },
-  promptSubtitle: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
+
+  /* TAMIL INSIGHT CALLOUT (LEFT-ACCENT OBSIDIAN) */
+  tamilInsightCard: {
+    backgroundColor: '#171625',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  tamilModelCard: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-    borderRadius: THEME.radius.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-    marginVertical: 4,
-  },
-  tamilModelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  tamilModelTitle: {
+  tamilInsightEyebrow: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: THEME.colors.gold,
-    marginLeft: 6,
+    fontSize: 10,
+    color: '#A78BFA',
+    letterSpacing: 0.8,
+    marginBottom: 5,
   },
-  tamilModelBody: {
+  tamilInsightBody: {
     fontFamily: THEME.fonts.tamilMedium,
     fontSize: 13.5,
-    color: THEME.colors.text,
-    lineHeight: 23,
+    color: '#F1EFFC',
+    lineHeight: 24,
   },
-  comparisonBox: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.md,
+
+  /* CONTRAST PAIR (AVOID VS NATURAL) */
+  contrastStack: {
+    gap: 10,
+    marginTop: 2,
+  },
+  avoidCard: {
+    backgroundColor: '#191520',
+    borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    gap: 10,
+    borderColor: 'rgba(248, 113, 113, 0.22)',
   },
-  wrongBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderRadius: 8,
-    padding: 10,
+  naturalCard: {
+    backgroundColor: '#131E1E',
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: 'rgba(52, 211, 153, 0.26)',
   },
-  rightBox: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  statusRow: {
+  contrastHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  wrongLabel: {
+  avoidLabel: {
     fontFamily: THEME.fonts.tamilBold,
     fontSize: 10.5,
-    color: THEME.colors.error,
-    marginLeft: 6,
+    color: '#F87171',
     lineHeight: 16,
   },
-  rightLabel: {
+  naturalLabel: {
     fontFamily: THEME.fonts.tamilBold,
     fontSize: 10.5,
-    color: THEME.colors.success,
-    marginLeft: 6,
+    color: '#34D399',
     lineHeight: 16,
     flex: 1,
   },
-  wrongSentence: {
+  avoidSentence: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 14.5,
+    color: '#D5D0E6',
+    marginTop: 6,
+    lineHeight: 21,
+  },
+  naturalSentence: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 14,
-    color: THEME.colors.text,
-    marginTop: 4,
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginTop: 6,
+    lineHeight: 22,
   },
-  rightSentence: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 14,
-    color: THEME.colors.text,
-    marginTop: 4,
-  },
-  speakerBtn: {
-    padding: 2,
-  },
-  whyNoteRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  audioIconBtn: {
+    padding: 3,
   },
   whyNote: {
     fontFamily: THEME.fonts.tamil,
     fontSize: 12.5,
     color: THEME.colors.textSecondary,
     lineHeight: 21,
-    flex: 1,
+    paddingHorizontal: 2,
+    marginTop: 2,
   },
 
-  // Jumble Styles
-  tamilThoughtBanner: {
-    backgroundColor: THEME.colors.surfaceCard,
-    padding: 14,
+  /* SENTENCE BUILDER */
+  tamilPromptCard: {
+    backgroundColor: '#171625',
+    padding: 15,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#28253D',
   },
-  tamilThoughtLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.gold,
-  },
-  tamilThoughtText: {
+  tamilPromptText: {
     fontFamily: THEME.fonts.tamilBold,
-    fontSize: 15.5,
-    color: THEME.colors.text,
-    lineHeight: 26,
-    marginTop: 4,
+    fontSize: 16,
+    color: '#FFFFFF',
+    lineHeight: 27,
   },
-  slotLineArea: {
-    minHeight: 88,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: THEME.colors.borderLight,
+  answerDropzone: {
+    minHeight: 100,
+    backgroundColor: '#13121D',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#2B2842',
   },
-  slotHeaderRow: {
+  dropzoneTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  slotHint: {
+  dropzoneLabel: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textMuted,
+    letterSpacing: 0.7,
   },
-  resetTilesBtn: {
+  resetChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: '#1D1B2D',
+    borderWidth: 1,
+    borderColor: '#2E2B45',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 8,
     gap: 4,
   },
-  resetTilesText: {
+  resetChipText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
+    fontSize: 10.5,
+    color: '#B8B4CF',
   },
   emptySlotPlaceholder: {
     fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.textMuted,
+    paddingVertical: 6,
   },
   wordsWrapRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  slotTile: {
+  selectedWordChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 11,
+  },
+  selectedWordText: {
+    fontFamily: THEME.fonts.semiBold,
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  wordBankArea: {
+    paddingTop: 6,
+  },
+  bankWordChip: {
+    backgroundColor: '#1B1A2B',
+    paddingHorizontal: 15,
     paddingVertical: 10,
-    borderRadius: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: THEME.colors.primaryBorder,
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#312D4E',
   },
-  slotTileText: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 15,
-  },
-  wordBankWrap: {
-    paddingVertical: 12,
-  },
-  bankTile: {
-    backgroundColor: '#221F36',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#3D395C',
-    borderBottomWidth: 4,
-    borderBottomColor: '#12111E',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  bankTileText: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 15,
+  bankWordText: {
+    fontFamily: THEME.fonts.semiBold,
+    color: '#F1EFFC',
+    fontSize: 14,
   },
 
-  // Translation Styles
+  /* GUIDED TRANSLATION */
   optionsCol: {
     gap: 10,
-    marginTop: 4,
   },
-  transOptionCard: {
+  optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.border,
+    backgroundColor: '#171625',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#28253D',
   },
-  cardSelected: {
+  optionCardSelected: {
     borderColor: THEME.colors.primary,
-    backgroundColor: 'rgba(127, 67, 254, 0.12)',
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
   },
-  cardCorrect: {
-    borderColor: THEME.colors.success,
-    backgroundColor: THEME.colors.successBg,
+  optionCardCorrect: {
+    borderColor: '#10B981',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
-  cardWrong: {
-    borderColor: THEME.colors.error,
-    backgroundColor: THEME.colors.errorBg,
+  optionCardWrong: {
+    borderColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
-  optionRadioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: THEME.colors.borderLight,
+  optionLetterBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#222036',
+    borderWidth: 1,
+    borderColor: '#353152',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
-  optionRadioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  optionLetterSelected: {
     backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primaryGlow,
   },
-  transOptionCardText: {
+  optionLetterCorrect: {
+    backgroundColor: '#10B981',
+    borderColor: '#34D399',
+  },
+  optionLetterWrong: {
+    backgroundColor: '#EF4444',
+    borderColor: '#F87171',
+  },
+  optionLetterText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  optionText: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 14,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     flex: 1,
+    lineHeight: 20,
   },
 
-  // Speaking Styles
-  missNovaBubbleCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    padding: 14,
+  /* SPEAKING STAGE */
+  promptBubbleCard: {
+    backgroundColor: '#171625',
+    padding: 15,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#292640',
   },
-  missNovaHeaderRow: {
+  promptBubbleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  missNovaAvatarSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(127, 67, 254, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  novaMiniAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.5)',
+    backgroundColor: '#222036',
   },
-  missNovaAvatarSmallImg: {
-    width: 44,
-    height: 44,
-    transform: [{ scale: 1.08 }],
+  novaMiniImg: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.05 }],
   },
-  missNovaTitle: {
+  promptSpeakerName: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 14,
-    color: THEME.colors.text,
+    fontSize: 13,
+    color: '#FFFFFF',
+    marginLeft: 9,
+    flex: 1,
   },
-  missNovaSub: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-  },
-  missNovaSpeechText: {
+  promptQuestionText: {
     fontFamily: THEME.fonts.medium,
     fontSize: 15,
-    color: THEME.colors.primaryGlow,
+    color: '#E9D5FF',
     lineHeight: 22,
   },
-  suggestLabel: {
+  sampleBlock: {
+    gap: 8,
+  },
+  sampleSectionLabel: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textMuted,
-    marginTop: 6,
+    letterSpacing: 0.7,
   },
-  suggestPill: {
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    marginRight: 8,
-  },
-  suggestPillText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-  },
-  speakingInput: {
-    fontFamily: THEME.fonts.bodyMedium,
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: 12,
-    padding: 14,
-    color: THEME.colors.text,
-    fontSize: 14,
-    minHeight: 70,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  aiResultCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 12,
-    padding: 14,
-    gap: 6,
-  },
-  aiScoreRow: {
+  sampleChipsRow: {
     flexDirection: 'row',
+    gap: 8,
+  },
+  sampleChip: {
+    backgroundColor: '#181725',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#2B2842',
+  },
+  sampleChipText: {
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 12,
+    color: '#C7C3DC',
+  },
+  responseInput: {
+    fontFamily: THEME.fonts.bodyMedium,
+    backgroundColor: '#151422',
+    borderRadius: 13,
+    padding: 14,
+    color: '#FFFFFF',
+    fontSize: 14,
+    minHeight: 88,
+    borderWidth: 1,
+    borderColor: '#2B2842',
+    lineHeight: 20,
+  },
+  responseInputActive: {
+    borderColor: THEME.colors.primary,
+  },
+  feedbackCard: {
+    backgroundColor: '#171625',
+    borderRadius: 14,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#2B2842',
+    gap: 10,
+  },
+  feedbackTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  aiScoreText: {
+  feedbackTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 14,
-    color: THEME.colors.secondary,
-    marginLeft: 6,
+    fontSize: 13.5,
+    color: '#FFFFFF',
   },
-  aiExplainText: {
+  scoreBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(6, 182, 212, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.4)',
+  },
+  scoreBadgeText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
+    color: '#22D3EE',
+  },
+  feedbackEnglish: {
     fontFamily: THEME.fonts.body,
     fontSize: 13,
-    color: THEME.colors.text,
+    color: '#D5D0E6',
+    lineHeight: 19,
   },
-  aiTamilExplainText: {
+  feedbackTamilCallout: {
+    backgroundColor: '#1E1B30',
+    borderRadius: 10,
+    borderLeftWidth: 2.5,
+    borderLeftColor: THEME.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  feedbackTamilText: {
     fontFamily: THEME.fonts.tamilMedium,
     fontSize: 12.5,
-    color: THEME.colors.gold,
-    lineHeight: 21,
-    flex: 1,
+    color: '#F1EFFC',
+    lineHeight: 22,
   },
-  nativeRephraseBox: {
-    backgroundColor: 'rgba(6, 182, 212, 0.1)',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  nativeLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.secondary,
-  },
-  nativeText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 13,
-    color: THEME.colors.text,
-    marginTop: 2,
-  },
-
-  novaCoachCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(127, 67, 254, 0.12)',
-    padding: 12,
-    borderRadius: 14,
+  rephraseBox: {
+    backgroundColor: 'rgba(6, 182, 212, 0.08)',
+    padding: 11,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(127, 67, 254, 0.3)',
-    marginBottom: 4,
+    borderColor: 'rgba(6, 182, 212, 0.22)',
   },
-  novaCoachAvatarWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: THEME.colors.primaryGlow,
-  },
-  novaCoachAvatar: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.08 }],
-  },
-  novaCoachTitle: {
+  rephraseLabel: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
-    color: THEME.colors.primaryGlow,
+    fontSize: 9.5,
+    color: THEME.colors.secondary,
+    letterSpacing: 0.7,
+    marginBottom: 3,
   },
-  novaCoachText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-    lineHeight: 16,
+  rephraseText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+    lineHeight: 20,
   },
 
-  // Victory Styles
+  /* VICTORY SUMMARY */
   victoryContainer: {
     alignItems: 'center',
-    paddingVertical: 30,
+    paddingTop: 28,
+    paddingBottom: 20,
   },
-  victoryTrophyCircle: {
-    width: 132,
-    height: 132,
-    borderRadius: 66,
+  victoryCrestWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: '#181724',
-    borderWidth: 3,
-    borderColor: THEME.colors.gold,
+    borderWidth: 2,
+    borderColor: 'rgba(251, 191, 36, 0.75)',
     overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    elevation: 10,
+    marginBottom: 18,
   },
-  victoryTrophyImg: {
+  victoryCrestImg: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.08 }],
+    transform: [{ scale: 1.06 }],
+  },
+  victoryEyebrow: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.accent,
+    letterSpacing: 1.0,
+    marginBottom: 4,
   },
   victoryTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 28,
-    color: THEME.colors.text,
+    fontSize: 23,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 30,
   },
   victorySubtitle: {
     fontFamily: THEME.fonts.body,
-    fontSize: 14,
+    fontSize: 13.5,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
-    paddingHorizontal: 20,
     lineHeight: 20,
+    paddingHorizontal: 16,
   },
-  statsCardGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  victoryMetricsCard: {
     width: '100%',
-    marginVertical: 24,
-    gap: 8,
-  },
-  victoryStatCard: {
-    flex: 1,
-    backgroundColor: THEME.colors.surfaceCard,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  victoryStatVal: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15,
-    color: THEME.colors.text,
-    marginTop: 4,
-  },
-  victoryStatLabel: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 10,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-  },
-  victoryBonusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    backgroundColor: '#171625',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.35)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    marginBottom: 14,
-    gap: 6,
-  },
-  victoryBonusText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
-    color: THEME.colors.secondary,
-  },
-  finishContinueTouchable: {
-    width: '100%',
-    marginTop: 10,
-    borderRadius: 28,
-    borderBottomWidth: 4,
-    borderBottomColor: '#5B21B6',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  finishContinueBtnGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#2B2842',
     paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 28,
+    marginVertical: 24,
   },
-  finishContinueBtnText: {
+  victoryMetricItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  victoryMetricDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#2A2740',
+  },
+  victoryMetricVal: {
     fontFamily: THEME.fonts.bold,
     fontSize: 16,
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+  },
+  victoryMetricLabel: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
   },
 
-  // Bottom Action Drawer
-  bottomActionDrawer: {
-    backgroundColor: THEME.colors.surfaceDark,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  /* BOTTOM DRAWER */
+  bottomDrawerWrapper: {
+    backgroundColor: '#11101A',
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-  },
-  actionBtnTouchable: {
-    width: '100%',
-    borderRadius: 16,
-    borderBottomWidth: 4,
-    borderBottomColor: '#5B21B6',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  actionButtonGradient: {
-    paddingVertical: 15,
-    borderRadius: 16,
+    borderTopColor: 'rgba(255, 255, 255, 0.07)',
     alignItems: 'center',
+  },
+  bottomDrawerInner: {
+    width: '100%',
+    maxWidth: MAX_LESSON_WIDTH,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  feedbackDrawer: {
+    gap: 10,
+  },
+  feedbackNoticeBox: {
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  noticeCorrect: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.32)',
+  },
+  noticeWrong: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.32)',
+  },
+  feedbackHeadlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feedbackHeadline: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 14,
+    flex: 1,
+  },
+  drawerCorrectionText: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12.5,
+    color: '#E5E1F7',
+    lineHeight: 18,
+  },
+  drawerTamilNote: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
+    color: '#F1EFFC',
+    lineHeight: 21,
+    marginTop: 2,
+  },
+  primaryBtnOuter: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  primaryBtnDisabled: {
+    opacity: 0.7,
+  },
+  primaryBtnGradient: {
+    width: '100%',
+    height: 50,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   btnRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionBtnText: {
+  primaryBtnText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 15,
+    fontSize: 14.5,
     color: '#FFFFFF',
-    letterSpacing: 0.6,
+    letterSpacing: 0.3,
   },
-  btnDisabled: {
-    opacity: 0.5,
-    borderBottomColor: '#201D33',
-  },
-  feedbackDrawerContent: {
-    gap: 6,
-  },
-  feedbackHeadlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  feedbackHeadline: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15,
-    marginLeft: 8,
-  },
-  jumbleCorrectionNote: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 13,
-    color: THEME.colors.text,
-    marginTop: 2,
-  },
-  jumbleTamilNote: {
-    fontFamily: THEME.fonts.tamilMedium,
-    fontSize: 12.5,
-    color: THEME.colors.gold,
-    lineHeight: 21,
-    marginTop: 2,
+  primaryBtnTextDisabled: {
+    color: '#76728E',
   },
 });
-
