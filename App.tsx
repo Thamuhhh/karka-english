@@ -40,7 +40,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <StatusBar style="light" backgroundColor={THEME.colors.background} />
+        <StatusBar style="dark" backgroundColor={THEME.colors.background} />
 
         {/* If a Lesson is active, show the DEDICATED FULL-SCREEN INDIVIDUAL LESSON PAGE (Hides bottom tabs!) */}
         {currentLesson ? (
@@ -66,7 +66,7 @@ export default function App() {
               {activeTab === 'profile' && <ProfileScreen />}
             </View>
 
-            {/* Supernova 5-Tab Cosmic Navigation Bar */}
+            {/* Supernova 6-Tab Navigation Bar */}
             <View style={styles.bottomNav}>
               <TouchableOpacity
                 style={styles.navItem}
@@ -76,7 +76,7 @@ export default function App() {
                 <MaterialCommunityIcons
                   name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
                   size={24}
-                  color={activeTab === 'learn' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                  color={activeTab === 'learn' ? THEME.colors.secondary : THEME.colors.textMuted}
                 />
                 <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
                   Learn
@@ -88,8 +88,8 @@ export default function App() {
                 onPress={() => setActiveTab('call')}
                 activeOpacity={0.7}
               >
-                <View style={styles.callTabCircle}>
-                  <Ionicons name="mic" size={20} color={THEME.colors.text} />
+                <View style={[styles.callTabCircle, activeTab === 'call' && styles.callTabCircleActive]}>
+                  <Ionicons name="mic" size={18} color="#1E1B4B" />
                 </View>
                 <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveGold]}>
                   Nova Call
@@ -107,7 +107,7 @@ export default function App() {
                   color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
                 />
                 <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
-                  Grammar
+                  Doctor
                 </Text>
               </TouchableOpacity>
 
@@ -119,9 +119,9 @@ export default function App() {
                 <Ionicons
                   name={activeTab === 'vocab' ? 'book' : 'book-outline'}
                   size={22}
-                  color={activeTab === 'vocab' ? THEME.colors.secondary : THEME.colors.textMuted}
+                  color={activeTab === 'vocab' ? THEME.colors.accent : THEME.colors.textMuted}
                 />
-                <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveCyan]}>
+                <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveAccent]}>
                   Vault
                 </Text>
               </TouchableOpacity>
@@ -149,7 +149,7 @@ export default function App() {
                 <Ionicons
                   name={activeTab === 'profile' ? 'person' : 'person-outline'}
                   size={22}
-                  color={activeTab === 'profile' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                  color={activeTab === 'profile' ? THEME.colors.secondary : THEME.colors.textMuted}
                 />
                 <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
                   Profile
@@ -176,8 +176,13 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
-    paddingVertical: 6,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 6,
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 8,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 8,
   },
   navItem: {
     flex: 1,
@@ -191,23 +196,28 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: THEME.colors.primaryBorder,
+  },
+  callTabCircleActive: {
+    transform: [{ scale: 1.08 }],
   },
   navText: {
     fontSize: 10,
     color: THEME.colors.textMuted,
-    marginTop: 2,
-    fontWeight: '500',
+    marginTop: 3,
+    fontWeight: '600',
   },
   navTextActive: {
-    color: THEME.colors.primaryGlow,
-    fontWeight: '700',
+    color: THEME.colors.secondary,
+    fontWeight: '800',
   },
   navTextActiveGold: {
-    color: THEME.colors.gold,
-    fontWeight: '700',
+    color: THEME.colors.goldBorder,
+    fontWeight: '800',
   },
-  navTextActiveCyan: {
-    color: THEME.colors.secondary,
-    fontWeight: '700',
+  navTextActiveAccent: {
+    color: THEME.colors.accent,
+    fontWeight: '800',
   },
 });

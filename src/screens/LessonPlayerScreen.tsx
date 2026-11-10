@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: THEME.colors.accent,
     borderRadius: 5,
   },
   heartRow: {
@@ -836,30 +836,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  slotTileText: {
-    color: THEME.colors.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  wordBankWrap: {
-    paddingVertical: 6,
-  },
-  bankTile: {
-    backgroundColor: THEME.colors.surfaceCard,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+    borderRadius: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: THEME.colors.primaryBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  slotTileText: {
+    color: '#1E1B4B',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  wordBankWrap: {
+    paddingVertical: 10,
+  },
+  bankTile: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderBottomWidth: 4,
+    borderBottomColor: '#94A3B8',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   bankTileText: {
     color: THEME.colors.text,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 
   // Translation Styles
@@ -1096,16 +1110,19 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.border,
   },
   actionButtonPrimary: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: THEME.colors.accent,
     paddingVertical: 14,
-    borderRadius: 24,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderBottomWidth: 4,
+    borderBottomColor: THEME.colors.accentBorder,
   },
   actionBtnText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: THEME.colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   btnDisabled: {
     opacity: 0.5,
@@ -1133,3 +1150,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+

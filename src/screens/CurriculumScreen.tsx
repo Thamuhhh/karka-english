@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
@@ -15,136 +17,305 @@ interface CurriculumScreenProps {
   completedClasses: string[];
 }
 
+const { width } = Dimensions.get('window');
+
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   completedClasses,
 }) => {
-  const [selectedNode, setSelectedNode] = useState<SupernovaClass | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
 
   return (
     <View style={styles.container}>
-      {/* Top Header Stats Bar */}
+      {/* Supernova Top Stats Bar */}
       <View style={styles.topStatsBar}>
         <View style={styles.statPill}>
-          <MaterialCommunityIcons name="fire" size={18} color={THEME.colors.gold} />
-          <Text style={styles.statPillText}>3 Day Streak</Text>
+          <Text style={styles.statEmoji}>🔥</Text>
+          <Text style={styles.statPillText}>3 Days</Text>
         </View>
 
         <View style={styles.statPill}>
-          <Ionicons name="sparkles" size={16} color={THEME.colors.secondary} />
-          <Text style={styles.statPillText}>650 XP</Text>
+          <Text style={styles.statEmoji}>💎</Text>
+          <Text style={styles.statPillText}>450</Text>
         </View>
 
         <View style={styles.statPill}>
-          <Ionicons name="heart" size={16} color="#EF4444" />
+          <Text style={styles.statEmoji}>❤️</Text>
           <Text style={styles.statPillText}>5 / 5</Text>
+        </View>
+
+        <View style={styles.missNovaPill}>
+          <Text style={{ fontSize: 16 }}>👩‍🏫</Text>
+          <Text style={styles.missNovaText}>Miss Nova</Text>
         </View>
       </View>
 
-      {/* Gamified Celestial Roadmap */}
-      <ScrollView style={styles.roadmapScroll} contentContainerStyle={styles.roadmapContent}>
+      {/* Gamified SuperFluency Roadmap */}
+      <ScrollView
+        style={styles.roadmapScroll}
+        contentContainerStyle={styles.roadmapContent}
+        showsVerticalScrollIndicator={false}
+      >
         {SUPERNOVA_LEVELS.map((level) => {
+          const completedInLevel = level.classes.filter((c) =>
+            completedClasses.includes(c.id)
+          ).length;
+          const progressPercent = Math.round(
+            (completedInLevel / level.classes.length) * 100
+          );
+
           return (
             <View key={level.levelNumber} style={styles.levelSection}>
-              {/* Level Planet Header */}
-              <View style={[styles.planetHeader, { borderColor: level.accentColor }]}>
-                <View style={styles.planetHeaderLeft}>
-                  <Text style={styles.planetBadge}>{level.levelName} • {level.cefrTag}</Text>
-                  <Text style={styles.planetSubtitle}>{level.description}</Text>
+              {/* Supernova Unit Banner */}
+              <View style={[styles.unitBanner, { borderLeftColor: level.accentColor }]}>
+                <View style={styles.unitBannerLeft}>
+                  <View style={styles.unitBadgeRow}>
+                    <View
+                      style={[
+                        styles.cefrBadge,
+                        { backgroundColor: level.accentColor },
+                      ]}
+                    >
+                      <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
+                    </View>
+                    <Text style={styles.unitNumberText}>UNIT {level.levelNumber}</Text>
+                  </View>
+                  <Text style={styles.unitTitleText}>{level.levelName}</Text>
+                  <Text style={styles.unitDescText}>{level.description}</Text>
+
+                  {/* Progress Bar */}
+                  <View style={styles.unitProgressContainer}>
+                    <View style={styles.unitProgressBarBg}>
+                      <View
+                        style={[
+                          styles.unitProgressBarFill,
+                          {
+                            width: `${progressPercent}%`,
+                            backgroundColor: level.accentColor,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.unitProgressText}>
+                      {completedInLevel}/{level.classes.length} Done
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.planetIconCircle, { backgroundColor: level.accentColor }]}>
-                  <MaterialCommunityIcons name="orbit" size={26} color={THEME.colors.text} />
+
+                <View
+                  style={[
+                    styles.unitIconContainer,
+                    { backgroundColor: `${level.accentColor}18` },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="school"
+                    size={28}
+                    color={level.accentColor}
+                  />
                 </View>
               </View>
 
-              {/* Connected Winding Roadmap Nodes */}
+              {/* Serpentine Connected Stepping Stone Nodes */}
               <View style={styles.nodesContainer}>
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
-                  const isCurrent = !isCompleted && (cIdx === 0 || completedClasses.includes(level.classes[cIdx - 1]?.id));
-                  const isSelected = selectedNode?.id === cls.id;
+                  const isCurrent =
+                    !isCompleted &&
+                    (cIdx === 0 ||
+                      completedClasses.includes(level.classes[cIdx - 1]?.id));
 
-                  // Snake path alignments: center, right, left, center
-                  const alignStyles = [
+                  // Snake alignment: Center -> Right -> Center -> Left
+                  const alignStyle = [
                     styles.nodeCenter,
                     styles.nodeRight,
-                    styles.nodeLeft,
                     styles.nodeCenter,
+                    styles.nodeLeft,
                   ][cIdx % 4];
 
                   return (
-                    <View key={cls.id} style={[styles.nodeWrapper, alignStyles]}>
-                      {/* Floating Tooltip Card over Selected/Current Node */}
-                      {(isSelected || (isCurrent && !selectedNode)) && (
-                        <View style={styles.nodeTooltipCard}>
-                          <Text style={styles.tooltipTitle}>{cls.title}</Text>
-                          <Text style={styles.tooltipSub} numberOfLines={1}>
-                            {cls.subtitle}
-                          </Text>
-
-                          <TouchableOpacity
-                            style={styles.startClassBtn}
-                            onPress={() => {
-                              setSelectedNode(null);
-                              onStartLesson(cls);
-                            }}
-                          >
-                            <Text style={styles.startClassBtnText}>
-                              {isCompleted ? 'PRACTICE AGAIN (+50 XP)' : 'START LESSON (+100 XP)'}
-                            </Text>
-                            <Ionicons name="arrow-forward" size={14} color={THEME.colors.text} style={{ marginLeft: 6 }} />
-                          </TouchableOpacity>
-
-                          <View style={styles.tooltipPointer} />
+                    <View key={cls.id} style={[styles.nodeWrapper, alignStyle]}>
+                      {/* Current Node Bouncing Callout Indicator */}
+                      {isCurrent && (
+                        <View style={styles.startBadgeBubble}>
+                          <Text style={styles.startBadgeText}>START HERE</Text>
+                          <View style={styles.startBadgeArrow} />
                         </View>
                       )}
 
-                      {/* Main Stepping Stone Circle */}
+                      {/* 3D Stepping Stone Button */}
                       <TouchableOpacity
                         style={[
-                          styles.roadmapNode,
-                          isCompleted && styles.nodeCompleted,
-                          isCurrent && styles.nodeCurrent,
-                          isSelected && styles.nodeSelectedRing,
+                          styles.steppingStoneBtn,
+                          isCompleted && styles.steppingStoneCompleted,
+                          isCurrent && styles.steppingStoneCurrent,
+                          !isCompleted && !isCurrent && styles.steppingStoneLocked,
                         ]}
                         activeOpacity={0.8}
-                        onPress={() => setSelectedNode(cls)}
+                        onPress={() => setSelectedLesson(cls)}
                       >
-                        <MaterialCommunityIcons
-                          name={isCompleted ? 'check-bold' : isCurrent ? 'play' : 'lock'}
-                          size={26}
-                          color={THEME.colors.text}
-                        />
+                        <View
+                          style={[
+                            styles.steppingStoneInner,
+                            isCompleted && styles.steppingStoneInnerCompleted,
+                            isCurrent && styles.steppingStoneInnerCurrent,
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={
+                              isCompleted
+                                ? 'check-bold'
+                                : isCurrent
+                                ? 'star'
+                                : 'lock'
+                            }
+                            size={28}
+                            color={
+                              isCompleted || isCurrent
+                                ? '#FFFFFF'
+                                : THEME.colors.textMuted
+                            }
+                          />
+                        </View>
                       </TouchableOpacity>
 
-                      <View style={styles.nodeLabelBox}>
-                        <Text style={styles.nodeTitleText} numberOfLines={1}>
+                      {/* Lesson Label */}
+                      <View style={styles.nodeLabelCard}>
+                        <Text style={styles.nodeLabelTitle} numberOfLines={1}>
                           {cls.title}
                         </Text>
-                        <Text style={styles.nodeSubText}>{cls.duration}</Text>
+                        <Text style={styles.nodeLabelSub}>{cls.duration}</Text>
                       </View>
                     </View>
                   );
                 })}
 
-                {/* Milestone Treasure Chest at End of Level */}
+                {/* Milestone Treasure Chest */}
                 <View style={styles.milestoneChestWrapper}>
                   <TouchableOpacity
                     style={styles.chestBtn}
-                    onPress={() => {
-                      onStartLesson(level.classes[0]);
-                    }}
+                    activeOpacity={0.8}
+                    onPress={() => setSelectedLesson(level.classes[0])}
                   >
-                    <Text style={{ fontSize: 32 }}>🎁</Text>
+                    <Text style={{ fontSize: 36 }}>🎁</Text>
                   </TouchableOpacity>
-                  <Text style={styles.chestLabel}>Level {level.levelNumber} Bonus Chest</Text>
+                  <Text style={styles.chestLabel}>Level {level.levelNumber} Trophy Chest</Text>
                 </View>
               </View>
             </View>
           );
         })}
-        <View style={{ height: 60 }} />
+        <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* SUPERNOVA LESSON POPUP MODAL (Authentic Supernova Bottom Sheet/Modal) */}
+      <Modal
+        visible={!!selectedLesson}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedLesson(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSelectedLesson(null)}
+          />
+
+          {selectedLesson && (
+            <View style={styles.modalCard}>
+              {/* Header with Close */}
+              <View style={styles.modalHeader}>
+                <View style={styles.modalBadgeRow}>
+                  <View style={styles.modalLevelPill}>
+                    <Text style={styles.modalLevelText}>
+                      LESSON {selectedLesson.id.replace('sn-', '').replace('-', '.')}
+                    </Text>
+                  </View>
+                  <View style={styles.modalDurationPill}>
+                    <Ionicons name="time-outline" size={13} color={THEME.colors.textSecondary} />
+                    <Text style={styles.modalDurationText}>{selectedLesson.duration}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.closeBtn}
+                  onPress={() => setSelectedLesson(null)}
+                >
+                  <Ionicons name="close" size={20} color={THEME.colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Title & Concept */}
+              <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
+              <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
+
+              {/* Tamil Mother Tongue Bridge Preview */}
+              <View style={styles.tamilConceptBox}>
+                <Text style={styles.tamilConceptLabel}>CONCEPT IN TAMIL:</Text>
+                <Text style={styles.tamilConceptText}>
+                  "{selectedLesson.rule.tamilMentalModel}"
+                </Text>
+              </View>
+
+              {/* Supernova 4-Step Methodology Breakdown */}
+              <View style={styles.methodologyBox}>
+                <Text style={styles.methodologyTitle}>SUPERFLUENCY 4-STEP DRILL:</Text>
+                <View style={styles.stepGrid}>
+                  <View style={styles.stepItem}>
+                    <Text style={styles.stepIcon}>🧠</Text>
+                    <Text style={styles.stepText}>Pattern Rule</Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <Text style={styles.stepIcon}>🧩</Text>
+                    <Text style={styles.stepText}>Word Scramble</Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <Text style={styles.stepIcon}>🗣️</Text>
+                    <Text style={styles.stepText}>Translation</Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <Text style={styles.stepIcon}>🎙️</Text>
+                    <Text style={styles.stepText}>AI Speaking</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Rewards Row */}
+              <View style={styles.rewardsRow}>
+                <View style={styles.rewardItem}>
+                  <Text style={{ fontSize: 16 }}>🏆</Text>
+                  <Text style={styles.rewardText}>+100 XP Bounty</Text>
+                </View>
+                <View style={styles.rewardItem}>
+                  <Text style={{ fontSize: 16 }}>❤️</Text>
+                  <Text style={styles.rewardText}>5 Hearts Full</Text>
+                </View>
+              </View>
+
+              {/* Big 3D Start Button */}
+              <TouchableOpacity
+                style={styles.modalStartBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  const lesson = selectedLesson;
+                  setSelectedLesson(null);
+                  onStartLesson(lesson);
+                }}
+              >
+                <View style={styles.modalStartBtnInner}>
+                  <Text style={styles.modalStartBtnText}>
+                    {completedClasses.includes(selectedLesson.id)
+                      ? 'PRACTICE AGAIN (+50 XP)'
+                      : 'START LESSON (+100 XP)'}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -156,9 +327,10 @@ const styles = StyleSheet.create({
   },
   topStatsBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -166,18 +338,35 @@ const styles = StyleSheet.create({
   statPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
+  statEmoji: {
+    fontSize: 14,
+    marginRight: 4,
+  },
   statPillText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '700',
     color: THEME.colors.text,
-    marginLeft: 6,
+  },
+  missNovaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.secondaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  missNovaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.secondary,
+    marginLeft: 4,
   },
   roadmapScroll: {
     flex: 1,
@@ -186,175 +375,386 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   levelSection: {
-    marginBottom: 32,
+    marginBottom: 36,
   },
-  planetHeader: {
+  unitBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    padding: 16,
+    backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.lg,
-    borderWidth: 1.5,
-    marginBottom: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderLeftWidth: 6,
+    marginBottom: 24,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  planetHeaderLeft: {
+  unitBannerLeft: {
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 10,
   },
-  planetBadge: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: THEME.colors.text,
+  unitBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  planetSubtitle: {
+  cefrBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  cefrBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  unitNumberText: {
     fontSize: 12,
+    fontWeight: '800',
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    letterSpacing: 0.5,
   },
-  planetIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  unitTitleText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 4,
+  },
+  unitDescText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  unitProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  unitProgressBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  unitProgressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  unitProgressText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+  },
+  unitIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
   },
   nodesContainer: {
     alignItems: 'center',
-    paddingVertical: 10,
   },
   nodeWrapper: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
     position: 'relative',
-    width: 220,
+    width: 200,
   },
   nodeCenter: {
     alignSelf: 'center',
   },
   nodeRight: {
     alignSelf: 'flex-end',
-    marginRight: 16,
+    marginRight: 20,
   },
   nodeLeft: {
     alignSelf: 'flex-start',
-    marginLeft: 16,
+    marginLeft: 20,
   },
-  nodeTooltipCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    width: 200,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.colors.primary,
-    shadowColor: THEME.colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
-    position: 'relative',
-  },
-  tooltipTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: THEME.colors.text,
-    textAlign: 'center',
-  },
-  tooltipSub: {
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  startClassBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  startBadgeBubble: {
     backgroundColor: THEME.colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    width: '100%',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: THEME.colors.primaryBorder,
+    marginBottom: 6,
+    alignItems: 'center',
   },
-  startClassBtnText: {
+  startBadgeText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: THEME.colors.text,
+    fontWeight: '900',
+    color: THEME.colors.primaryText,
     letterSpacing: 0.5,
   },
-  tooltipPointer: {
-    position: 'absolute',
-    bottom: -6,
+  startBadgeArrow: {
     width: 0,
     height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 6,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 5,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: THEME.colors.primary,
+    borderTopColor: THEME.colors.primaryBorder,
+    position: 'absolute',
+    bottom: -6,
   },
-  roadmapNode: {
+  steppingStoneBtn: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: '#CBD5E1',
+    borderBottomWidth: 6,
+    borderBottomColor: '#94A3B8',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3.5,
-    borderColor: THEME.colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 6,
   },
-  nodeCompleted: {
-    backgroundColor: THEME.colors.success,
-    borderColor: '#34D399',
+  steppingStoneCompleted: {
+    backgroundColor: THEME.colors.accent,
+    borderBottomColor: THEME.colors.accentBorder,
   },
-  nodeCurrent: {
+  steppingStoneCurrent: {
     backgroundColor: THEME.colors.primary,
-    borderColor: THEME.colors.primaryGlow,
+    borderBottomColor: THEME.colors.primaryBorder,
   },
-  nodeSelectedRing: {
-    borderColor: THEME.colors.gold,
-    borderWidth: 4,
+  steppingStoneLocked: {
+    backgroundColor: '#E2E8F0',
+    borderBottomColor: '#CBD5E1',
   },
-  nodeLabelBox: {
+  steppingStoneInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
   },
-  nodeTitleText: {
+  steppingStoneInnerCompleted: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  steppingStoneInnerCurrent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  nodeLabelCard: {
+    marginTop: 8,
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  nodeLabelTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: THEME.colors.text,
-    textAlign: 'center',
   },
-  nodeSubText: {
+  nodeLabelSub: {
     fontSize: 10,
-    color: THEME.colors.textMuted,
+    color: THEME.colors.textSecondary,
   },
   milestoneChestWrapper: {
     alignItems: 'center',
     marginTop: 10,
-    marginBottom: 20,
   },
   chestBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: THEME.colors.goldLight,
     borderWidth: 2,
     borderColor: THEME.colors.gold,
+    borderBottomWidth: 6,
+    borderBottomColor: THEME.colors.goldBorder,
     justifyContent: 'center',
     alignItems: 'center',
   },
   chestLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: THEME.colors.gold,
-    marginTop: 6,
+    fontWeight: '800',
+    color: THEME.colors.goldBorder,
+    marginTop: 8,
+  },
+
+  /* MODAL POPUP STYLES */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalCard: {
+    width: width - 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: THEME.radius.xl,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalLevelPill: {
+    backgroundColor: THEME.colors.secondaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  modalLevelText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.colors.secondary,
+  },
+  modalDurationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  modalDurationText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+    marginLeft: 4,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  tamilConceptBox: {
+    backgroundColor: THEME.colors.goldLight,
+    borderRadius: THEME.radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.gold,
+    marginBottom: 14,
+  },
+  tamilConceptLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.goldBorder,
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  tamilConceptText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#78350F',
+    lineHeight: 18,
+  },
+  methodologyBox: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.radius.md,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  methodologyTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.textSecondary,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  stepGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  stepItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  stepText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+  },
+  rewardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#F8FAFC',
+    borderRadius: THEME.radius.md,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  rewardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rewardText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginLeft: 6,
+  },
+  modalStartBtn: {
+    backgroundColor: THEME.colors.accent,
+    borderRadius: THEME.radius.lg,
+    borderBottomWidth: 4,
+    borderBottomColor: THEME.colors.accentBorder,
+    overflow: 'hidden',
+  },
+  modalStartBtnInner: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  modalStartBtnText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });
