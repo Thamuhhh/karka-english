@@ -106,27 +106,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
   const tierLabel = getLearnerTierLabel(completedCount);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Hero Learner Showcase Card */}
-      <View style={styles.heroWrap}>
-        <LinearGradient
-          colors={['#1E163B', '#141320']}
-          style={StyleSheet.absoluteFillObject}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        <Image
-          source={SUPERNOVA_IMAGES.mapTopographyBg}
-          style={styles.heroTexture}
-          resizeMode="cover"
-        />
+    <View style={styles.container}>
+      {/* Subtle Top Ambient Glow */}
+      <LinearGradient
+        colors={['rgba(127, 67, 254, 0.16)', 'rgba(14, 14, 20, 0)']}
+        style={styles.topAmbientWash}
+        pointerEvents="none"
+      />
 
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroIdentity}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Open Account Identity Row (Zero Boxes) */}
+        <View style={styles.identityHeader}>
+          <View style={styles.identityLeft}>
             <View style={styles.avatarRing}>
               <Image
                 source={SUPERNOVA_IMAGES.novaAvatar}
@@ -134,223 +129,206 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
                 resizeMode="cover"
               />
             </View>
-            <View style={styles.identityCol}>
+            <View style={styles.identityText}>
               <Text style={styles.userName}>NovaBreaker</Text>
-              <View style={styles.badgeLine}>
-                <Text style={styles.tierText}>{tierLabel}</Text>
-                <Text style={styles.badgeSep}>·</Text>
-                <Text style={styles.leagueText}>{stats.cosmicRank}</Text>
-              </View>
+              <Text style={styles.tierMeta}>
+                {tierLabel} · {stats.cosmicRank}
+              </Text>
             </View>
           </View>
-
           <LiveStreakBadge streakDays={stats.streakDays} />
         </View>
 
-        {/* Course Fluency Progress Strip */}
-        <View style={styles.heroProgressBlock}>
-          <View style={styles.heroProgressMeta}>
-            <Text style={styles.heroProgressEyebrow}>
-              COURSE FLUENCY · {completedCount}/{TOTAL_CURRICULUM_CLASSES} CLASSES
+        {/* Open Course Fluency Line */}
+        <View style={styles.fluencySection}>
+          <View style={styles.fluencyTop}>
+            <Text style={styles.eyebrow}>COURSE FLUENCY</Text>
+            <Text style={styles.fluencyStat}>
+              {completedCount}/{TOTAL_CURRICULUM_CLASSES} · {fluencyPct}%
             </Text>
-            <Text style={styles.heroProgressPct}>{fluencyPct}%</Text>
           </View>
-          <View style={styles.heroTrack}>
+          <View style={styles.fluencyTrack}>
             {fluencyPct > 0 && (
               <LinearGradient
                 colors={['#7F43FE', '#C4B5FD']}
-                style={[styles.heroFill, { width: `${fluencyPct}%` }]}
+                style={[styles.fluencyFill, { width: `${fluencyPct}%` }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               />
             )}
           </View>
         </View>
-      </View>
 
-      {/* Weekly Streak Consistency Strip */}
-      <View style={styles.weekCard}>
-        <View style={styles.weekHeaderRow}>
-          <Text style={styles.cardEyebrow}>THIS WEEK</Text>
-          <Text style={styles.weekStreakNote}>
-            {stats.streakDays} {stats.streakDays === 1 ? 'day' : 'days'} streak
-          </Text>
-        </View>
+        <View style={styles.sectionDivider} />
 
-        <View style={styles.weekDaysRow}>
-          {WEEK_DAYS.map((dayLetter, idx) => {
-            const isToday = idx === todayMonIdx;
-            const daysAgo = todayMonIdx - idx;
-            const isActiveDay = daysAgo >= 0 && daysAgo < stats.streakDays;
-
-            return (
-              <View key={idx} style={styles.dayCol}>
-                <View
-                  style={[
-                    styles.dayCircle,
-                    isActiveDay && styles.dayCircleActive,
-                    isToday && styles.dayCircleToday,
-                  ]}
-                >
-                  {isActiveDay ? (
-                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                  ) : (
-                    <View style={styles.dayDotIdle} />
-                  )}
-                </View>
-                <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
-                  {dayLetter}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Cohesive 2x2 Learning Activity Grid */}
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricTile}>
-          <View style={styles.metricIconWell}>
-            <Ionicons name="flash-outline" size={16} color={THEME.colors.primaryGlow} />
+        {/* Open Typographic Stats Row (Zero Tiles / Zero Boxes) */}
+        <View style={styles.openStatsRow}>
+          <View style={styles.statCol}>
+            <Text style={styles.statNum}>{stats.stardustXp}</Text>
+            <Text style={styles.statCap}>Total XP</Text>
           </View>
-          <View style={styles.metricTextCol}>
-            <Text style={styles.metricVal}>{stats.stardustXp}</Text>
-            <Text style={styles.metricName}>Total XP</Text>
+          <View style={styles.statCol}>
+            <Text style={styles.statNum}>{stats.wordsMastered}</Text>
+            <Text style={styles.statCap}>Words</Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={styles.statNum}>{stats.conversationsDone}</Text>
+            <Text style={styles.statCap}>Talks</Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={styles.statNum}>{stats.sentencesChecked}</Text>
+            <Text style={styles.statCap}>Polished</Text>
           </View>
         </View>
 
-        <View style={styles.metricTile}>
-          <View style={styles.metricIconWell}>
-            <Ionicons name="bookmark-outline" size={16} color={THEME.colors.primaryGlow} />
-          </View>
-          <View style={styles.metricTextCol}>
-            <Text style={styles.metricVal}>{stats.wordsMastered}</Text>
-            <Text style={styles.metricName}>Saved Words</Text>
-          </View>
-        </View>
+        <View style={styles.sectionDivider} />
 
-        <View style={styles.metricTile}>
-          <View style={styles.metricIconWell}>
-            <Ionicons name="mic-outline" size={16} color={THEME.colors.primaryGlow} />
+        {/* Open Weekly Streak Row */}
+        <View style={styles.openSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.eyebrow}>THIS WEEK</Text>
+            <Text style={styles.streakSubText}>
+              {stats.streakDays} {stats.streakDays === 1 ? 'day' : 'days'} active
+            </Text>
           </View>
-          <View style={styles.metricTextCol}>
-            <Text style={styles.metricVal}>{stats.conversationsDone}</Text>
-            <Text style={styles.metricName}>Voice Talks</Text>
-          </View>
-        </View>
 
-        <View style={styles.metricTile}>
-          <View style={styles.metricIconWell}>
-            <Ionicons name="sparkles-outline" size={16} color={THEME.colors.primaryGlow} />
-          </View>
-          <View style={styles.metricTextCol}>
-            <Text style={styles.metricVal}>{stats.sentencesChecked}</Text>
-            <Text style={styles.metricName}>Polished</Text>
-          </View>
-        </View>
-      </View>
+          <View style={styles.weekRow}>
+            {WEEK_DAYS.map((dayLetter, idx) => {
+              const isToday = idx === todayMonIdx;
+              const daysAgo = todayMonIdx - idx;
+              const isActiveDay = daysAgo >= 0 && daysAgo < stats.streakDays;
 
-      {/* 4-Unit Curriculum Mastery Breakdown */}
-      <Text style={styles.groupEyebrow}>CURRICULUM MASTERY</Text>
-      <View style={styles.sheetCard}>
-        {SUPERNOVA_LEVELS.map((lvl, idx) => {
-          const doneInUnit = lvl.classes.filter((c) =>
-            stats.completedClasses.includes(c.id)
-          ).length;
-          const unitPct = Math.round((doneInUnit / lvl.classes.length) * 100);
-          return (
-            <View key={lvl.levelNumber} style={[styles.unitRow, idx > 0 && styles.unitRowBorder]}>
-              <View style={styles.unitTopLine}>
-                <Text style={styles.unitLabel} numberOfLines={1}>
-                  U{lvl.levelNumber} · {formatShortUnitName(lvl.levelName)}
-                </Text>
-                <Text style={styles.unitCount}>
-                  {doneInUnit}/{lvl.classes.length}
-                </Text>
-              </View>
-              <View style={styles.unitTrack}>
-                {unitPct > 0 && (
-                  <View style={[styles.unitFill, { width: `${unitPct}%` }]} />
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* Clean Audio Preferences Group */}
-      <Text style={styles.groupEyebrow}>AUDIO &amp; APP</Text>
-      <View style={styles.sheetCard}>
-        <View style={styles.settingRow}>
-          <View style={styles.settingLead}>
-            <Ionicons name="globe-outline" size={18} color={THEME.colors.primaryGlow} />
-            <Text style={styles.settingTitle}>Voice Accent</Text>
-          </View>
-          <View style={styles.inlineSegmented}>
-            {ACCENT_OPTIONS.map((acc) => {
-              const active = selectedAccent === acc.id;
               return (
-                <TouchableOpacity
-                  key={acc.id}
-                  style={[styles.accentChip, active && styles.accentChipActive]}
-                  onPress={() => handleAccentChange(acc.id)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.accentChipText, active && styles.accentChipTextActive]}>
-                    {acc.shortLabel}
+                <View key={idx} style={styles.dayItem}>
+                  <View
+                    style={[
+                      styles.dayDotWrap,
+                      isActiveDay && styles.dayDotWrapActive,
+                      isToday && styles.dayDotWrapToday,
+                    ]}
+                  >
+                    {isActiveDay ? (
+                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                    ) : (
+                      <View style={styles.dayDotIdle} />
+                    )}
+                  </View>
+                  <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
+                    {dayLetter}
                   </Text>
-                </TouchableOpacity>
+                </View>
               );
             })}
           </View>
         </View>
 
-        <View style={styles.rowDivider} />
+        <View style={styles.sectionDivider} />
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingLead}>
-            <Ionicons name="speedometer-outline" size={18} color={THEME.colors.primaryGlow} />
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Slow Speech</Text>
-              <Text style={styles.settingSub}>0.75x clearer pronunciation</Text>
+        {/* Open Unit Progress List */}
+        <View style={styles.openSection}>
+          <Text style={[styles.eyebrow, { marginBottom: 12 }]}>COURSE PROGRESS</Text>
+          {SUPERNOVA_LEVELS.map((lvl, idx) => {
+            const doneInUnit = lvl.classes.filter((c) =>
+              stats.completedClasses.includes(c.id)
+            ).length;
+            const unitPct = Math.round((doneInUnit / lvl.classes.length) * 100);
+            return (
+              <View key={lvl.levelNumber} style={[styles.unitLineItem, idx > 0 && { marginTop: 12 }]}>
+                <View style={styles.unitLineMeta}>
+                  <Text style={styles.unitNameText} numberOfLines={1}>
+                    U{lvl.levelNumber} · {formatShortUnitName(lvl.levelName)}
+                  </Text>
+                  <Text style={styles.unitRatioText}>
+                    {doneInUnit}/{lvl.classes.length}
+                  </Text>
+                </View>
+                <View style={styles.unitHairline}>
+                  {unitPct > 0 && <View style={[styles.unitHairlineFill, { width: `${unitPct}%` }]} />}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.sectionDivider} />
+
+        {/* Open Borderless Settings List */}
+        <View style={styles.openSection}>
+          <Text style={[styles.eyebrow, { marginBottom: 6 }]}>PREFERENCES</Text>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingLead}>
+              <Ionicons name="globe-outline" size={18} color={THEME.colors.primaryGlow} />
+              <Text style={styles.settingTitle}>Voice Accent</Text>
+            </View>
+            <View style={styles.inlineSegmented}>
+              {ACCENT_OPTIONS.map((acc) => {
+                const active = selectedAccent === acc.id;
+                return (
+                  <TouchableOpacity
+                    key={acc.id}
+                    style={[styles.accentChip, active && styles.accentChipActive]}
+                    onPress={() => handleAccentChange(acc.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.accentChipText, active && styles.accentChipTextActive]}>
+                      {acc.shortLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
-          <Switch
-            value={isSlowSpeech}
-            onValueChange={handleSpeechSpeedChange}
-            trackColor={{ false: '#26233B', true: THEME.colors.primary }}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor="#26233B"
-          />
-        </View>
 
-        <View style={styles.rowDivider} />
+          <View style={styles.rowDivider} />
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingLead}>
-            <Ionicons name="volume-medium-outline" size={18} color={THEME.colors.primaryGlow} />
-            <Text style={styles.settingTitle}>Sound Effects</Text>
+          <View style={styles.settingRow}>
+            <View style={styles.settingLead}>
+              <Ionicons name="speedometer-outline" size={18} color={THEME.colors.primaryGlow} />
+              <View style={styles.settingTextCol}>
+                <Text style={styles.settingTitle}>Slow Speech</Text>
+                <Text style={styles.settingSub}>0.75x clearer pronunciation</Text>
+              </View>
+            </View>
+            <Switch
+              value={isSlowSpeech}
+              onValueChange={handleSpeechSpeedChange}
+              trackColor={{ false: '#26233B', true: THEME.colors.primary }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor="#26233B"
+            />
           </View>
-          <Switch
-            value={stats.soundEnabled}
-            onValueChange={handleToggleSound}
-            trackColor={{ false: '#26233B', true: THEME.colors.primary }}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor="#26233B"
-          />
+
+          <View style={styles.rowDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingLead}>
+              <Ionicons name="volume-medium-outline" size={18} color={THEME.colors.primaryGlow} />
+              <Text style={styles.settingTitle}>Sound Effects</Text>
+            </View>
+            <Switch
+              value={stats.soundEnabled}
+              onValueChange={handleToggleSound}
+              trackColor={{ false: '#26233B', true: THEME.colors.primary }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor="#26233B"
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Quiet Footer Action */}
-      <View style={styles.footerRow}>
-        <Text style={styles.versionText}>NovaBreaker · v1.0.0</Text>
-        <TouchableOpacity onPress={handleResetProgress} activeOpacity={0.75}>
-          <Text style={styles.resetText}>Reset Progress</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.sectionDivider} />
 
-      <View style={{ height: 24 }} />
-    </ScrollView>
+        {/* Quiet Footer */}
+        <View style={styles.footerRow}>
+          <Text style={styles.versionText}>NovaBreaker · v1.0.0</Text>
+          <TouchableOpacity onPress={handleResetProgress} activeOpacity={0.75}>
+            <Text style={styles.resetText}>Reset Progress</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </View>
   );
 };
 
@@ -358,49 +336,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,
+    position: 'relative',
+  },
+  topAmbientWash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 24,
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
 
-  /* HERO CARD */
-  heroWrap: {
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.24)',
-    padding: 18,
-    marginBottom: 14,
-    position: 'relative',
-  },
-  heroTexture: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-    opacity: 0.09,
-  },
-  heroTopRow: {
+  /* OPEN HEADER */
+  identityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 18,
   },
-  heroIdentity: {
+  identityLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     paddingRight: 10,
   },
   avatarRing: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 2,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1.5,
     borderColor: 'rgba(167, 139, 250, 0.55)',
     backgroundColor: '#161423',
     overflow: 'hidden',
@@ -410,240 +385,177 @@ const styles = StyleSheet.create({
     height: '100%',
     transform: [{ scale: 1.04 }],
   },
-  identityCol: {
+  identityText: {
     flex: 1,
     marginLeft: 13,
   },
   userName: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 18.5,
+    fontSize: 19,
     color: '#FFFFFF',
   },
-  badgeLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 2,
-    flexWrap: 'wrap',
-  },
-  tierText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
+  tierMeta: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
     color: '#C4B5FD',
+    marginTop: 2,
   },
-  badgeSep: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11.5,
-    color: THEME.colors.textMuted,
+
+  /* COURSE FLUENCY */
+  fluencySection: {
+    marginBottom: 4,
   },
-  leagueText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11.5,
-    color: THEME.colors.textSecondary,
-  },
-  heroProgressBlock: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  heroProgressMeta: {
+  fluencyTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginBottom: 7,
   },
-  heroProgressEyebrow: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: '#C9C5DE',
-    letterSpacing: 0.8,
-  },
-  heroProgressPct: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 13,
-    color: '#FFFFFF',
-  },
-  heroTrack: {
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    overflow: 'hidden',
-  },
-  heroFill: {
-    height: '100%',
-    borderRadius: 2.5,
-  },
-
-  /* WEEKLY STREAK STRIP */
-  weekCard: {
-    backgroundColor: '#151422',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    padding: 15,
-    marginBottom: 14,
-  },
-  weekHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardEyebrow: {
+  eyebrow: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textMuted,
-    letterSpacing: 0.9,
+    letterSpacing: 1,
   },
-  weekStreakNote: {
+  fluencyStat: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  fluencyTrack: {
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: '#221F33',
+    overflow: 'hidden',
+  },
+  fluencyFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginVertical: 18,
+  },
+
+  /* OPEN STATS ROW */
+  openStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNum: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 19,
+    color: '#FFFFFF',
+  },
+  statCap: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+
+  /* OPEN SECTIONS */
+  openSection: {
+    width: '100%',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 13,
+  },
+  streakSubText: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 11.5,
     color: '#C4B5FD',
   },
-  weekDaysRow: {
+  weekRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  dayCol: {
+  dayItem: {
     alignItems: 'center',
     gap: 6,
   },
-  dayCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1D1B2D',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+  dayDotWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dayCircleActive: {
+  dayDotWrapActive: {
     backgroundColor: THEME.colors.primary,
-    borderColor: THEME.colors.primaryGlow,
   },
-  dayCircleToday: {
+  dayDotWrapToday: {
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
   dayDotIdle: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: '#4E496B',
   },
-  dayLabel: {
-    fontFamily: THEME.fonts.semiBold,
+  dayText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 11,
     color: THEME.colors.textMuted,
   },
-  dayLabelToday: {
+  dayTextToday: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
   },
 
-  /* 2X2 METRICS GRID */
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 10,
-    marginBottom: 20,
+  /* COURSE PROGRESS */
+  unitLineItem: {
+    width: '100%',
   },
-  metricTile: {
-    width: '48.5%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#151422',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    gap: 11,
-  },
-  metricIconWell: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: 'rgba(127, 67, 254, 0.14)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  metricTextCol: {
-    flex: 1,
-  },
-  metricVal: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  metricName: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginTop: 1,
-  },
-
-  /* CURRICULUM MASTERY & SETTINGS */
-  groupEyebrow: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-    letterSpacing: 0.9,
-    marginBottom: 8,
-    paddingHorizontal: 2,
-  },
-  sheetCard: {
-    backgroundColor: '#151422',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    paddingHorizontal: 15,
-    marginBottom: 18,
-  },
-  unitRow: {
-    paddingVertical: 11,
-  },
-  unitRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  unitTopLine: {
+  unitLineMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
   },
-  unitLabel: {
+  unitNameText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 12.5,
+    fontSize: 13,
     color: '#FFFFFF',
     flex: 1,
     paddingRight: 10,
   },
-  unitCount: {
+  unitRatioText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11.5,
     color: '#C4B5FD',
   },
-  unitTrack: {
-    height: 3,
+  unitHairline: {
+    height: 2.5,
     borderRadius: 1.5,
-    backgroundColor: '#232036',
+    backgroundColor: '#221F33',
     overflow: 'hidden',
   },
-  unitFill: {
+  unitHairlineFill: {
     height: '100%',
     borderRadius: 1.5,
     backgroundColor: THEME.colors.primaryGlow,
   },
+
+  /* PREFERENCES ROWS */
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 13,
+    paddingVertical: 12,
     gap: 10,
   },
   settingLead: {
@@ -657,7 +569,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   settingSub: {
@@ -668,11 +580,11 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   inlineSegmented: {
     flexDirection: 'row',
-    backgroundColor: '#1D1B2D',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 9,
     padding: 2,
     gap: 2,
@@ -700,8 +612,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    marginTop: 2,
   },
   versionText: {
     fontFamily: THEME.fonts.medium,
