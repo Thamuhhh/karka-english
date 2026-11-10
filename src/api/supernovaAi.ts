@@ -26,15 +26,13 @@ export function isGeminiConfigured(): boolean {
 const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.0-flash', 'gemini-2.5-flash'];
 let lastGeminiError: string | null = null;
 
-function isVertexExpressKey(apiKey: string): boolean {
-  return apiKey.startsWith('AQ.');
-}
+type EndpointBuilder = (model: string) => string;
 
-function buildModelEndpoint(apiKey: string, model: string): string {
-  return isVertexExpressKey(apiKey)
-    ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
-    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-}
+const buildAiStudioEndpoint: EndpointBuilder = (model) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+const buildVertexExpressEndpoint: EndpointBuilder = (model) =>
+  `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`;
 
 function parseModelJson<T = any>(rawText: string): T {
   const cleaned = rawText
@@ -45,14 +43,22 @@ function parseModelJson<T = any>(rawText: string): T {
   return JSON.parse(cleaned) as T;
 }
 
-async function callGeminiWithTimeout(
+interface ProviderAttemptResult {
+  data: any | null;
+  authOrKeyRejected: boolean;
+  error: string | null;
+}
+
+async function tryEndpointProvider(
   apiKey: string,
   payload: object,
-  timeoutMs = 9000
-): Promise<any | null> {
-  lastGeminiError = null;
+  timeoutMs: number,
+  buildEndpoint: EndpointBuilder
+): Promise<ProviderAttemptResult> {
+  let providerError: string | null = null;
+
   for (const model of GEMINI_MODELS) {
-    const endpoint = buildModelEndpoint(apiKey, model);
+    const endpoint = buildEndpoint(model);
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
@@ -67,27 +73,31 @@ async function callGeminiWithTimeout(
       });
 
       if (res.ok) {
-        lastGeminiError = null;
-        return await res.json();
+        return { data: await res.json(), authOrKeyRejected: false, error: null };
       }
 
-      let errSnippet = `HTTP ${res.status}`;
+      let apiMsg = '';
       try {
         const errJson = await res.json();
-        const apiMsg = errJson?.error?.message;
-        if (typeof apiMsg === 'string' && apiMsg.trim()) {
-          errSnippet = `HTTP ${res.status}: ${apiMsg.trim().slice(0, 140)}`;
+        if (typeof errJson?.error?.message === 'string') {
+          apiMsg = errJson.error.message.trim();
         }
       } catch {
         // Ignore non-JSON error body
       }
-      lastGeminiError = errSnippet;
+      const errSnippet = apiMsg ? `HTTP ${res.status}: ${apiMsg.slice(0, 220)}` : `HTTP ${res.status}`;
+      providerError = errSnippet;
       console.warn('Gemini request error:', model, errSnippet);
-      if (res.status === 401 || res.status === 403) {
-        return null;
+
+      const isKeyRejection =
+        res.status === 401 ||
+        res.status === 403 ||
+        (res.status === 400 && apiMsg.toLowerCase().includes('api key'));
+      if (isKeyRejection) {
+        return { data: null, authOrKeyRejected: true, error: errSnippet };
       }
     } catch (e: any) {
-      lastGeminiError =
+      providerError =
         e?.name === 'AbortError'
           ? 'Request timed out'
           : typeof e?.message === 'string'
@@ -97,6 +107,42 @@ async function callGeminiWithTimeout(
       if (timer) clearTimeout(timer);
     }
   }
+
+  return { data: null, authOrKeyRejected: false, error: providerError };
+}
+
+async function callGeminiWithTimeout(
+  apiKey: string,
+  payload: object,
+  timeoutMs = 9000
+): Promise<any | null> {
+  lastGeminiError = null;
+
+  // Google AI Studio keys (both AIza... and newer AQ....) use generativelanguage.googleapis.com first
+  const primary = await tryEndpointProvider(apiKey, payload, timeoutMs, buildAiStudioEndpoint);
+  if (primary.data) {
+    return primary.data;
+  }
+
+  // Only fall back to Vertex AI Express Mode when an AQ. key is rejected on AI Studio
+  if (primary.authOrKeyRejected && apiKey.startsWith('AQ.')) {
+    const vertexFallback = await tryEndpointProvider(
+      apiKey,
+      payload,
+      timeoutMs,
+      buildVertexExpressEndpoint
+    );
+    if (vertexFallback.data) {
+      return vertexFallback.data;
+    }
+    lastGeminiError =
+      !vertexFallback.authOrKeyRejected && vertexFallback.error
+        ? vertexFallback.error
+        : primary.error || vertexFallback.error;
+    return null;
+  }
+
+  lastGeminiError = primary.error;
   return null;
 }
 
@@ -108,7 +154,7 @@ export async function validateGeminiApiKey(key: string): Promise<{ ok: boolean; 
   if ((!clean.startsWith('AIza') && !clean.startsWith('AQ.')) || clean.length < 25) {
     return {
       ok: false,
-      message: 'Key format looks invalid (expected Google AI Studio AIza... or Vertex AQ.... key).',
+      message: 'Key format looks invalid (expected Gemini API key starting with AIza... or AQ....).',
     };
   }
 
