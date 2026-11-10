@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  useWindowDimensions,
+  Animated,
   Image,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,9 +35,10 @@ interface CurriculumScreenProps {
 
 const MAX_CONTENT_WIDTH = 480;
 const MAP_STEP_Y = 138;
-const MAP_TOP_CY = 72;
+const MAP_TOP_CY = 62;
 const NODE_LABEL_WIDTH = 152;
 const NODE_DIAMETER = 66;
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 function getZigZagCenterX(
   index: number,
@@ -73,6 +78,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
+  const [activeUnitIdx, setActiveUnitIdx] = useState(0);
+  const activeUnitIdxRef = useRef(0);
+  const unitStartYRef = useRef<number[]>([]);
+  const unitSwapAnim = useRef(new Animated.Value(1)).current;
 
   const completedClasses = stats.completedClasses;
   const mapWidth = Math.min(windowWidth - 36, MAX_CONTENT_WIDTH - 36);
@@ -90,7 +99,37 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
       (cls) => !completedClasses.includes(cls.id)
     )?.id || null;
-  const stickyUnitIndices = SUPERNOVA_LEVELS.map((_, idx) => idx * 2);
+
+  const activeLevel = SUPERNOVA_LEVELS[activeUnitIdx] || SUPERNOVA_LEVELS[0];
+  const activeCompletedCount = activeLevel.classes.filter((c) =>
+    completedClasses.includes(c.id)
+  ).length;
+  const activeProgressPct = Math.round(
+    (activeCompletedCount / activeLevel.classes.length) * 100
+  );
+  const isActiveUnitDone = activeCompletedCount === activeLevel.classes.length;
+
+  const handleMapScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    let nextIdx = 0;
+    for (let i = SUPERNOVA_LEVELS.length - 1; i >= 1; i--) {
+      const unitY = unitStartYRef.current[i];
+      if (typeof unitY === 'number' && scrollY >= unitY - 24) {
+        nextIdx = i;
+        break;
+      }
+    }
+    if (nextIdx !== activeUnitIdxRef.current) {
+      activeUnitIdxRef.current = nextIdx;
+      setActiveUnitIdx(nextIdx);
+      unitSwapAnim.setValue(0.35);
+      Animated.timing(unitSwapAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }).start();
+    }
+  };
 
   // Precompute global sequential lesson number for each class ID
   const lessonNumberMap: Record<string, number> = {};
@@ -104,11 +143,65 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Unified Top Navigation Header (Seamless with Sticky Unit Band) */}
-      <View style={styles.topNavHeader}>
-        <View style={styles.topNavHeaderInner}>
-          <Text style={styles.appNameText}>NovaBreaker</Text>
-          <LiveStreakBadge streakDays={stats.streakDays} />
+      {/* Single Solid Unified Header: Brand + Live Streak + Sticky Active Unit */}
+      <View style={styles.unifiedTopBar}>
+        <View style={styles.unifiedTopBarInner}>
+          <View style={styles.brandRow}>
+            <Text style={styles.appNameText}>NovaBreaker</Text>
+            <LiveStreakBadge streakDays={stats.streakDays} />
+          </View>
+
+          <Animated.View
+            style={[
+              styles.activeUnitBand,
+              {
+                opacity: unitSwapAnim,
+                transform: [
+                  {
+                    translateY: unitSwapAnim.interpolate({
+                      inputRange: [0.35, 1],
+                      outputRange: [5, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.unitEditorialMetaRow}>
+              <View style={styles.unitEyebrowGroup}>
+                <View
+                  style={[
+                    styles.unitDot,
+                    isActiveUnitDone && styles.unitDotCompleted,
+                  ]}
+                />
+                <Text style={styles.unitEyebrowText}>
+                  UNIT {String(activeLevel.levelNumber).padStart(2, '0')} · {activeLevel.cefrTag}
+                </Text>
+              </View>
+              <Text style={styles.unitProgressStatText}>
+                {activeCompletedCount}/{activeLevel.classes.length} · {activeProgressPct}%
+              </Text>
+            </View>
+
+            <Text style={styles.unitEditorialTitle} numberOfLines={1}>
+              {formatShortUnitTitle(activeLevel.levelName)}
+            </Text>
+
+            <View style={styles.unitHairlineTrack}>
+              {activeProgressPct > 0 && (
+                <LinearGradient
+                  colors={['#7F43FE', '#A78BFA']}
+                  style={[
+                    styles.unitHairlineFill,
+                    { width: `${activeProgressPct}%` },
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
+              )}
+            </View>
+          </Animated.View>
         </View>
       </View>
 
@@ -120,20 +213,21 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           resizeMode="cover"
         />
         <LinearGradient
-          colors={['rgba(14,14,20,0.84)', 'rgba(14,14,20,0.62)', 'rgba(14,14,20,0.88)']}
-          locations={[0, 0.48, 1]}
+          colors={['rgba(14,14,20,0.88)', 'rgba(14,14,20,0.62)', 'rgba(14,14,20,0.9)']}
+          locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
 
-        {/* Clean Obsidian Architectural Course Timeline with Sticky Unit Headers */}
+        {/* Continuous Open Obsidian Course Map (Zero Opaque Cutout Blocks) */}
         <ScrollView
           style={styles.courseScroll}
           contentContainerStyle={styles.courseContent}
-          stickyHeaderIndices={stickyUnitIndices}
+          onScroll={handleMapScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         >
-        {SUPERNOVA_LEVELS.flatMap((level) => {
+        {SUPERNOVA_LEVELS.map((level, levelIdx) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -143,49 +237,56 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           const lastClass = level.classes[level.classes.length - 1];
           const isUnitCompleted = completedInLevel === level.classes.length;
 
-          return [
-            /* Sticky Editorial Unit Header (Pins below Top Nav while in unit) */
-            <View key={`hdr-${level.levelNumber}`} style={styles.stickyUnitHeader}>
-              <View style={styles.stickyUnitHeaderInner}>
-                <View style={styles.unitEditorialMetaRow}>
-                  <View style={styles.unitEyebrowGroup}>
-                    <View
-                      style={[
-                        styles.unitDot,
-                        isUnitCompleted && styles.unitDotCompleted,
-                      ]}
-                    />
-                    <Text style={styles.unitEyebrowText}>
-                      UNIT {String(level.levelNumber).padStart(2, '0')} · {level.cefrTag}
+          return (
+            <View
+              key={level.levelNumber}
+              onLayout={(event) => {
+                unitStartYRef.current[levelIdx] = event.nativeEvent.layout.y;
+              }}
+              style={[
+                styles.unitMapSection,
+                levelIdx === 0 && styles.firstUnitMapSection,
+              ]}
+            >
+              {levelIdx > 0 && (
+                <View style={styles.inlineUnitBreak}>
+                  <View style={styles.unitEditorialMetaRow}>
+                    <View style={styles.unitEyebrowGroup}>
+                      <View
+                        style={[
+                          styles.unitDot,
+                          isUnitCompleted && styles.unitDotCompleted,
+                        ]}
+                      />
+                      <Text style={styles.unitEyebrowText}>
+                        UNIT {String(level.levelNumber).padStart(2, '0')} · {level.cefrTag}
+                      </Text>
+                    </View>
+                    <Text style={styles.unitProgressStatText}>
+                      {completedInLevel}/{level.classes.length} · {progressPercent}%
                     </Text>
                   </View>
-                  <Text style={styles.unitProgressStatText}>
-                    {completedInLevel}/{level.classes.length} · {progressPercent}%
+
+                  <Text style={styles.unitInlineTitle} numberOfLines={1}>
+                    {formatShortUnitTitle(level.levelName)}
                   </Text>
+
+                  <View style={styles.unitHairlineTrack}>
+                    {progressPercent > 0 && (
+                      <LinearGradient
+                        colors={['#7F43FE', '#A78BFA']}
+                        style={[
+                          styles.unitHairlineFill,
+                          { width: `${progressPercent}%` },
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      />
+                    )}
+                  </View>
                 </View>
+              )}
 
-                <Text style={styles.unitEditorialTitle} numberOfLines={1}>
-                  {formatShortUnitTitle(level.levelName)}
-                </Text>
-
-                <View style={styles.unitHairlineTrack}>
-                  {progressPercent > 0 && (
-                    <LinearGradient
-                      colors={['#7F43FE', '#A78BFA']}
-                      style={[
-                        styles.unitHairlineFill,
-                        { width: `${progressPercent}%` },
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    />
-                  )}
-                </View>
-              </View>
-            </View>,
-
-            /* Unit Open Zig-Zag Map Section */
-            <View key={`map-${level.levelNumber}`} style={styles.unitMapSection}>
               <Text style={styles.unitEditorialDesc} numberOfLines={2}>
                 {level.description}
               </Text>
@@ -388,12 +489,19 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   );
                 })()}
               </View>
-            </View>,
-          ];
+            </View>
+          );
         })}
 
-        <View key="map-bottom-spacer" style={{ height: 32 }} />
+        <View style={{ height: 28 }} />
         </ScrollView>
+
+        {/* Soft Feather Lip under Unified Header */}
+        <LinearGradient
+          colors={['rgba(14,14,20,0.78)', 'rgba(14,14,20,0)']}
+          style={styles.topFeatherEdge}
+          pointerEvents="none"
+        />
       </View>
 
       {/* Sleek Obsidian Lesson Sheet Modal */}
@@ -565,20 +673,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  topNavHeader: {
+  unifiedTopBar: {
     width: '100%',
     backgroundColor: THEME.colors.background,
+    zIndex: 10,
   },
-  topNavHeaderInner: {
+  unifiedTopBarInner: {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingTop: 14,
-    paddingBottom: 6,
+    paddingBottom: 10,
     paddingHorizontal: 20,
+  },
+  brandRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  activeUnitBand: {
+    width: '100%',
   },
   appNameText: {
     fontFamily: THEME.fonts.bold,
@@ -594,6 +709,13 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
     overflow: 'hidden',
   },
+  topFeatherEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 14,
+  },
   screenBgTexture: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
@@ -608,26 +730,26 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     width: '100%',
   },
-  stickyUnitHeader: {
-    width: '100%',
-    backgroundColor: THEME.colors.background,
-    zIndex: 10,
-  },
-  stickyUnitHeaderInner: {
-    width: '100%',
-    maxWidth: MAX_CONTENT_WIDTH,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 10,
-  },
   unitMapSection: {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 26,
+    paddingTop: 18,
+    paddingBottom: 18,
+  },
+  firstUnitMapSection: {
+    paddingTop: 6,
+  },
+  inlineUnitBreak: {
+    marginBottom: 8,
+  },
+  unitInlineTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 18.5,
+    color: '#FFFFFF',
+    lineHeight: 24,
+    marginBottom: 8,
   },
   unitEditorialMetaRow: {
     flexDirection: 'row',
