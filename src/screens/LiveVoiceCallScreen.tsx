@@ -69,11 +69,9 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const [activeScenarioIdx, setActiveScenarioIdx] = useState(0);
   const activeScenario = SCENARIOS[activeScenarioIdx] || SCENARIOS[0];
 
-  const [isCalling, setIsCalling] = useState(true);
   const [isMutedAudio, setIsMutedAudio] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showScenarios, setShowScenarios] = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
@@ -96,18 +94,6 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const pulseAnim2 = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
   const transcriptScrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | null = null;
-    if (isCalling) {
-      timer = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isCalling]);
 
   useEffect(() => {
     if (isAiSpeaking || isUserSpeaking) {
@@ -207,7 +193,6 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     setShowScenarios(false);
     setAnimatedBotMsgId(null);
     setLastFeedback(null);
-    setCallDuration(0);
     const introMsg: ChatMessage = {
       id: `init-${nextScenario.id}-${Date.now()}`,
       role: 'assistant',
@@ -222,7 +207,6 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     const text = (textToSend ?? userTranscript).trim();
     if (!text || isSendingText || isProcessingAudio) return;
 
-    if (!isCalling) setIsCalling(true);
     setUserTranscript('');
     stopAllAudio();
     setIsAiSpeaking(false);
@@ -267,7 +251,6 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     if (isProcessingAudio) return;
 
     if (!isUserSpeaking) {
-      if (!isCalling) setIsCalling(true);
       setIsAiSpeaking(false);
       const started = await beginAudioCapture();
       if (!started.ok) {
@@ -345,23 +328,12 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     }
   };
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const toggleCallState = () => {
-    if (isCalling) {
+  const toggleSpeechPlayback = () => {
+    if (isAiSpeaking) {
       stopAllAudio();
       setIsAiSpeaking(false);
-      setIsCalling(false);
     } else {
-      setIsCalling(true);
-      playSoundEffect('callRing');
-      setTimeout(() => {
-        speakAiMessage('Welcome back! Go ahead whenever you are ready.');
-      }, 700);
+      speakAiMessage(latestAiText);
     }
   };
 
@@ -394,14 +366,12 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             style={[
               styles.liveDot,
               {
-                backgroundColor: isCalling
-                  ? THEME.colors.primaryGlow
-                  : THEME.colors.textMuted,
+                backgroundColor: isMutedAudio
+                  ? THEME.colors.textMuted
+                  : THEME.colors.primaryGlow,
               },
             ]}
           />
-          <Text style={styles.timerText}>{isCalling ? formatTime(callDuration) : 'Paused'}</Text>
-          <Text style={styles.dotSeparator}>·</Text>
           <Text style={styles.scenarioLabel} numberOfLines={1}>
             {activeScenario.title}
           </Text>
@@ -434,6 +404,18 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
               name={isMutedAudio ? 'volume-mute-outline' : 'volume-high-outline'}
               size={17}
               color={isMutedAudio ? THEME.colors.textMuted : THEME.colors.primaryGlow}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.utilityBtn}
+            onPress={() => handleSelectScenario(activeScenarioIdx)}
+            activeOpacity={0.78}
+          >
+            <Ionicons
+              name="refresh-outline"
+              size={16}
+              color={THEME.colors.textSecondary}
             />
           </TouchableOpacity>
         </View>
@@ -595,9 +577,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
                   ? 'Listening... Tap mic to send'
                   : isAiSpeaking
                   ? 'Speaking...'
-                  : isCalling
-                  ? 'Tap mic to speak'
-                  : 'Session paused'}
+                  : 'Ready · Tap mic or type'}
               </Text>
             </View>
 
@@ -621,11 +601,17 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             )}
             <TouchableOpacity
               style={styles.replayChip}
-              onPress={() => speakAiMessage(latestAiText)}
+              onPress={toggleSpeechPlayback}
               activeOpacity={0.78}
             >
-              <Ionicons name="volume-medium-outline" size={14} color={THEME.colors.primaryGlow} />
-              <Text style={styles.replayText}>Listen again</Text>
+              <Ionicons
+                name={isAiSpeaking ? 'stop-circle-outline' : 'volume-medium-outline'}
+                size={14}
+                color={THEME.colors.primaryGlow}
+              />
+              <Text style={styles.replayText}>
+                {isAiSpeaking ? 'Stop audio' : 'Listen again'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -694,18 +680,6 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
       {/* Single Floating Voice Composer Dock */}
       <View style={styles.composerDock}>
-        <TouchableOpacity
-          style={[styles.pauseCircleBtn, !isCalling && styles.pauseCircleBtnResume]}
-          onPress={toggleCallState}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={isCalling ? 'pause' : 'play'}
-            size={16}
-            color={isCalling ? THEME.colors.textSecondary : '#FFFFFF'}
-          />
-        </TouchableOpacity>
-
         <TextInput
           style={styles.composerInput}
           placeholder={isUserSpeaking ? 'Listening... tap mic to send' : 'Reply or tap mic to speak...'}
@@ -780,32 +754,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
     flexShrink: 1,
     marginRight: 10,
-    gap: 6,
+    gap: 7,
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  timerText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
-  },
-  dotSeparator: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-  },
   scenarioLabel: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11.5,
-    color: THEME.colors.textSecondary,
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12,
+    color: '#FFFFFF',
     flexShrink: 1,
   },
   utilityActions: {
@@ -1095,20 +1059,10 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     marginHorizontal: 14,
     marginBottom: 12,
-    paddingHorizontal: 7,
+    paddingLeft: 16,
+    paddingRight: 7,
     paddingVertical: 6,
     gap: 8,
-  },
-  pauseCircleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pauseCircleBtnResume: {
-    backgroundColor: THEME.colors.primary,
   },
   composerInput: {
     flex: 1,
