@@ -135,15 +135,6 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
     outputRange: [0, -1.2, 0.4, -0.7],
   });
 
-  const haloOpacity = outerCycle.interpolate({
-    inputRange: [0, 1, 2, 3],
-    outputRange: [0.42, 0.78, 0.48, 0.68],
-  });
-  const haloScale = outerCycle.interpolate({
-    inputRange: [0, 1, 2, 3],
-    outputRange: [0.95, 1.16, 0.98, 1.09],
-  });
-
   const coreScaleY = coreCycle.interpolate({
     inputRange: [0, 1, 2],
     outputRange: [0.95, 1.12, 1.01],
@@ -184,19 +175,8 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
   });
 
   return (
-    <View style={styles.pill}>
+    <View style={styles.container}>
       <View style={styles.flameStage}>
-        {/* Ambient Breathing Flame Aura */}
-        <Animated.View
-          style={[
-            styles.halo,
-            {
-              opacity: haloOpacity,
-              transform: [{ scale: haloScale }],
-            },
-          ]}
-        />
-
         {/* Rising Glowing Ember Sparks */}
         <Animated.View
           style={[
@@ -290,14 +270,11 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
 };
 
 const styles = StyleSheet.create({
-  pill: {
+  container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    gap: 5,
+    paddingVertical: 2,
   },
   flameStage: {
     width: 22,
@@ -305,13 +282,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  halo: {
-    position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(249, 115, 22, 0.35)',
   },
   flameLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -325,8 +295,8 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 14.5,
-    color: '#FEF3C7',
+    fontSize: 15,
+    color: '#FFFFFF',
     letterSpacing: 0.3,
   },
 });
