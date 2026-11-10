@@ -30,13 +30,6 @@ interface CurriculumScreenProps {
 
 const MAX_CONTENT_WIDTH = 480;
 
-const CEFR_SHORT_LABELS: Record<number, { code: string; focus: string }> = {
-  1: { code: 'A1', focus: 'Start' },
-  2: { code: 'A2', focus: 'Daily' },
-  3: { code: 'B1', focus: 'Work' },
-  4: { code: 'B2', focus: 'Pro' },
-};
-
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
 }
@@ -44,28 +37,16 @@ function formatShortLessonTitle(fullTitle: string): string {
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   stats,
-  userRank,
-  onRefillHearts,
-  onOpenLeague,
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
-  const [selectedUnitFilter, setSelectedUnitFilter] = useState<number | 'all'>('all');
 
   const completedClasses = stats.completedClasses;
-  const totalClassesCount = SUPERNOVA_LEVELS.reduce((acc, lvl) => acc + lvl.classes.length, 0);
-  const completedCount = completedClasses.length;
-  const overallPercent = Math.round((completedCount / Math.max(1, totalClassesCount)) * 100);
 
   const nextActiveClassId =
     SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
       (cls) => !completedClasses.includes(cls.id)
     )?.id || null;
-
-  const visibleLevels =
-    selectedUnitFilter === 'all'
-      ? SUPERNOVA_LEVELS
-      : SUPERNOVA_LEVELS.filter((lvl) => lvl.levelNumber === selectedUnitFilter);
 
   // Precompute global sequential lesson number for each class ID
   const lessonNumberMap: Record<string, number> = {};
@@ -77,131 +58,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     }
   }
 
-  const commandTabs: Array<{
-    key: number | 'all';
-    code: string;
-    focus: string;
-    accentColor: string;
-    showDot?: boolean;
-  }> = [
-    {
-      key: 'all',
-      code: 'All',
-      focus: `${totalClassesCount} cls`,
-      accentColor: THEME.colors.primaryGlow,
-    },
-    ...SUPERNOVA_LEVELS.map((lvl) => {
-      const meta = CEFR_SHORT_LABELS[lvl.levelNumber] || {
-        code: lvl.cefrTag.replace(/^CEFR\s+/i, '').split(' ')[0],
-        focus: `Unit ${lvl.levelNumber}`,
-      };
-      return {
-        key: lvl.levelNumber,
-        code: meta.code,
-        focus: meta.focus,
-        accentColor: lvl.accentColor,
-        showDot: true,
-      };
-    }),
-  ];
-
   return (
     <View style={styles.container}>
-      {/* Executive CEFR Tier Command Top Bar */}
-      <LinearGradient
-        colors={['#151422', '#0E0E14']}
-        style={styles.topHeaderContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        <View style={[styles.topBrandRow, { maxWidth: MAX_CONTENT_WIDTH }]}>
-          <View style={styles.brandGroup}>
-            <View style={styles.brandAvatarRing}>
-              <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.brandAvatarImg} />
-            </View>
-            <Text style={styles.brandTitle}>Supernova</Text>
-            <View style={styles.progressBadgePill}>
-              <Text style={styles.progressBadgeText}>{overallPercent}%</Text>
-            </View>
-          </View>
-
-          <View style={styles.telemetryRow}>
-            <View style={styles.metricChip}>
-              <MaterialCommunityIcons name="fire" size={13.5} color={THEME.colors.gold} />
-              <Text style={styles.metricText}>{stats.streakDays}</Text>
-            </View>
-
-            <View style={styles.metricChip}>
-              <Ionicons name="diamond" size={12} color={THEME.colors.secondary} />
-              <Text style={styles.metricText}>{stats.gems}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.metricChip}
-              onPress={onRefillHearts}
-              activeOpacity={0.75}
-              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-            >
-              <Ionicons name="heart" size={12.5} color="#F43F5E" />
-              <Text style={styles.heartsText}>{stats.hearts}</Text>
-            </TouchableOpacity>
-
-            {onOpenLeague && (
-              <TouchableOpacity
-                style={styles.rankChip}
-                onPress={onOpenLeague}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.rankChipText}>#{userRank}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* 5-Tile CEFR Tier Command Grid */}
-        <View style={[styles.commandGrid, { maxWidth: MAX_CONTENT_WIDTH }]}>
-          {commandTabs.map((tab) => {
-            const isSelected = selectedUnitFilter === tab.key;
-            return (
-              <TouchableOpacity
-                key={String(tab.key)}
-                style={[
-                  styles.commandTile,
-                  isSelected && {
-                    backgroundColor: `${tab.accentColor}20`,
-                    borderColor: tab.accentColor,
-                  },
-                ]}
-                onPress={() => setSelectedUnitFilter(tab.key)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.commandCodeRow}>
-                  {tab.showDot && (
-                    <View
-                      style={[
-                        styles.commandDot,
-                        { backgroundColor: tab.accentColor, opacity: isSelected ? 1 : 0.7 },
-                      ]}
-                    />
-                  )}
-                  <Text
-                    style={[styles.commandCodeText, isSelected && styles.commandCodeTextActive]}
-                    numberOfLines={1}
-                  >
-                    {tab.code}
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.commandFocusText, isSelected && styles.commandFocusTextActive]}
-                  numberOfLines={1}
-                >
-                  {tab.focus}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </LinearGradient>
+      {/* Minimalist Centered App Name Header */}
+      <View style={styles.topNavHeader}>
+        <Text style={styles.appNameText}>NovaBreaker</Text>
+      </View>
 
       {/* Clean Obsidian Architectural Course Timeline */}
       <ScrollView
@@ -209,7 +71,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         contentContainerStyle={styles.courseContent}
         showsVerticalScrollIndicator={false}
       >
-        {visibleLevels.map((level) => {
+        {SUPERNOVA_LEVELS.map((level) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -672,149 +534,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  topHeaderContainer: {
+  topNavHeader: {
+    height: 50,
+    backgroundColor: THEME.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-  },
-  topBrandRow: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 9,
-  },
-  brandGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  brandAvatarRing: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: 'rgba(167, 139, 250, 0.65)',
-    overflow: 'hidden',
-    backgroundColor: THEME.colors.surfaceCard,
-  },
-  brandAvatarImg: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.04 }],
-  },
-  brandTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13.5,
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-  progressBadgePill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 7,
-    backgroundColor: 'rgba(16, 185, 129, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-  },
-  progressBadgeText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: '#34D399',
-  },
-  telemetryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  metricChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 28,
-    paddingHorizontal: 7,
-    gap: 3.5,
-    borderRadius: 9,
-    backgroundColor: '#191827',
-    borderWidth: 1,
-    borderColor: '#29273E',
-  },
-  metricText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
-  },
-  heartsText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#FB7185',
-  },
-  rankChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
     justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 8,
-    borderRadius: 9,
-    backgroundColor: 'rgba(127, 67, 254, 0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.4)',
+    alignItems: 'center',
   },
-  rankChipText: {
+  appNameText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#E9D5FF',
-  },
-
-  /* CEFR TIER COMMAND GRID */
-  commandGrid: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingBottom: 11,
-    gap: 6,
-  },
-  commandTile: {
-    flex: 1,
-    backgroundColor: '#181725',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#28263C',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  commandCodeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  commandDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  commandCodeText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
-    color: '#C7C3DC',
-  },
-  commandCodeTextActive: {
+    fontSize: 17,
     color: '#FFFFFF',
-  },
-  commandFocusText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 9.5,
-    color: THEME.colors.textMuted,
-    marginTop: 1,
-  },
-  commandFocusTextActive: {
-    fontFamily: THEME.fonts.semiBold,
-    color: '#E5E1F7',
+    letterSpacing: 0.6,
   },
 
   /* COURSE TIMELINE */
