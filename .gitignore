@@ -14,3 +14,7 @@ web-build/
 reference_apk/
 *.apk
 
+# Local secrets & environment variables
+.env
+.env*.local
+

@@ -2,20 +2,28 @@ import { GrammarCorrection, ChatMessage, RoleplayScenario } from '../types';
 import { GuidedTranslation, SupernovaClass } from '../constants/curriculum';
 
 let userGeminiApiKey: string | null = null;
+const ENV_GEMINI_KEY = (process.env.EXPO_PUBLIC_GEMINI_API_KEY || '').trim();
+
+function resolveGeminiKey(): string | null {
+  if (userGeminiApiKey && userGeminiApiKey.length > 10) {
+    return userGeminiApiKey;
+  }
+  return ENV_GEMINI_KEY.length > 10 ? ENV_GEMINI_KEY : null;
+}
 
 export function setGeminiApiKey(key: string | null) {
   userGeminiApiKey = key ? key.trim() : null;
 }
 
 export function getGeminiApiKey(): string | null {
-  return userGeminiApiKey;
+  return resolveGeminiKey();
 }
 
 export function isGeminiConfigured(): boolean {
-  return !!userGeminiApiKey && userGeminiApiKey.length > 10;
+  return !!resolveGeminiKey();
 }
 
-const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
 async function callGeminiWithTimeout(
   apiKey: string,
@@ -97,7 +105,8 @@ export async function analyzeSentenceGrammar(sentence: string): Promise<GrammarC
     };
   }
 
-  if (userGeminiApiKey) {
+  const activeKey = resolveGeminiKey();
+  if (activeKey) {
     const prompt = `You are "Nila", the NovaBreaker AI English linguistics tutor for Tamil-speaking professionals.
 Analyze the following sentence:
 "${trimmed}"
@@ -114,7 +123,7 @@ Respond ONLY with valid JSON without markdown backticks:
   "fluencyScore": number between 40 and 100
 }`;
 
-    const json = await callGeminiWithTimeout(userGeminiApiKey, {
+    const json = await callGeminiWithTimeout(activeKey, {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
     });
@@ -396,7 +405,8 @@ export async function sendChatMessage(
 ): Promise<{ reply: string; feedback: GrammarCorrection }> {
   const feedback = await analyzeSentenceGrammar(userMessage);
 
-  if (userGeminiApiKey) {
+  const activeKey = resolveGeminiKey();
+  if (activeKey) {
     const contents = [
       {
         role: 'user',
@@ -420,7 +430,7 @@ Keep replies natural, encouraging, concise (1-3 sentences), and end with an enga
       },
     ];
 
-    const json = await callGeminiWithTimeout(userGeminiApiKey, {
+    const json = await callGeminiWithTimeout(activeKey, {
       contents,
       generationConfig: { maxOutputTokens: 160, temperature: 0.7 },
     });
@@ -595,7 +605,8 @@ export async function sendLessonRealTalkReply(
 ): Promise<{ reply: string; feedback: GrammarCorrection }> {
   const feedback = await analyzeSentenceGrammar(userMessage);
 
-  if (userGeminiApiKey) {
+  const activeKey = resolveGeminiKey();
+  if (activeKey) {
     const contents = [
       {
         role: 'user',
@@ -618,7 +629,7 @@ Respond warmly in natural spoken English (1-2 short sentences) reacting specific
       },
     ];
 
-    const json = await callGeminiWithTimeout(userGeminiApiKey, {
+    const json = await callGeminiWithTimeout(activeKey, {
       contents,
       generationConfig: { maxOutputTokens: 130, temperature: 0.7 },
     });
