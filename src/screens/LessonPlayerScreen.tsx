@@ -173,14 +173,17 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
   const talkRecordingRef = useRef<Audio.Recording | null>(null);
 
-  const handlePlayVoice = (text: string, id: string, rateOverride?: number) => {
-    stopAllAudio();
+  const handlePlayVoice = (
+    text: string,
+    id: string,
+    rateOverride?: number,
+    preferAiVoice = false
+  ) => {
     setPlayingAudioId(id);
-    speakText(text, () => setPlayingAudioId(null), rateOverride);
+    speakText(text, () => setPlayingAudioId(null), rateOverride, preferAiVoice);
   };
 
   const handlePlayTamilVoice = (text: string, id: string) => {
-    stopAllAudio();
     setPlayingAudioId(id);
     speakTamil(text, () => setPlayingAudioId(null));
   };
@@ -197,7 +200,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
       if (lectureStep === 0) {
         handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'lecture-tamil');
       } else if (lectureStep === 1) {
-        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right');
+        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right', undefined, true);
       }
     } else if (currentSlide === 'speaking') {
       const firstLine = lesson.speakingChallenge.missNovaQuestion;
@@ -683,7 +686,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         styles.minimalAudioBtn,
                         playingAudioId === 'lecture-right' && styles.minimalAudioBtnActive,
                       ]}
-                      onPress={() => handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right')}
+                      onPress={() =>
+                        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right', undefined, true)
+                      }
                       activeOpacity={0.8}
                     >
                       <Ionicons name="volume-high-outline" size={15} color="#FFFFFF" />
@@ -742,7 +747,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                           if (isRightChoice) {
                             playSoundEffect('success');
                             if (!voiceMuted) {
-                              handlePlayVoice(lesson.rule.doAndDont.right, 'spot-right');
+                              handlePlayVoice(lesson.rule.doAndDont.right, 'spot-right', undefined, true);
                             }
                           } else {
                             playSoundEffect('error');

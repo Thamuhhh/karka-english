@@ -24,14 +24,15 @@ export function isGeminiConfigured(): boolean {
 }
 
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
+const GEMINI_TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
 const MODEL_COOLDOWN_MS = 60_000;
 const modelCooldownUntil: Record<string, number> = {};
 let lastGeminiError: string | null = null;
 
-function getOrderedModels(): string[] {
+function getOrderedModels(models: string[] = GEMINI_MODELS): string[] {
   const now = Date.now();
-  const ready = GEMINI_MODELS.filter((m) => (modelCooldownUntil[m] || 0) <= now);
-  const cooling = GEMINI_MODELS.filter((m) => (modelCooldownUntil[m] || 0) > now);
+  const ready = models.filter((m) => (modelCooldownUntil[m] || 0) <= now);
+  const cooling = models.filter((m) => (modelCooldownUntil[m] || 0) > now);
   return [...ready, ...cooling];
 }
 
@@ -88,16 +89,24 @@ interface ProviderAttemptResult {
   error: string | null;
 }
 
+interface ProviderRequestOptions {
+  models?: string[];
+  isValidResponse?: (data: any) => boolean;
+}
+
 async function tryEndpointProvider(
   apiKey: string,
   payload: Record<string, any>,
   timeoutMs: number,
-  buildEndpoint: EndpointBuilder
+  buildEndpoint: EndpointBuilder,
+  options?: ProviderRequestOptions
 ): Promise<ProviderAttemptResult> {
   const modelErrors: string[] = [];
   let hadTimeout = false;
+  const modelsToTry = getOrderedModels(options?.models);
+  const validateResponse = options?.isValidResponse || ((data: any) => Boolean(extractCandidateText(data)));
 
-  for (const model of getOrderedModels()) {
+  for (const model of modelsToTry) {
     const endpoint = buildEndpoint(model);
     // Avoid chaining multiple full-length waits if a request has already stalled on this turn
     const perModelTimeout = hadTimeout ? Math.min(timeoutMs, 15000) : timeoutMs;
@@ -117,7 +126,7 @@ async function tryEndpointProvider(
       if (res.ok) {
         delete modelCooldownUntil[model];
         const json = await res.json();
-        if (extractCandidateText(json)) {
+        if (validateResponse(json)) {
           return { data: json, authOrKeyRejected: false, error: null };
         }
         const finishReason = json?.candidates?.[0]?.finishReason || 'EMPTY';
@@ -181,12 +190,19 @@ async function tryEndpointProvider(
 async function callGeminiWithTimeout(
   apiKey: string,
   payload: Record<string, any>,
-  timeoutMs = 15000
+  timeoutMs = 15000,
+  options?: ProviderRequestOptions
 ): Promise<any | null> {
   lastGeminiError = null;
 
   // Google AI Studio keys (both AIza... and newer AQ....) use generativelanguage.googleapis.com first
-  const primary = await tryEndpointProvider(apiKey, payload, timeoutMs, buildAiStudioEndpoint);
+  const primary = await tryEndpointProvider(
+    apiKey,
+    payload,
+    timeoutMs,
+    buildAiStudioEndpoint,
+    options
+  );
   if (primary.data) {
     return primary.data;
   }
@@ -197,7 +213,8 @@ async function callGeminiWithTimeout(
       apiKey,
       payload,
       timeoutMs,
-      buildVertexExpressEndpoint
+      buildVertexExpressEndpoint,
+      options
     );
     if (vertexFallback.data) {
       return vertexFallback.data;
@@ -983,4 +1000,71 @@ Return JSON only (<=12 words for tips/explanations, 1-2 short spoken sentences +
     console.warn('Gemini audio JSON parse error:', e);
     return { ok: false, reason: 'network', detail: 'Could not parse Gemini response cleanly.' };
   }
+}
+
+function extractInlineAudio(data: any): { base64: string; mimeType: string } | null {
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return null;
+  for (const part of parts) {
+    const inline = part?.inlineData || part?.inline_data;
+    const rawData = inline?.data;
+    if (typeof rawData === 'string' && rawData.length > 100) {
+      const mimeType =
+        typeof inline?.mimeType === 'string'
+          ? inline.mimeType
+          : typeof inline?.mime_type === 'string'
+            ? inline.mime_type
+            : 'audio/L16;rate=24000';
+      return { base64: rawData, mimeType };
+    }
+  }
+  return null;
+}
+
+/**
+ * Generates expressive spoken audio using Gemini 3.8 TTS models (returns base64 PCM/WAV).
+ * Used for natural Chennai-Tamil coach lectures and crisp English accent playback.
+ */
+export async function synthesizeGeminiSpeech(
+  text: string,
+  mode: 'tamil-coach' | 'english-native',
+  accent: 'en-US' | 'en-GB' | 'en-AU' = 'en-US'
+): Promise<{ base64: string; mimeType: string } | null> {
+  const clean = text.trim();
+  const activeKey = resolveGeminiKey();
+  if (!clean || !activeKey) return null;
+
+  const accentLabel =
+    accent === 'en-GB' ? 'British' : accent === 'en-AU' ? 'Australian' : 'American';
+  const stylePrompt =
+    mode === 'tamil-coach'
+      ? 'You are Nila, a warm, friendly Chennai Tamil English tutor speaking naturally to a friend. Speak Tamil phrases in natural everyday spoken Tamil slang, and pronounce English words or quotes in crisp, clear English.'
+      : `You are Nila, a clear and warm English tutor speaking with an authentic, relaxed ${accentLabel} accent.`;
+
+  const json = await callGeminiWithTimeout(
+    activeKey,
+    {
+      systemInstruction: {
+        parts: [{ text: stylePrompt }],
+      },
+      contents: [{ role: 'user', parts: [{ text: clean }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: 'Kore',
+            },
+          },
+        },
+      },
+    },
+    14000,
+    {
+      models: GEMINI_TTS_MODELS,
+      isValidResponse: (data) => Boolean(extractInlineAudio(data)),
+    }
+  );
+
+  return extractInlineAudio(json);
 }

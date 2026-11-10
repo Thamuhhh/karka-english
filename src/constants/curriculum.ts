@@ -87,11 +87,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Never Use "Myself" as the Subject',
           englishExplanation: '"Myself" is a reflexive pronoun. In introductions, always use "I am [Name]" or "My name is [Name]".',
-          tamilMentalModel: 'தமிழில் "என்னோட பேரு..." என்பதை ஆங்கிலத்தில் "Myself..." என தவறாக சொல்லக் கூடாது. "Hi, I am..." அல்லது "My name is..." என்று தொடங்குவதே சரியான முறை.',
+          tamilMentalModel: 'நம்ம தமிழ்ல "என்னோட பேரு..." அப்டின்னு சொல்றத English-ல "Myself Vignesh"-னு சொல்லக்கூடாது. "Hi, I am..." இல்ல "My name is..." அப்டின்னு ஈஸியா ஆரம்பிக்கணும்!',
           doAndDont: {
             wrong: 'Myself Vignesh, coming from Madurai.',
             right: 'Hi, I am Vignesh. I am from Madurai.',
-            whyTamil: '"Myself" தவறு; "I am Vignesh" என்பதே நேரடியான, சரியான ஆங்கிலம்.',
+            whyTamil: '"Myself" அப்டினு ஆரம்பிக்க கூடாது; "I am Vignesh" தான் natural-ஆ இருக்கும்.',
           },
         },
         jumble: {
@@ -134,11 +134,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Singular Subjects Take "Doesn\'t" & Verbs with "-s"',
           englishExplanation: 'He, She, It, and Everyone take "doesn\'t" in negative sentences and add "-s" in affirmative (He knows, She lives).',
-          tamilMentalModel: 'தமிழில் "அவன் செய்வான் / அவள் செய்வாள்" என்பது போல, ஆங்கிலத்தில் He / She / It வந்தால் வினைச்சொல்லோடு "s" சேர வேண்டும் (He works). எதிர்மறையில் "doesn\'t" மட்டுமே வர வேண்டும்.',
+          tamilMentalModel: 'நம்ம "அவன் வேலை செய்றான் / அவளுக்கு தெரியும்"-னு பேசுற மாதிரி, English-ல He, She, It வந்தா verb கூட "s" சேர்க்கணும் (He works). இல்லேன்னா பேசும்போது "doesn\'t" தான் போடணும்!',
           doAndDont: {
             wrong: 'He don\'t know the meeting time.',
             right: 'He doesn\'t know the meeting time.',
-            whyTamil: 'He / She / It-க்கு "doesn\'t" பயன்படுத்த வேண்டும்; "don\'t" வரக்கூடாது.',
+            whyTamil: 'He / She / It பக்கத்துல எப்பவும் "doesn\'t" தான் வரும்; "don\'t" வரக்கூடாது.',
           },
         },
         jumble: {
@@ -181,11 +181,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Use "Can I get..." or "I would like..." for Polite Orders',
           englishExplanation: 'Direct commands like "Give me coffee" sound rude in English. Use polite inquiry structures like "Could I have..." or "Can I get...".',
-          tamilMentalModel: 'தமிழில் "எனக்கு ஒரு காபி குடுங்க" என்பதை ஆங்கிலத்தில் "Give me coffee" என்று மொழிபெயர்த்தால் அது கடுமையாக ஒலிக்கும். "Could I please get..." என பணிவாக கேட்க வேண்டும்.',
+          tamilMentalModel: 'கடையில போய் "எனக்கு ஒரு காபி குடுங்க"-னு English-ல "Give me coffee"-னு சொன்னா அது கொஞ்சம் கோவமா கேக்குற மாதிரி இருக்கும். அதுக்கு பதிலா "Could I please get..." இல்ல "Can I get..."-னு கேட்டா ரொம்ப friendly-ஆ இருக்கும்.',
           doAndDont: {
             wrong: 'Give me one hot coffee with sugar.',
             right: 'Could I please get a hot coffee with extra sugar?',
-            whyTamil: '"Give me" ஆணை இடுவது போல இருக்கும்; "Could I please get" பணிவான கோரிக்கை.',
+            whyTamil: '"Give me" ஆர்டர் போடுற மாதிரி இருக்கும்; "Could I please get" ரொம்ப மரியாதையா அழகா கேக்குற விதம்.',
           },
         },
         jumble: {
@@ -228,11 +228,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Always Prepend "Excuse me" and Use Indirect Phrasing',
           englishExplanation: 'Instead of "Where is metro station?", say "Excuse me, could you tell me how to get to the metro station?".',
-          tamilMentalModel: 'அந்நியரிடம் வழிகேட்கும்போது "Excuse me" என்று ஆரம்பித்து, "Could you tell me how to get to..." என்று வினவ வேண்டும்.',
+          tamilMentalModel: 'தெரியாதவங்க கிட்ட வழி கேக்கும்போது எடுத்த உடனே "Where is..."-னு கேக்காம, முதல்ல "Excuse me"-னு ஆரம்பிச்சு "Could you tell me how to get to..." அப்டினு கேக்கணும்.',
           doAndDont: {
             wrong: 'Where is metro? Tell fast.',
             right: 'Excuse me, could you please point me toward the nearest metro station?',
-            whyTamil: 'அந்நியர்களிடம் நேரடியாகக் கேட்காமல் பணிவாக "Excuse me..." எனத் தொடங்குங்கள்.',
+            whyTamil: 'நேரடியா "Where is..."-னு கேக்காம "Excuse me..." போட்டு கேட்டா ரொம்ப respectful-ஆ இருக்கும்.',
           },
         },
         jumble: {
@@ -275,11 +275,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: "How much is this?" vs "How many"',
           englishExplanation: 'Price is uncountable: use "How much does this cost?". Quantity is countable: "How many items?".',
-          tamilMentalModel: 'விலையைக் கேட்கும்போது எப்போதுமே "How much is this?" அல்லது "How much does it cost?" என்று மட்டுமே கேட்க வேண்டும்.',
+          tamilMentalModel: 'கடையில விலை கேக்கும்போது எப்பவுமே "How much is this?" இல்லனா "How much does it cost?"-னு தான் கேக்கணும். "How many" நம்பர் எண்ணுறதுக்கு மட்டும் தான்!',
           doAndDont: {
             wrong: 'How many price for this shirt?',
             right: 'How much does this shirt cost, and do you have it in medium?',
-            whyTamil: 'விலை எண்ணிக்கையில் வராது, மதிப்பீடு என்பதால் "How much" தான் சரி.',
+            whyTamil: 'பணத்தை எண்ணிக்கையா சொல்ல மாட்டோம், அதனால "How much" தான் கரெக்ட்.',
           },
         },
         jumble: {
@@ -336,11 +336,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Use "May I ask who is calling?" instead of "Who are you?"',
           englishExplanation: 'On calls, "Who are you?" or "Who is this?" sounds aggressive. Use "May I ask who is calling?" or "Could you hold the line?".',
-          tamilMentalModel: 'ஃபோன் பேசும்போது "யார் பேசுறது?" என்பதை "Who are you?" என்று கேட்டால் மரியாதைக் குறைவு. "May I ask who is calling, please?" என்று கேளுங்கள்.',
+          tamilMentalModel: 'ஃபோன்-ல "யார் பேசுறது?"-னு கேக்கணும்னா "Who are you?"-னு கேட்டுடாதீங்க, அது ரொம்ப rude-ஆ தெரியும். "May I ask who is calling, please?"-னு கேட்டா செம professional-ஆ இருக்கும்.',
           doAndDont: {
             wrong: 'Who is this? Tell me what you want.',
             right: 'May I know who is speaking, and how I can help you today?',
-            whyTamil: 'தொலைபேசியில் "May I know who is speaking..." என்பதே சர்வதேச கார்ப்பரேட் மரபு.',
+            whyTamil: 'கால் பேசும்போது "May I know who is speaking..." தான் global-ஆ எல்லா ஆபீஸ்லயும் பேசுற மரியாதையான முறை.',
           },
         },
         jumble: {
@@ -383,11 +383,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: The Pyramid of Time Prepositions',
           englishExplanation: 'AT = exact precise time (at 9:00, at noon). ON = days & dates (on Monday, on May 4th). IN = wider periods (in the morning, in 2026).',
-          tamilMentalModel: 'AT = குறிப்பிட்ட நேரம் (at 9:30 AM). ON = கிழமைகள், தேதிகள் (on Sunday). IN = காலை/மாலை/வருடம் (in the evening, in 2026).',
+          tamilMentalModel: 'ரொம்ப சிம்பிள் trick இது: Exact டைம் சொன்னா AT போடுங்க (at 9:30 AM). நாள் இல்ல தேதி சொன்னா ON போடுங்க (on Sunday). காலை, மாலை, வருஷம் சொன்னா IN போடுங்க (in the evening, in 2026).',
           doAndDont: {
             wrong: 'I will meet you in Monday at the evening.',
             right: 'I will meet you on Monday in the evening at 6 PM.',
-            whyTamil: 'நாட்களுக்கு "on", மாலைக்கு "in", நேரத்திற்கு "at" வர வேண்டும்.',
+            whyTamil: 'கிழமைக்கு "on", மாலைக்கு "in", மணி நேரத்துக்கு "at" — இது மாறவே கூடாது.',
           },
         },
         jumble: {
@@ -430,11 +430,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: "Did" Absorbs the Past — Always Use Base Verb After "Didn\'t"',
           englishExplanation: '"Did" is already past tense! Never use another past tense verb after it (I didn\'t go, NOT I didn\'t went).',
-          tamilMentalModel: '"Didn\'t" வந்தாலே அதற்கு அடுத்து வரும் வினைச்சொல் முதல் வடிவில் (V1 base form) தான் இருக்க வேண்டும். "didn\'t went" தவறு; "didn\'t go" என்பதே சரி.',
+          tamilMentalModel: 'ஒரு sentence-ல "Didn\'t" வந்துட்டாலே, அதுவே past tense தான்! அதனால பக்கத்துல மறுபடியும் past verb வரக்கூடாது. "didn\'t went" தப்பு; "didn\'t go"-னு normal base word தான் போடணும்.',
           doAndDont: {
             wrong: 'I didn\'t went to the office yesterday because of rain.',
             right: 'I didn\'t go to the office yesterday because of heavy rain.',
-            whyTamil: '"Didn\'t" வந்ததால் "go" தான் வர வேண்டும்; "went" வரக்கூடாது.',
+            whyTamil: '"Didn\'t" வந்ததால "go" தான் வரணும்; "went" போடக்கூடாது.',
           },
         },
         jumble: {
@@ -477,11 +477,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: "Going to" for Pre-planned Actions; "Will" for Instant Choices',
           englishExplanation: 'If you already planned it before speaking, use "I am going to...". If you decide right now or make an offer, use "I will...".',
-          tamilMentalModel: 'ஏற்கனவே முடிவுசெய்து திட்டமிட்ட காரியங்களுக்கு "I am going to..." பயன்படும். பேசும்போதே திடீரென முடிவெடுத்தால் "I will..." பயன்படும்.',
+          tamilMentalModel: 'நீங்க முன்னாடியே பிளான் பண்ணி வெச்ச விஷயத்துக்கு "I am going to..." சொல்லுங்க. ஆனா பேசுற அந்த நேரத்துல டக்குனு முடிவெடுத்தா "I will..." சொல்லுங்க — ரொம்ப ஈஸி!',
           doAndDont: {
             wrong: 'I will buy this laptop tomorrow, already booked it.',
             right: 'I am going to buy this laptop tomorrow; I already booked it.',
-            whyTamil: 'முன்கூட்டியே திட்டமிட்டதால் "am going to" தான் இயற்கை.',
+            whyTamil: 'ஏற்கனவே புக் பண்ணி பிளான் பண்ணதால "am going to" தான் நேச்சுரலா இருக்கும்.',
           },
         },
         jumble: {
@@ -524,11 +524,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Soften Your Statements with Strategic Diplomatic Openers',
           englishExplanation: 'Instead of bluntly saying "This idea is bad", say "From my perspective, this approach might face scalability challenges".',
-          tamilMentalModel: 'அலுவலகக் கூட்டங்களில் நேரடியாக "இது தப்பு" என்று சொல்லாமல், "From my perspective..." அல்லது "In my opinion..." என்று மென்மையாகத் தொடங்க வேண்டும்.',
+          tamilMentalModel: 'ஆபீஸ் மீட்டிங்ல நேரா "நீங்க சொல்றது தப்பு"-னு சொல்லாம, "From my perspective..." இல்லனா "In my opinion..." அப்டின்னு ஸ்மூத்தா ஆரம்பிச்சா யாருக்கும் ஹர்ட் ஆகாது!',
           doAndDont: {
             wrong: 'Your idea will not work at all.',
             right: 'From my perspective, that approach might run into budget constraints.',
-            whyTamil: 'கார்ப்பரேட் விவாதங்களில் "From my perspective..." என்பது ராஜதந்திரமான அணுகுமுறை.',
+            whyTamil: 'ஆபீஸ்ல நேரா மறுக்காம "From my perspective..."-னு சொல்றது தான் ஸ்மார்ட்டான வழி.',
           },
         },
         jumble: {
@@ -585,11 +585,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: The 3-Part Professional Apology Formula',
           englishExplanation: 'Part 1: Own it ("I sincerely apologize for the delay"). Part 2: Give the reason without whining. Part 3: State the resolution.',
-          tamilMentalModel: 'வெறுமனே "Sorry" என்று சொல்லாமல், தவறை ஒப்புக்கொண்டு மாற்றுத் தீர்வையும் சேர்த்துச் சொல்வதே தொழில்முறை முதிர்ச்சி.',
+          tamilMentalModel: 'வெறும் "Sorry"-னு சொல்லிட்டு நிக்காம, தப்ப ஒத்துக்கிட்டு அடுத்து என்ன fix பண்றோம்-னு சேர்த்து சொல்றது தான் real pro style!',
           doAndDont: {
             wrong: 'Sorry sir, server problem, not my fault.',
             right: 'I sincerely apologize for the delay. We encountered an unexpected server issue, but it is now resolved.',
-            whyTamil: 'தவறை காரணங்கள் சொல்லித் தட்டிக்கழிக்காமல் பொறுப்புடன் தீர்வைக் கூற வேண்டும்.',
+            whyTamil: 'சாக்குபோக்கு சொல்லாம, பிரச்சனையையும் அடுத்து என்ன பண்ணிருக்கோம்-னும் தெளிவா சொல்லணும்.',
           },
         },
         jumble: {
@@ -632,11 +632,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Use "I have been having..." to Describe Ongoing Symptoms',
           englishExplanation: 'For symptoms that started in the past and continue right now, use "I have been experiencing a mild headache since yesterday".',
-          tamilMentalModel: 'நேற்றிலிருந்து தொடர்ந்து இருக்கும் உடல் உபாதைகளுக்கு "I have been feeling / experiencing..." என்று சொல்ல வேண்டும்.',
+          tamilMentalModel: 'டாக்டர் கிட்ட "நேத்துல இருந்து உடம்பு சரியில்ல"-னு சொல்றப்ப "From yesterday I am having"-னு பேசக்கூடாது! "I have been feeling..." இல்ல "I have been experiencing... since yesterday"-னு சொல்லணும்.',
           doAndDont: {
             wrong: 'From yesterday I am having severe fever.',
             right: 'I have been running a high fever since yesterday evening.',
-            whyTamil: '"From yesterday I am having" என்பது தவறான மொழிபெயர்ப்பு; "since yesterday" என்பதுதான் சரி.',
+            whyTamil: '"From yesterday I am having"-ங்குறது தமிழ்-டு-இங்கிலீஷ் direct translation தப்பு; "since yesterday" தான் கரெக்ட்.',
           },
         },
         jumble: {
@@ -679,11 +679,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Use Passive Voice When the System/Bank Took the Action',
           englishExplanation: 'When money was deducted or a card was blocked automatically, use passive: "An amount of ₹5000 was debited from my account".',
-          tamilMentalModel: 'பணம் தானாக கழிக்கப்படும்போது அல்லது கார்டு பிளாக் ஆகும்போது "My card has been blocked" என Passive Voice-ல் கூற வேண்டும்.',
+          tamilMentalModel: 'அக்கவுண்ட்ல பணம் கட் ஆயிடுச்சு இல்ல கார்டு பிளாக் ஆயிடுச்சுன்னா "Bank cut my money"-னு சொல்லாம, "An amount was debited" இல்ல "My card has been blocked"-னு passive voice-ல பேசணும்.',
           doAndDont: {
             wrong: 'Bank cut my money two times.',
             right: 'The transaction amount was debited twice from my account.',
-            whyTamil: '"Money cut" என்பது கொச்சைத் தமிழ் மொழிபெயர்ப்பு; "amount was debited" என்பதே அதிகாரப்பூர்வ ஆங்கிலம்.',
+            whyTamil: '"Money cut" அப்டினு நம்ம லோக்கலா சொல்லுவோம், ஆனா பேங்க்-ல "amount was debited" தான் proper English!',
           },
         },
         jumble: {
@@ -726,11 +726,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: The 3-Beat Interview Framework (Present -> Past -> Future)',
           englishExplanation: '1. Present: Who you are & current role. 2. Past: Key accomplishments & trajectory. 3. Future: Why this specific company excites you.',
-          tamilMentalModel: 'நேர்காணலில் "என்னைப்பற்றி" கூறும்போது: தற்போதைய பணி (Present) -> முந்தைய சாதனைகள் (Past) -> இந்நிறுவனத்தில் சேர ஆர்வம் (Future) என்ற 3 அடுக்குகளைப் பயன்படுத்தவும்.',
+          tamilMentalModel: 'இன்டர்வியூல "Tell me about yourself"-னா குடும்ப கதைய ஆரம்பிக்காம 3 ஸ்டெப் ஃபாலோ பண்ணுங்க: இப்போ என்ன பண்றீங்க (Present) -> முன்னாடி என்ன சாதிச்சீங்க (Past) -> ஏன் இந்த கம்பெனி (Future).',
           doAndDont: {
             wrong: 'I was born in Trichy, my father is teacher, my hobbies cricket.',
             right: 'I am currently a frontend engineer at XYZ Corp where I build high-traffic React Native apps.',
-            whyTamil: 'பயோடேட்டாவை ஒப்பித்துக்கொண்டு இருக்காமல், உங்கள் தொழில்முறை திறனை முன்னிலைப்படுத்துங்கள்.',
+            whyTamil: 'பயோடேட்டா மாதிரி ஊர் கதைய சொல்லாம, உங்க வேலையையும் ஸ்கில்லையும் ஃபர்ஸ்ட் சொல்லுங்க.',
           },
         },
         jumble: {
@@ -773,11 +773,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Never State an Unresolved Weakness — Always Pair with Growth',
           englishExplanation: 'Structure your weakness as: Past tendency -> Awareness -> Corrective system you built.',
-          tamilMentalModel: '"எனக்கு கோபம் வரும் / சோம்பேறித்தனம் உண்டு" என்று கூறக்கூடாது. "முன்பு பல வேலைகளை ஒரே நேரத்தில் எடுத்துக்கொள்வேன், ஆனால் இப்போது Trello போன்ற கருவிகளால் திட்டமிட்டு முடிக்கிறேன்" என்று வளர்ச்சியைக் காட்ட வேண்டும்.',
+          tamilMentalModel: 'Weakness கேட்டா "எனக்கு கோபம் வரும், சோம்பேறி"-னு சொல்லிடாதீங்க! "முன்னாடி எல்லா வேலையையும் நானே எடுத்துப்பேன், ஆனா இப்போ Trello மாதிரி டூல் வெச்சு ஸ்மார்ட்டா ஷேர் பண்றேன்"-னு வளர்ந்த மாதிரி சொல்லுங்க.',
           doAndDont: {
             wrong: 'My weakness is that I am a perfectionist and work too hard.',
             right: 'In the past, I found it hard to delegate tasks, but I have now developed frameworks to trust teammates.',
-            whyTamil: 'பொய்யான பெருமைகளைத் தவிர்த்து, உண்மையான முன்னேற்றத்தைக் காட்டுங்கள்.',
+            whyTamil: 'ஃபேக் பில்டப் ("I work too hard") குடுக்காம, உண்மையா நீங்க எப்படி இம்ப்ரூவ் ஆனீங்கன்னு காட்டுங்க.',
           },
         },
         jumble: {
@@ -820,11 +820,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Master Travel Collocations (Boarding Pass, Overhead Bin, Layover)',
           englishExplanation: 'Learn precise airport terms: "layover" (transit stop), "boarding pass" (flight ticket), "carousel" (baggage belt).',
-          tamilMentalModel: 'விமான நிலையங்களில் "Baggage drop", "Boarding gate", "Connecting flight" போன்ற சரியான சொற்களைத் தயக்கமின்றி உபயோகியுங்கள்.',
+          tamilMentalModel: 'ஏர்போர்ட் போனதும் பதறாம இருக்க "Baggage drop" (பேக் குடுக்குற இடம்), "Boarding gate", "Connecting flight", "Layover" (நடு கேப் டைம்) இந்த வார்த்தைகள ஈஸியா யூஸ் பண்ணுங்க!',
           doAndDont: {
             wrong: 'Where my airplane standing?',
             right: 'Excuse me, which gate is flight AI-102 currently boarding from?',
-            whyTamil: 'விமான நிலையத்தில் "Which gate is flight... boarding from?" என்பது துல்லியமான வினா.',
+            whyTamil: 'ஏர்போர்ட்ல "Which gate is flight... boarding from?" அப்டினு கேட்டா தான் கரெக்டா பதில் சொல்லுவாங்க.',
           },
         },
         jumble: {
@@ -881,11 +881,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Use Conditional Subjunctive for VIP Hotel Treatment',
           englishExplanation: '"Would it be possible to get a complimentary room upgrade?" is far more effective than "Can you give me bigger room?".',
-          tamilMentalModel: 'ஹோட்டல் மேனேஜரிடம் பேசும்போது "Would it be possible to..." என வினவுவது அதிக வரவேற்பைப் பெற்றுத் தரும்.',
+          tamilMentalModel: 'ஹோட்டல் ரிசெப்ஷன்ல ரூம் அப்கிரேட் இல்ல எக்ஸ்ட்ரா ஹெல்ப் கேக்கணும்னா "Give me"-னு சொல்லாம "Would it be possible to..." அப்டினு கேட்டா உடனே ஓகே சொல்லிடுவாங்க!',
           doAndDont: {
             wrong: 'Give me high floor room with sea view.',
             right: 'Would it be possible to get a room on a higher floor with a nice view?',
-            whyTamil: 'பணிவான வேண்டுகோள் எப்போதுமே சிறந்த அறையை பெற்றுத் தரும்.',
+            whyTamil: 'நம்ம ஸ்வீட்டா "Would it be possible..."-னு கேட்டா எப்பவுமே பெஸ்ட் ரூம் கிடைக்கும்.',
           },
         },
         jumble: {
@@ -928,11 +928,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Ask Open-Ended "What" and "How" Questions, Not Yes/No Queries',
           englishExplanation: 'Instead of "Do you like the conference?" (Yes/No), ask "What has been the most interesting session for you so far?".',
-          tamilMentalModel: 'நெட்வொர்க்கிங்கில் "ஆமாம் / இல்லை" என்று பதில் வரும்படி கேட்காமல், அவர் விரிவாக பேசக்கூடிய திறந்த கேள்விகளைக் கேளுங்கள்.',
+          tamilMentalModel: 'புது ஆளுங்க கிட்ட பேசும்போது "Yes / No" சொல்ற மாதிரி கேள்வி கேக்காம, அவங்க கொஞ்சம் நிறைய பேசுற மாதிரி "What..." இல்ல "How..."-னு ஓப்பன் கேள்வியா கேளுங்க!',
           doAndDont: {
             wrong: 'Are you working in IT? Yes or no?',
             right: 'What kind of projects are you currently working on at your firm?',
-            whyTamil: 'திறந்த கேள்விகள் உரையாடலை சுவாரஸ்யமாக தொடர வைக்கும்.',
+            whyTamil: 'ஓப்பன் கேள்வி கேட்டா தான் பேச்சு சுவாரஸ்யமா தொடர்ந்து போகும்.',
           },
         },
         jumble: {
@@ -975,11 +975,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: The "Agree First, Pivot Second" Protocol',
           englishExplanation: 'Acknowledge their merit before pivoting: "I completely understand that perspective, however, we should also examine the latency implications".',
-          tamilMentalModel: 'விவாதத்தில் அடுத்தவர் கருத்தை நிராகரிக்கும் முன் "நீங்கள் சொல்வதில் நியாயம் இருக்கிறது, ஆயினும்..." என இணைப்பை ஏற்படுத்துங்கள்.',
+          tamilMentalModel: 'விவாதம் பண்ணும்போது அடுத்தவங்க ஐடியாவ உடனே தப்புன்னு சொல்லாம, முதல்ல "நீங்க சொல்ற பாயிண்ட் சரிதான், ஆனா..." அப்டினு கனெக்ட் பண்ணிட்டு உங்க கருத்தைச் சொல்லுங்க.',
           doAndDont: {
             wrong: 'You are totally wrong about this architecture.',
             right: 'You make a valid point about simplicity, but I would argue that microservices offer better fault isolation.',
-            whyTamil: 'அடுத்தவர் கருத்தை மட்டந்தட்டாமல் விவாதிப்பதே முதிர்ச்சியான தலைவரின் அடையாளம்.',
+            whyTamil: 'மத்தவங்க கருத்தை அசிங்கப்படுத்தாம, ஸ்மார்ட்டா பதில் சொல்றது தான் true leader style.',
           },
         },
         jumble: {
@@ -1022,11 +1022,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Frame Advice as Options, Not Commands',
           englishExplanation: 'Instead of "You must do this", frame it as an invitation to think: "Have you considered exploring React Native instead?".',
-          tamilMentalModel: 'ஆலோசனை தரும்போது "நீ இதை கட்டாயம் செய்" என்று கட்டளையிடாமல், "இப்படி செய்தால் நன்றாக இருக்குமே என்று யோசித்தீர்களா?" என்று பரிந்துரைக்க வேண்டும்.',
+          tamilMentalModel: 'ஒருத்தருக்கு அட்வைஸ் குடுக்கும்போது "நீ கண்டிப்பா இத பண்ணு"-னு பாஸ் மாதிரி சொல்லாம, "இப்படி பண்ணிப் பார்த்தா நல்லா இருக்குமே, யோசிச்சுப் பாத்தீங்களா?"-னு சஜஷன் மாதிரி சொல்லுங்க.',
           doAndDont: {
             wrong: 'You must change your code right now.',
             right: 'You might want to consider refactoring this module to improve its test coverage.',
-            whyTamil: '"You might want to consider..." என்பது கட்டளையாக இல்லாமல் நல்ல பரிந்துரையாக அமையும்.',
+            whyTamil: '"You might want to consider..." அப்டினு சொன்னா ஆர்டர் போடுற மாதிரி இல்லாம செம ஹெல்ப்ஃபுல்லா தெரியும்.',
           },
         },
         jumble: {
@@ -1069,11 +1069,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: Move Beyond Basic "Happy" or "Sad" with Sensory Idioms',
           englishExplanation: 'Instead of "I am very happy", say "I am over the moon". Instead of "I was worried", say "I was on pins and needles".',
-          tamilMentalModel: 'உணர்ச்சிகளை விவரிக்கும்போது "happy", "sad" என்று மட்டும் சொல்லாமல், "a huge weight off my shoulders" போன்ற நுணுக்கமான ஆங்கில நடையைப் பயன்படுத்துங்கள்.',
+          tamilMentalModel: 'உங்க ஃபீலிங்ஸ சொல்றப்ப வெறும் "happy", "sad"-னு போர் அடிக்காம, "a huge weight off my shoulders" (பெரிய பாரமே இறங்கின மாதிரி இருக்கு) அப்டினு natural idioms யூஸ் பண்ணுங்க!',
           doAndDont: {
             wrong: 'When exam passed I was very very very happy.',
             right: 'When I cleared the examination, it felt like a massive weight was lifted off my shoulders.',
-            whyTamil: 'அனுபவங்களை விவரிக்கும்போது இந்த உயரிய நடைகள் உங்கள் ஆங்கிலப் புலமையை வெளிப்படுத்தும்.',
+            whyTamil: 'இந்த மாதிரி நேட்டிவ் டச் இருக்குற வரிகள் உங்க இங்கிலீஷை நெக்ஸ்ட் லெவலுக்கு கொண்டு போகும்.',
           },
         },
         jumble: {
@@ -1116,11 +1116,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         rule: {
           heading: 'Rule: The Executive 4-Part Pitch Structure',
           englishExplanation: '1. The Hook (surprising fact). 2. The Problem (pain point). 3. The Innovation (your solution). 4. The Call to Action.',
-          tamilMentalModel: 'உயர்மட்ட பேச்சுகளில்: கவனத்தை ஈர்க்கும் தொடக்கம் (Hook) -> பிரச்சனை (Problem) -> தீர்வு (Solution) -> எதிர்கால தொலைநோக்கு (Vision) என பேச வேண்டும்.',
+          tamilMentalModel: 'பெரிய பிட்ச் இல்ல பிரசன்டேஷன் பண்ணும்போது 4 ஸ்டெப் வெச்சுக்கோங்க: கவனத்தை இழுக்குற ஸ்டார்ட் (Hook) -> என்ன பிரச்சனை (Problem) -> நம்ம தீர்வு (Solution) -> எதிர்கால பிளான் (Vision).',
           doAndDont: {
             wrong: 'My app is good app please use it thank you.',
             right: 'We empower millions of learners to break language barriers and unlock high-paying global opportunities.',
-            whyTamil: 'உங்கள் இலக்கையும் தாக்கத்தையும் உலகத்தரம் வாய்ந்த சொற்களால் வெளிப்படுத்துங்கள்.',
+            whyTamil: 'நம்ம ஐடியாவையும் அது பண்ணப்போற தாக்கத்தையும் ஷார்ட்டா பவர்ஃபுல்லா சொல்லுங்க!',
           },
         },
         jumble: {
