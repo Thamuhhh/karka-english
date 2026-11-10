@@ -23,6 +23,10 @@ export function isGeminiConfigured(): boolean {
   return !!resolveGeminiKey();
 }
 
+export function getLastGeminiError(): string | null {
+  return lastGeminiError;
+}
+
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
 const GEMINI_TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
 const MODEL_COOLDOWN_MS = 60_000;

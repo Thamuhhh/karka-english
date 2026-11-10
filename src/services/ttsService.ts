@@ -2,13 +2,18 @@ import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
-import { synthesizeGeminiSpeech } from '../api/supernovaAi';
+import { getLastGeminiError, synthesizeGeminiSpeech } from '../api/supernovaAi';
 
 let currentSound: Audio.Sound | null = null;
 let activeSequenceId = 0;
 let cachedVoices: Speech.Voice[] | null = null;
+let lastSpeechNotice: string | null = null;
 const geminiAudioCache = new Map<string, string>();
-const MAX_AUDIO_CACHE_ENTRIES = 36;
+const MAX_AUDIO_CACHE_ENTRIES = 48;
+
+export function getLastSpeechNotice(): string | null {
+  return lastSpeechNotice;
+}
 
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
@@ -81,11 +86,19 @@ function hashCacheKey(str: string): string {
   return Math.abs(hash).toString(36);
 }
 
-/** Converts Gemini TTS PCM/audio payload into a local file:// WAV URI (Android/iOS) or data URI (web). */
+/** Returns ordered disk cache paths across persistent doc dir and cache dir. */
+function getCandidateDiskPaths(cacheKey: string, ext = 'wav'): string[] {
+  if (Platform.OS === 'web') return [];
+  const filename = `nila_tts_${hashCacheKey(cacheKey)}.${ext}`;
+  const dirs = [FileSystem.documentDirectory, FileSystem.cacheDirectory].filter(
+    (d): d is string => Boolean(d)
+  );
+  return Array.from(new Set(dirs)).map((dir) => `${dir}${filename}`);
+}
+
 function getPersistentAudioPath(cacheKey: string, ext = 'wav'): string | null {
-  const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
-  if (Platform.OS === 'web' || !baseDir) return null;
-  return `${baseDir}nila_tts_${hashCacheKey(cacheKey)}.${ext}`;
+  const paths = getCandidateDiskPaths(cacheKey, ext);
+  return paths[0] || null;
 }
 
 async function inlineAudioToPlayableUri(
@@ -294,14 +307,14 @@ async function playCachedOrSynthesizedAudio(
       }
     }
 
-    // Reuse persisted WAV from previous app sessions before spending TTS API quota
+    // Check both documentDirectory and legacy cacheDirectory before calling Gemini TTS
     if (!audioUri) {
-      const savedWav = getPersistentAudioPath(cacheKey, 'wav');
-      if (savedWav) {
-        const info = await FileSystem.getInfoAsync(savedWav).catch(() => ({ exists: false }));
+      for (const candidatePath of getCandidateDiskPaths(cacheKey, 'wav')) {
+        const info = await FileSystem.getInfoAsync(candidatePath).catch(() => ({ exists: false }));
         if (info.exists) {
-          audioUri = savedWav;
-          cacheAudioUri(cacheKey, savedWav);
+          audioUri = candidatePath;
+          cacheAudioUri(cacheKey, candidatePath);
+          break;
         }
       }
     }
@@ -309,10 +322,17 @@ async function playCachedOrSynthesizedAudio(
     if (!audioUri) {
       const generated = await synthesizeGeminiSpeech(text, mode, currentAccent);
       if (!generated || sequenceToken !== activeSequenceId) {
+        const err = getLastGeminiError();
+        if (err && err.includes('429')) {
+          lastSpeechNotice = 'Gemini voice quota cooling down — using device voice briefly';
+        }
         return false;
       }
+      lastSpeechNotice = null;
       audioUri = await inlineAudioToPlayableUri(cacheKey, generated.base64, generated.mimeType);
       cacheAudioUri(cacheKey, audioUri);
+    } else {
+      lastSpeechNotice = null;
     }
 
     if (sequenceToken !== activeSequenceId) {
