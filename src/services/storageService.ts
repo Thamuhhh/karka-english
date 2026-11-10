@@ -376,14 +376,6 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
             ? parsed.provider
             : 'email',
         createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : new Date().toISOString(),
-        learningGoal:
-          typeof parsed.learningGoal === 'string' && parsed.learningGoal.trim()
-            ? parsed.learningGoal.trim()
-            : undefined,
-        dailyGoalMinutes:
-          typeof parsed.dailyGoalMinutes === 'number' && Number.isFinite(parsed.dailyGoalMinutes)
-            ? parsed.dailyGoalMinutes
-            : undefined,
       };
     }
     return null;

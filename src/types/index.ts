@@ -79,6 +79,4 @@ export interface AuthUser {
   email: string;
   provider: 'email' | 'google' | 'guest';
   createdAt: string;
-  learningGoal?: string;
-  dailyGoalMinutes?: number;
 }
