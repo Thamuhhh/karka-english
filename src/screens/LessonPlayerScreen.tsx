@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,27 +15,49 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { SupernovaClass } from '../constants/curriculum';
+import { UserStats, GrammarCorrection } from '../types';
 import { speakText, stopAllAudio } from '../services/ttsService';
-import { addXp, incrementMetric } from '../services/storageService';
 import { analyzeSentenceGrammar } from '../api/supernovaAi';
 import { playSoundEffect } from '../services/soundEffectsService';
 
 interface LessonPlayerProps {
   lesson: SupernovaClass;
+  initialHearts: number;
+  onHeartsChange: (hearts: number) => void;
   onClose: () => void;
-  onComplete: (classId: string) => void;
+  onComplete: (
+    classId: string,
+    xpReward: number,
+    earnedGems: number
+  ) => Promise<{
+    stats: UserStats;
+    awardedXp: number;
+    awardedGems: number;
+  }>;
 }
 
 type SlideType = 'rule' | 'jumble' | 'translation' | 'speaking' | 'victory';
 
 export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   lesson,
+  initialHearts,
+  onHeartsChange,
   onClose,
   onComplete,
 }) => {
   const [currentSlide, setCurrentSlide] = useState<SlideType>('rule');
-  const [hearts, setHearts] = useState(5);
+  const [hearts, setHearts] = useState(Math.max(0, initialHearts));
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+  // Accuracy & Victory Tracking
+  const [checksTotal, setChecksTotal] = useState(0);
+  const [checksCorrect, setChecksCorrect] = useState(0);
+  const [victorySummary, setVictorySummary] = useState<{
+    awardedXp: number;
+    awardedGems: number;
+    streakDays: number;
+    accuracy: number;
+  } | null>(null);
 
   // Slide 2: Jumble State
   const [assembledWords, setAssembledWords] = useState<string[]>([]);
@@ -50,7 +72,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   // Slide 4: Speaking State
   const [spokenText, setSpokenText] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [speakingFeedback, setSpeakingFeedback] = useState<any>(null);
+  const [speakingFeedback, setSpeakingFeedback] = useState<GrammarCorrection | null>(null);
+
+  useEffect(() => {
+    return () => {
+      stopAllAudio();
+    };
+  }, []);
 
   const handlePlayVoice = (text: string, id: string) => {
     setPlayingAudioId(id);
@@ -76,6 +104,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     );
   };
 
+  const loseOneHeart = () => {
+    setHearts((prev) => {
+      const next = Math.max(0, prev - 1);
+      onHeartsChange(next);
+      return next;
+    });
+  };
+
   // Jumble Handlers
   const handleTapBankWord = (word: string, index: number) => {
     if (jumbleChecked) return;
@@ -95,28 +131,40 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     setAvailableWords([...availableWords, word]);
   };
 
+  const handleResetJumble = () => {
+    if (jumbleChecked || assembledWords.length === 0) return;
+    playSoundEffect('buttonV2');
+    setAssembledWords([]);
+    setAvailableWords([...lesson.jumble.scrambledWords]);
+  };
+
   const handleCheckJumble = () => {
     const userStr = assembledWords.join(' ').trim().toLowerCase();
     const correctStr = lesson.jumble.correctWords.join(' ').trim().toLowerCase();
     const isOk = userStr === correctStr;
     setIsJumbleCorrect(isOk);
     setJumbleChecked(true);
+    setChecksTotal((prev) => prev + 1);
     if (isOk) {
+      setChecksCorrect((prev) => prev + 1);
       playSoundEffect('success');
     } else {
       playSoundEffect('error');
-      setHearts((prev) => Math.max(1, prev - 1));
+      loseOneHeart();
     }
   };
 
   const handleCheckTranslation = () => {
     if (selectedTransIdx === null) return;
     setTransChecked(true);
-    if (selectedTransIdx === lesson.translation.correctOptionIndex) {
+    const isOk = selectedTransIdx === lesson.translation.correctOptionIndex;
+    setChecksTotal((prev) => prev + 1);
+    if (isOk) {
+      setChecksCorrect((prev) => prev + 1);
       playSoundEffect('chime');
     } else {
       playSoundEffect('error');
-      setHearts((prev) => Math.max(1, prev - 1));
+      loseOneHeart();
     }
   };
 
@@ -128,6 +176,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     try {
       const feedback = await analyzeSentenceGrammar(text);
       setSpeakingFeedback(feedback);
+      setChecksTotal((prev) => prev + 1);
+      if (feedback.fluencyScore >= 70) {
+        setChecksCorrect((prev) => prev + 1);
+      }
       if (!feedback.hasErrors) {
         playSoundEffect('success');
       }
@@ -140,9 +192,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
   const handleFinishLesson = async () => {
     playSoundEffect('finish');
-    await addXp(lesson.xpReward);
-    await incrementMetric('wordsMastered', 3);
-    onComplete(lesson.id);
+    const accuracy = checksTotal > 0 ? Math.round((checksCorrect / checksTotal) * 100) : 100;
+    const result = await onComplete(lesson.id, lesson.xpReward, 5);
+    setVictorySummary({
+      awardedXp: result.awardedXp,
+      awardedGems: result.awardedGems,
+      streakDays: result.stats.streakDays,
+      accuracy,
+    });
     setCurrentSlide('victory');
   };
 
@@ -176,8 +233,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           </View>
 
           <View style={styles.heartRow}>
-            <Ionicons name="heart" size={20} color="#EF4444" />
-            <Text style={styles.heartCount}>{hearts}</Text>
+            <Ionicons
+              name={hearts > 0 ? 'heart' : 'shield-checkmark'}
+              size={19}
+              color={hearts > 0 ? '#EF4444' : THEME.colors.accent}
+            />
+            <Text style={[styles.heartCount, hearts === 0 && { color: THEME.colors.accent }]}>
+              {hearts > 0 ? hearts : 'Shield'}
+            </Text>
           </View>
         </View>
       )}
@@ -278,7 +341,15 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
             {/* Assembled Sentence Slot Line */}
             <View style={styles.slotLineArea}>
-              <Text style={styles.slotHint}>YOUR SENTENCE</Text>
+              <View style={styles.slotHeaderRow}>
+                <Text style={styles.slotHint}>YOUR SENTENCE</Text>
+                {assembledWords.length > 0 && !jumbleChecked && (
+                  <TouchableOpacity onPress={handleResetJumble} style={styles.resetTilesBtn}>
+                    <Ionicons name="refresh" size={12} color={THEME.colors.textSecondary} />
+                    <Text style={styles.resetTilesText}>Reset</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <View style={styles.wordsWrapRow}>
                 {assembledWords.length === 0 ? (
                   <Text style={styles.emptySlotPlaceholder}>Tap words below to build...</Text>
@@ -459,7 +530,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         {currentSlide === 'victory' && (
           <View style={styles.victoryContainer}>
             <View style={styles.victoryTrophyCircle}>
-              <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.victoryTrophyImg} resizeMode="contain" />
+              <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.victoryTrophyImg} resizeMode="cover" />
             </View>
 
             <Text style={styles.victoryTitle}>Lesson Complete!</Text>
@@ -470,19 +541,27 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.statsCardGrid}>
               <View style={styles.victoryStatCard}>
                 <Ionicons name="flash" size={22} color={THEME.colors.secondary} />
-                <Text style={styles.victoryStatVal}>+{lesson.xpReward} XP</Text>
+                <Text style={styles.victoryStatVal}>+{victorySummary?.awardedXp ?? lesson.xpReward} XP</Text>
                 <Text style={styles.victoryStatLabel}>XP Earned</Text>
               </View>
               <View style={styles.victoryStatCard}>
                 <MaterialCommunityIcons name="fire" size={24} color={THEME.colors.gold} />
-                <Text style={styles.victoryStatVal}>3 Days</Text>
+                <Text style={styles.victoryStatVal}>
+                  {(victorySummary?.streakDays ?? 1) === 1
+                    ? '1 Day'
+                    : `${victorySummary?.streakDays} Days`}
+                </Text>
                 <Text style={styles.victoryStatLabel}>Day Streak</Text>
               </View>
               <View style={styles.victoryStatCard}>
                 <Ionicons name="checkmark-done-circle" size={22} color={THEME.colors.success} />
-                <Text style={styles.victoryStatVal}>100%</Text>
+                <Text style={styles.victoryStatVal}>{victorySummary?.accuracy ?? 100}%</Text>
                 <Text style={styles.victoryStatLabel}>Accuracy</Text>
               </View>
+            </View>
+            <View style={styles.victoryBonusPill}>
+              <Ionicons name="diamond" size={14} color={THEME.colors.secondary} />
+              <Text style={styles.victoryBonusText}>+{victorySummary?.awardedGems ?? 5} Gems added to wallet</Text>
             </View>
 
             <TouchableOpacity
@@ -547,11 +626,23 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     <Text
                       style={[
                         styles.feedbackHeadline,
-                        { color: isJumbleCorrect ? THEME.colors.success : THEME.colors.error },
+                        { color: isJumbleCorrect ? THEME.colors.success : THEME.colors.error, flex: 1 },
                       ]}
                     >
                       {isJumbleCorrect ? 'Spot on! Correct sentence.' : 'Incorrect word order'}
                     </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        handlePlayVoice(lesson.jumble.correctWords.join(' '), 'jumble-answer')
+                      }
+                      style={styles.speakerBtn}
+                    >
+                      <Ionicons
+                        name={playingAudioId === 'jumble-answer' ? 'volume-high' : 'volume-medium-outline'}
+                        size={20}
+                        color={THEME.colors.primaryGlow}
+                      />
+                    </TouchableOpacity>
                   </View>
                   {!isJumbleCorrect && (
                     <Text style={styles.jumbleCorrectionNote}>Correct order: {lesson.jumble.correctWords.join(' ')}</Text>
@@ -632,6 +723,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       style={[
                         styles.feedbackHeadline,
                         {
+                          flex: 1,
                           color:
                             selectedTransIdx === lesson.translation.correctOptionIndex
                               ? THEME.colors.success
@@ -643,6 +735,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         ? 'Great job! Exactly right.'
                         : 'Review this rule:'}
                     </Text>
+                    <TouchableOpacity
+                      onPress={() => handlePlayVoice(lesson.translation.expectedEnglish, 'trans-answer')}
+                      style={styles.speakerBtn}
+                    >
+                      <Ionicons
+                        name={playingAudioId === 'trans-answer' ? 'volume-high' : 'volume-medium-outline'}
+                        size={20}
+                        color={THEME.colors.primaryGlow}
+                      />
+                    </TouchableOpacity>
                   </View>
                   <Text style={styles.jumbleCorrectionNote}>{lesson.translation.explanation}</Text>
                   <Text style={styles.jumbleTamilNote}>{lesson.translation.tamilExplanation}</Text>
@@ -939,11 +1041,30 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: THEME.colors.borderLight,
   },
+  slotHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   slotHint: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textMuted,
-    marginBottom: 8,
+  },
+  resetTilesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  resetTilesText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 10,
+    color: THEME.colors.textSecondary,
   },
   emptySlotPlaceholder: {
     fontFamily: THEME.fonts.body,
@@ -1271,6 +1392,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: THEME.colors.textSecondary,
     marginTop: 2,
+  },
+  victoryBonusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.35)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    marginBottom: 14,
+    gap: 6,
+  },
+  victoryBonusText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12,
+    color: THEME.colors.secondary,
   },
   finishContinueTouchable: {
     width: '100%',

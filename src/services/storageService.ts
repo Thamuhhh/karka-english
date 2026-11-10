@@ -1,85 +1,272 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserStats, WordDefinition } from '../types';
 import { setGeminiApiKey } from '../api/supernovaAi';
-import { setPreferredAccent, EnglishAccent } from './ttsService';
+import {
+  setPreferredAccent,
+  EnglishAccent,
+  setSpeechRate,
+} from './ttsService';
+import { setSoundEffectsEnabled } from './soundEffectsService';
+import { computeLeagueRankName } from './leaderboardService';
+import { STARTER_VOCABULARY } from '../api/dictionary';
 
 const KEYS = {
   USER_STATS: 'nova_user_stats',
   GEMINI_API_KEY: 'nova_gemini_key',
   SAVED_WORDS: 'nova_saved_words',
   PREFERRED_ACCENT: 'nova_preferred_accent',
+  SPEECH_RATE: 'nova_speech_rate',
 };
 
-const DEFAULT_STATS: UserStats = {
-  streakDays: 1,
-  lastActiveDate: new Date().toISOString().split('T')[0],
-  stardustXp: 120,
-  cosmicRank: 'Bronze League',
-  wordsMastered: 6,
-  conversationsDone: 0,
-  sentencesChecked: 0,
-};
+function getTodayIsoDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
 
-function computeLeagueRank(xp: number): string {
-  if (xp >= 1500) return 'Diamond League';
-  if (xp >= 800) return 'Gold League';
-  if (xp >= 350) return 'Silver League';
-  return 'Bronze League';
+export function createDefaultStats(): UserStats {
+  const today = getTodayIsoDate();
+  return {
+    streakDays: 1,
+    lastActiveDate: today,
+    stardustXp: 120,
+    cosmicRank: computeLeagueRankName(120),
+    gems: 450,
+    hearts: 5,
+    maxHearts: 5,
+    todayXp: 20,
+    todayDate: today,
+    dailyGoalXp: 100,
+    wordsMastered: 0,
+    conversationsDone: 0,
+    sentencesChecked: 0,
+    completedClasses: ['sn-1-1'],
+    masteredWords: [],
+    soundEnabled: true,
+  };
+}
+
+function normalizeStats(raw: Partial<UserStats>): UserStats {
+  const defaults = createDefaultStats();
+  const today = getTodayIsoDate();
+  const xp = typeof raw.stardustXp === 'number' ? raw.stardustXp : defaults.stardustXp;
+  const maxHearts = typeof raw.maxHearts === 'number' ? raw.maxHearts : 5;
+  const rawHearts = typeof raw.hearts === 'number' ? raw.hearts : maxHearts;
+  const completedClasses = Array.isArray(raw.completedClasses) && raw.completedClasses.length > 0
+    ? Array.from(new Set(raw.completedClasses))
+    : defaults.completedClasses;
+  const masteredWords = Array.isArray(raw.masteredWords)
+    ? Array.from(new Set(raw.masteredWords))
+    : [];
+
+  let streakDays = typeof raw.streakDays === 'number' && raw.streakDays >= 1 ? raw.streakDays : 1;
+  const lastActiveDate = raw.lastActiveDate || today;
+
+  if (lastActiveDate !== today) {
+    const lastMs = new Date(lastActiveDate).getTime();
+    const currMs = new Date(today).getTime();
+    const diffDays = Math.round((currMs - lastMs) / (1000 * 3600 * 24));
+    if (diffDays === 1) {
+      streakDays += 1;
+    } else if (diffDays > 1) {
+      streakDays = 1;
+    }
+  }
+
+  const sameToday = raw.todayDate === today;
+  const todayXp = sameToday && typeof raw.todayXp === 'number' ? raw.todayXp : 0;
+
+  return {
+    streakDays,
+    lastActiveDate: today,
+    stardustXp: xp,
+    cosmicRank: computeLeagueRankName(xp),
+    gems: typeof raw.gems === 'number' ? raw.gems : defaults.gems,
+    hearts: Math.max(0, Math.min(maxHearts, rawHearts)),
+    maxHearts,
+    todayXp,
+    todayDate: today,
+    dailyGoalXp: typeof raw.dailyGoalXp === 'number' ? raw.dailyGoalXp : defaults.dailyGoalXp,
+    wordsMastered: typeof raw.wordsMastered === 'number' ? raw.wordsMastered : masteredWords.length,
+    conversationsDone: typeof raw.conversationsDone === 'number' ? raw.conversationsDone : 0,
+    sentencesChecked: typeof raw.sentencesChecked === 'number' ? raw.sentencesChecked : 0,
+    completedClasses,
+    masteredWords,
+    soundEnabled: typeof raw.soundEnabled === 'boolean' ? raw.soundEnabled : true,
+  };
 }
 
 export async function loadUserStats(): Promise<UserStats> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.USER_STATS);
     if (!raw) {
-      await saveUserStats(DEFAULT_STATS);
-      return DEFAULT_STATS;
+      const defaults = createDefaultStats();
+      await saveUserStats(defaults);
+      return defaults;
     }
-    const stats: UserStats = JSON.parse(raw);
-    stats.cosmicRank = computeLeagueRank(stats.stardustXp);
-
-    // Check streak continuation
-    const today = new Date().toISOString().split('T')[0];
-    if (stats.lastActiveDate !== today) {
-      const lastDate = new Date(stats.lastActiveDate);
-      const currDate = new Date(today);
-      const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-
-      if (diffDays === 1) {
-        stats.streakDays += 1;
-      } else if (diffDays > 1) {
-        stats.streakDays = 1;
-      }
-      stats.lastActiveDate = today;
-      await saveUserStats(stats);
-    }
-    return stats;
+    const parsed: Partial<UserStats> = JSON.parse(raw);
+    const normalized = normalizeStats(parsed);
+    await saveUserStats(normalized);
+    return normalized;
   } catch (e) {
-    return DEFAULT_STATS;
+    return createDefaultStats();
   }
 }
 
 export async function saveUserStats(stats: UserStats): Promise<void> {
   try {
-    stats.cosmicRank = computeLeagueRank(stats.stardustXp);
-    await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(stats));
+    const cleanStats: UserStats = {
+      ...stats,
+      cosmicRank: computeLeagueRankName(stats.stardustXp),
+      hearts: Math.max(0, Math.min(stats.maxHearts, stats.hearts)),
+    };
+    setSoundEffectsEnabled(cleanStats.soundEnabled);
+    await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(cleanStats));
   } catch (e) {
     console.warn('Failed to save stats:', e);
   }
 }
 
-export async function addXp(amount: number): Promise<UserStats> {
+export async function hydrateAppPreferences(): Promise<UserStats> {
+  const [stats, apiKey, accent, rateRaw] = await Promise.all([
+    loadUserStats(),
+    loadSavedApiKey(),
+    loadPreferredAccent(),
+    AsyncStorage.getItem(KEYS.SPEECH_RATE).catch(() => null),
+  ]);
+
+  if (apiKey) setGeminiApiKey(apiKey);
+  setPreferredAccent(accent);
+  setSoundEffectsEnabled(stats.soundEnabled);
+
+  if (rateRaw) {
+    const rateNum = parseFloat(rateRaw);
+    if (!Number.isNaN(rateNum) && rateNum >= 0.5 && rateNum <= 1.5) {
+      setSpeechRate(rateNum);
+    }
+  }
+
+  return stats;
+}
+
+export async function addXp(amount: number, bonusGems = 0): Promise<UserStats> {
   const stats = await loadUserStats();
-  stats.stardustXp += amount;
+  const safeXp = Math.max(0, amount);
+  stats.stardustXp += safeXp;
+  stats.todayXp += safeXp;
+  stats.gems += Math.max(0, bonusGems);
   await saveUserStats(stats);
   return stats;
 }
 
-export async function incrementMetric(field: 'conversationsDone' | 'sentencesChecked' | 'wordsMastered', amount = 1): Promise<UserStats> {
+export async function completeLessonSession(
+  classId: string,
+  baseXp: number,
+  earnedGems: number
+): Promise<{ stats: UserStats; awardedXp: number; awardedGems: number; isFirstCompletion: boolean }> {
   const stats = await loadUserStats();
-  stats[field] += amount;
-  stats.stardustXp += amount * 15; // Award 15 XP per activity
+  const isFirstCompletion = !stats.completedClasses.includes(classId);
+  const awardedXp = isFirstCompletion ? baseXp : Math.max(25, Math.round(baseXp * 0.5));
+  const awardedGems = isFirstCompletion ? earnedGems : Math.max(2, Math.round(earnedGems * 0.4));
+
+  if (isFirstCompletion) {
+    stats.completedClasses = [...stats.completedClasses, classId];
+  }
+  stats.stardustXp += awardedXp;
+  stats.todayXp += awardedXp;
+  stats.gems += awardedGems;
+
+  await saveUserStats(stats);
+  return { stats, awardedXp, awardedGems, isFirstCompletion };
+}
+
+export async function updateHearts(delta: number): Promise<UserStats> {
+  const stats = await loadUserStats();
+  stats.hearts = Math.max(0, Math.min(stats.maxHearts, stats.hearts + delta));
   await saveUserStats(stats);
   return stats;
+}
+
+export async function refillHeartsWithGems(cost = 25): Promise<{ success: boolean; stats: UserStats }> {
+  const stats = await loadUserStats();
+  if (stats.hearts >= stats.maxHearts) {
+    return { success: true, stats };
+  }
+  if (stats.gems < cost) {
+    return { success: false, stats };
+  }
+  stats.gems -= cost;
+  stats.hearts = stats.maxHearts;
+  await saveUserStats(stats);
+  return { success: true, stats };
+}
+
+export async function updateDailyGoal(dailyGoalXp: number): Promise<UserStats> {
+  const stats = await loadUserStats();
+  stats.dailyGoalXp = dailyGoalXp;
+  await saveUserStats(stats);
+  return stats;
+}
+
+export async function updateSoundSetting(enabled: boolean): Promise<UserStats> {
+  const stats = await loadUserStats();
+  stats.soundEnabled = enabled;
+  setSoundEffectsEnabled(enabled);
+  await saveUserStats(stats);
+  return stats;
+}
+
+export async function incrementMetric(
+  field: 'conversationsDone' | 'sentencesChecked' | 'wordsMastered',
+  amount = 1
+): Promise<UserStats> {
+  const stats = await loadUserStats();
+  stats[field] += amount;
+  const xpGain = amount * 15;
+  stats.stardustXp += xpGain;
+  stats.todayXp += xpGain;
+  await saveUserStats(stats);
+  return stats;
+}
+
+export async function markWordMastered(word: string): Promise<UserStats> {
+  const clean = word.trim().toLowerCase();
+  const stats = await loadUserStats();
+  if (!stats.masteredWords.includes(clean)) {
+    stats.masteredWords = [...stats.masteredWords, clean];
+    stats.wordsMastered += 1;
+    stats.stardustXp += 15;
+    stats.todayXp += 15;
+  } else {
+    stats.stardustXp += 5;
+    stats.todayXp += 5;
+  }
+  await saveUserStats(stats);
+
+  // Also sync flag into saved vocab cache
+  const words = await loadVocabularyList();
+  const updatedWords = words.map((w) =>
+    w.word.toLowerCase() === clean ? { ...w, memorized: true } : w
+  );
+  await saveVocabularyList(updatedWords);
+  return stats;
+}
+
+export async function loadVocabularyList(): Promise<WordDefinition[]> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.SAVED_WORDS);
+    if (!raw) return STARTER_VOCABULARY;
+    const parsed: WordDefinition[] = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : STARTER_VOCABULARY;
+  } catch (e) {
+    return STARTER_VOCABULARY;
+  }
+}
+
+export async function saveVocabularyList(words: WordDefinition[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.SAVED_WORDS, JSON.stringify(words.slice(0, 60)));
+  } catch (e) {
+    console.warn('Failed to save vocabulary list:', e);
+  }
 }
 
 export async function loadSavedApiKey(): Promise<string | null> {
@@ -96,8 +283,14 @@ export async function loadSavedApiKey(): Promise<string | null> {
 
 export async function saveApiKey(key: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(KEYS.GEMINI_API_KEY, key);
-    setGeminiApiKey(key);
+    const clean = key.trim();
+    if (!clean) {
+      await AsyncStorage.removeItem(KEYS.GEMINI_API_KEY);
+      setGeminiApiKey(null);
+      return;
+    }
+    await AsyncStorage.setItem(KEYS.GEMINI_API_KEY, clean);
+    setGeminiApiKey(clean);
   } catch (e) {
     console.warn('Failed to save API key:', e);
   }
@@ -106,7 +299,7 @@ export async function saveApiKey(key: string): Promise<void> {
 export async function loadPreferredAccent(): Promise<EnglishAccent> {
   try {
     const accent = (await AsyncStorage.getItem(KEYS.PREFERRED_ACCENT)) as EnglishAccent;
-    if (accent) {
+    if (accent === 'en-US' || accent === 'en-GB' || accent === 'en-AU') {
       setPreferredAccent(accent);
       return accent;
     }
@@ -121,3 +314,19 @@ export async function savePreferredAccent(accent: EnglishAccent): Promise<void> 
   } catch (e) {}
 }
 
+export async function savePreferredSpeechRate(rate: number): Promise<void> {
+  try {
+    setSpeechRate(rate);
+    await AsyncStorage.setItem(KEYS.SPEECH_RATE, String(rate));
+  } catch (e) {}
+}
+
+export async function resetAllUserProgress(): Promise<UserStats> {
+  const fresh = createDefaultStats();
+  await Promise.all([
+    AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(fresh)),
+    AsyncStorage.removeItem(KEYS.SAVED_WORDS),
+  ]);
+  setSoundEffectsEnabled(fresh.soundEnabled);
+  return fresh;
+}

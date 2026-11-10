@@ -6,7 +6,7 @@ let currentSound: Audio.Sound | null = null;
 export type EnglishAccent = 'en-US' | 'en-GB' | 'en-AU';
 
 let currentAccent: EnglishAccent = 'en-US';
-let currentSpeechRate: number = 0.9; // Slightly slower for better comprehension
+let currentSpeechRate: number = 0.95;
 
 export function setPreferredAccent(accent: EnglishAccent) {
   currentAccent = accent;
@@ -25,42 +25,70 @@ export function getSpeechRate(): number {
 }
 
 export async function speakText(text: string, onDone?: () => void) {
+  let finished = false;
+  const finishOnce = () => {
+    if (!finished) {
+      finished = true;
+      onDone?.();
+    }
+  };
+
   try {
     await stopAllAudio();
     Speech.speak(text, {
       language: currentAccent,
       rate: currentSpeechRate,
       pitch: 1.0,
-      onDone,
+      onDone: finishOnce,
+      onStopped: finishOnce,
       onError: (err) => {
         console.warn('Speech playback error:', err);
-        if (onDone) onDone();
+        finishOnce();
       },
     });
   } catch (e) {
     console.warn('Speech invocation error:', e);
-    if (onDone) onDone();
+    finishOnce();
   }
 }
 
-export async function playRemoteAudio(url: string, onDone?: () => void) {
+export async function playRemoteAudio(
+  url: string,
+  onDone?: () => void,
+  fallbackText?: string
+) {
+  let finished = false;
+  const finishOnce = () => {
+    if (!finished) {
+      finished = true;
+      onDone?.();
+    }
+  };
+
   try {
     await stopAllAudio();
+    const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
     const { sound } = await Audio.Sound.createAsync(
-      { uri: url },
+      { uri: normalizedUrl },
       { shouldPlay: true }
     );
     currentSound = sound;
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync();
-        currentSound = null;
-        if (onDone) onDone();
+        sound.unloadAsync().catch(() => {});
+        if (currentSound === sound) {
+          currentSound = null;
+        }
+        finishOnce();
       }
     });
   } catch (err) {
-    console.warn('Audio playback error, falling back to TTS:', err);
-    if (onDone) onDone();
+    console.warn('Remote audio playback failed, falling back to TTS:', err);
+    if (fallbackText) {
+      await speakText(fallbackText, finishOnce);
+    } else {
+      finishOnce();
+    }
   }
 }
 
@@ -68,12 +96,12 @@ export async function stopAllAudio() {
   try {
     Speech.stop();
     if (currentSound) {
-      await currentSound.stopAsync();
-      await currentSound.unloadAsync();
+      const soundToStop = currentSound;
       currentSound = null;
+      await soundToStop.stopAsync();
+      await soundToStop.unloadAsync();
     }
   } catch (e) {
     // Ignore cleanup error
   }
 }
-

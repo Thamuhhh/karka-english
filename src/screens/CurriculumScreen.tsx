@@ -13,6 +13,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS, SupernovaClass, SupernovaLevel } from '../constants/curriculum';
+import { UserStats } from '../types';
 import {
   SUPERNOVA_IMAGES,
   getLessonNodeEmblem,
@@ -26,7 +27,9 @@ import {
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
-  completedClasses: string[];
+  stats: UserStats;
+  userRank: number;
+  onRefillHearts: () => void;
   onOpenLeague?: () => void;
 }
 
@@ -56,9 +59,12 @@ function formatShortLessonTitle(fullTitle: string): string {
 
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
-  completedClasses,
+  stats,
+  userRank,
+  onRefillHearts,
   onOpenLeague,
 }) => {
+  const completedClasses = stats.completedClasses;
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const contentWidth = Math.min(windowWidth, MAX_CONTENT_WIDTH);
   const mapWidth = Math.max(300, contentWidth);
@@ -252,25 +258,29 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           <View style={styles.hudLeftGroup}>
             <View style={styles.statPillStreak}>
               <MaterialCommunityIcons name="fire" size={15} color={THEME.colors.gold} style={styles.statIcon} />
-              <Text style={styles.statPillTextStreak}>3</Text>
+              <Text style={styles.statPillTextStreak}>{stats.streakDays}</Text>
             </View>
 
             <View style={styles.statPillGems}>
               <Ionicons name="diamond" size={13} color={THEME.colors.secondary} style={styles.statIcon} />
-              <Text style={styles.statPillTextGems}>450</Text>
+              <Text style={styles.statPillTextGems}>{stats.gems}</Text>
             </View>
 
-            <View style={styles.statPillHearts}>
+            <TouchableOpacity
+              style={styles.statPillHearts}
+              onPress={onRefillHearts}
+              activeOpacity={0.8}
+            >
               <Ionicons name="heart" size={13} color="#EF4444" style={styles.statIcon} />
-              <Text style={styles.statPillTextHearts}>5</Text>
-            </View>
+              <Text style={styles.statPillTextHearts}>{stats.hearts}</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.hudRightGroup}>
             {onOpenLeague && (
               <TouchableOpacity style={styles.statPillLeague} onPress={onOpenLeague} activeOpacity={0.8}>
                 <MaterialCommunityIcons name="trophy-award" size={15} color={THEME.colors.gold} style={styles.statIcon} />
-                <Text style={styles.statPillTextLeague}>#4</Text>
+                <Text style={styles.statPillTextLeague}>#{userRank}</Text>
               </TouchableOpacity>
             )}
 
@@ -676,15 +686,31 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   <View style={styles.rewardsRow}>
                     <View style={styles.rewardItem}>
                       <MaterialCommunityIcons name="trophy-award" size={17} color={THEME.colors.gold} />
-                      <Text style={styles.rewardText}>+{selectedLesson.xpReward} XP</Text>
+                      <Text style={styles.rewardText}>
+                        +
+                        {completedClasses.includes(selectedLesson.id)
+                          ? Math.max(25, Math.round(selectedLesson.xpReward * 0.5))
+                          : selectedLesson.xpReward}{' '}
+                        XP
+                      </Text>
                     </View>
                     <View style={styles.rewardItem}>
-                      <Ionicons name="heart" size={16} color="#EF4444" />
-                      <Text style={styles.rewardText}>5 Lives</Text>
+                      <Ionicons
+                        name={stats.hearts > 0 ? 'heart' : 'shield-checkmark'}
+                        size={16}
+                        color={stats.hearts > 0 ? '#EF4444' : THEME.colors.accent}
+                      />
+                      <Text style={styles.rewardText}>
+                        {stats.hearts > 0
+                          ? `${stats.hearts} ${stats.hearts === 1 ? 'Life' : 'Lives'}`
+                          : 'Shield'}
+                      </Text>
                     </View>
                     <View style={styles.rewardItem}>
                       <Ionicons name="diamond" size={16} color={THEME.colors.secondary} />
-                      <Text style={styles.rewardText}>+5 Gems</Text>
+                      <Text style={styles.rewardText}>
+                        +{completedClasses.includes(selectedLesson.id) ? 2 : 5} Gems
+                      </Text>
                     </View>
                   </View>
 
@@ -705,8 +731,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     >
                       <Text style={styles.modalStartBtnText}>
                         {completedClasses.includes(selectedLesson.id)
-                          ? 'PRACTICE AGAIN (+50 XP)'
-                          : 'START LESSON (+100 XP)'}
+                          ? `PRACTICE AGAIN (+${Math.max(25, Math.round(selectedLesson.xpReward * 0.5))} XP)`
+                          : `START LESSON (+${selectedLesson.xpReward} XP)`}
                       </Text>
                       <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
                     </LinearGradient>

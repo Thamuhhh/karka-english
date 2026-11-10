@@ -63,17 +63,30 @@ export const STARTER_VOCABULARY: WordDefinition[] = [
   },
 ];
 
+function normalizeAudioUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  return trimmed.startsWith('//') ? `https:${trimmed}` : trimmed;
+}
+
 export async function fetchWordDetails(word: string): Promise<WordDefinition | null> {
   const cleanWord = word.trim().toLowerCase();
-  
-  // Check local starter cache first
-  const cached = STARTER_VOCABULARY.find(w => w.word.toLowerCase() === cleanWord);
-  
+  if (!cleanWord) return null;
+
+  const cached = STARTER_VOCABULARY.find((w) => w.word.toLowerCase() === cleanWord);
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeout = controller ? setTimeout(() => controller.abort(), 8000) : null;
+
   try {
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`);
+    const response = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`,
+      controller ? { signal: controller.signal } : undefined
+    );
     if (!response.ok) {
       return cached || null;
     }
+
     const data = await response.json();
     if (!Array.isArray(data) || data.length === 0) {
       return cached || null;
@@ -83,31 +96,53 @@ export async function fetchWordDetails(word: string): Promise<WordDefinition | n
     const meaning = entry.meanings?.[0];
     const def = meaning?.definitions?.[0];
 
-    // Find valid mp3 audio
     let audioUrl: string | undefined;
-    if (entry.phonetics && Array.isArray(entry.phonetics)) {
+    let phoneticText: string = entry.phonetic || '';
+
+    if (Array.isArray(entry.phonetics)) {
       for (const p of entry.phonetics) {
+        if (!phoneticText && p.text) phoneticText = p.text;
         if (p.audio && p.audio.endsWith('.mp3')) {
-          audioUrl = p.audio;
+          audioUrl = normalizeAudioUrl(p.audio);
           break;
         }
       }
     }
 
+    const collectedSynonyms: string[] = [];
+    if (Array.isArray(entry.meanings)) {
+      for (const m of entry.meanings) {
+        if (Array.isArray(m.synonyms)) {
+          collectedSynonyms.push(...m.synonyms);
+        }
+        if (Array.isArray(m.definitions?.[0]?.synonyms)) {
+          collectedSynonyms.push(...m.definitions[0].synonyms);
+        }
+      }
+    }
+
+    const uniqueSynonyms = Array.from(new Set(collectedSynonyms)).slice(0, 5);
+    const displayWord =
+      entry.word.charAt(0).toUpperCase() + entry.word.slice(1).toLowerCase();
+
     return {
-      word: entry.word,
-      phonetic: entry.phonetic || entry.phonetics?.[0]?.text || '',
-      audioUrl,
-      partOfSpeech: meaning?.partOfSpeech || 'noun',
-      definition: def?.definition || cached?.definition || 'Definition not found',
-      example: def?.example || cached?.example || `Example using ${entry.word}`,
-      synonyms: def?.synonyms?.slice(0, 4) || meaning?.synonyms?.slice(0, 4) || cached?.synonyms || [],
-      tamilMeaning: cached?.tamilMeaning || 'ஆங்கில சொல் விளக்கம்',
-      cefrLevel: cached?.cefrLevel || 'B1',
+      word: displayWord,
+      phonetic: phoneticText,
+      audioUrl: audioUrl || cached?.audioUrl,
+      partOfSpeech: meaning?.partOfSpeech || cached?.partOfSpeech || 'noun',
+      definition: def?.definition || cached?.definition || 'Definition available offline.',
+      example: def?.example || cached?.example || `We used "${displayWord}" clearly in today's meeting.`,
+      synonyms: uniqueSynonyms.length > 0 ? uniqueSynonyms : cached?.synonyms || [],
+      tamilMeaning:
+        cached?.tamilMeaning ||
+        `ஆங்கில சொல் (${meaning?.partOfSpeech || 'word'}): "${displayWord}" - மேலே உள்ள ஆங்கில விளக்கத்தைப் பார்க்கவும்.`,
+      cefrLevel: cached?.cefrLevel || 'B2',
+      memorized: cached?.memorized,
     };
   } catch (error) {
     console.warn('Free Dictionary API fetch failed, returning cached version:', error);
     return cached || null;
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
-

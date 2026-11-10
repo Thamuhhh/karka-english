@@ -16,19 +16,30 @@ const SOUNDS = {
 
 export type SoundEffectType = keyof typeof SOUNDS;
 
+let soundEffectsEnabled = true;
+
+export function setSoundEffectsEnabled(enabled: boolean) {
+  soundEffectsEnabled = enabled;
+}
+
+export function isSoundEffectsEnabled(): boolean {
+  return soundEffectsEnabled;
+}
+
 export const playSoundEffect = async (soundType: SoundEffectType) => {
+  if (!soundEffectsEnabled) return;
+
   try {
     const soundFile = SOUNDS[soundType];
     if (!soundFile) return;
+
     const { sound } = await Audio.Sound.createAsync(soundFile, { shouldPlay: true });
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync();
+        sound.unloadAsync().catch(() => {});
       }
     });
   } catch (err) {
-    // Non-blocking fallback
     console.warn('Sound effect error:', err);
   }
 };
-

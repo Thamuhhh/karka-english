@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -33,7 +34,17 @@ import { GrammarNovaScreen } from './src/screens/GrammarNovaScreen';
 import { VocabVaultScreen } from './src/screens/VocabVaultScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SupernovaClass } from './src/constants/curriculum';
+import { UserStats } from './src/types';
+import {
+  createDefaultStats,
+  hydrateAppPreferences,
+  completeLessonSession,
+  updateHearts,
+  refillHeartsWithGems,
+} from './src/services/storageService';
+import { getUserLeaderboardRank } from './src/services/leaderboardService';
 
 type TabType = 'learn' | 'call' | 'grammar' | 'vocab' | 'league' | 'profile';
 
@@ -50,11 +61,22 @@ export default function App() {
     Montserrat_700Bold,
   });
 
+  const [stats, setStats] = useState<UserStats>(createDefaultStats);
+  const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('learn');
   const [currentLesson, setCurrentLesson] = useState<SupernovaClass | null>(null);
-  const [completedClasses, setCompletedClasses] = useState<string[]>(['sn-1-1']);
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    hydrateAppPreferences()
+      .then((loaded) => {
+        setStats(loaded);
+      })
+      .finally(() => {
+        setHydrated(true);
+      });
+  }, []);
+
+  if (!fontsLoaded || !hydrated) {
     return (
       <View style={styles.fontLoaderContainer}>
         <ActivityIndicator size="large" color={THEME.colors.primary} />
@@ -62,25 +84,66 @@ export default function App() {
     );
   }
 
+  const userRank = getUserLeaderboardRank(stats);
+
   const handleStartLesson = (lesson: SupernovaClass) => {
     setCurrentLesson(lesson);
   };
 
-  const handleLessonComplete = (classId: string) => {
-    if (!completedClasses.includes(classId)) {
-      setCompletedClasses([...completedClasses, classId]);
+  const handleLessonComplete = async (
+    classId: string,
+    xpReward: number,
+    earnedGems: number
+  ) => {
+    const result = await completeLessonSession(classId, xpReward, earnedGems);
+    setStats(result.stats);
+    return result;
+  };
+
+  const handleHeartsChange = async (newHearts: number) => {
+    const delta = newHearts - stats.hearts;
+    if (delta !== 0) {
+      const updated = await updateHearts(delta);
+      setStats(updated);
     }
   };
 
+  const handleRefillHearts = () => {
+    if (stats.hearts >= stats.maxHearts) {
+      Alert.alert('Full Hearts', 'You already have all 5 hearts ready for lessons.');
+      return;
+    }
+    Alert.alert(
+      'Refill Hearts?',
+      `Restore all 5 hearts using 25 Gems? (Current Gems: ${stats.gems})`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Refill (25 Gems)',
+          onPress: async () => {
+            const res = await refillHeartsWithGems(25);
+            setStats(res.stats);
+            if (!res.success) {
+              Alert.alert('Not Enough Gems', 'Complete lessons to earn more Gems first!');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar style="light" backgroundColor={THEME.colors.background} />
 
         {/* Dedicated Full-Screen Lesson Player (Hides tabs when in a class) */}
         {currentLesson ? (
           <LessonPlayerScreen
             lesson={currentLesson}
+            initialHearts={stats.hearts}
+            onHeartsChange={handleHeartsChange}
             onClose={() => setCurrentLesson(null)}
             onComplete={handleLessonComplete}
           />
@@ -91,17 +154,23 @@ export default function App() {
               {activeTab === 'learn' && (
                 <CurriculumScreen
                   onStartLesson={handleStartLesson}
-                  completedClasses={completedClasses}
+                  stats={stats}
+                  userRank={userRank}
+                  onRefillHearts={handleRefillHearts}
                   onOpenLeague={() => setActiveTab('league')}
                 />
               )}
-              {activeTab === 'call' && <LiveVoiceCallScreen />}
-              {activeTab === 'grammar' && <GrammarNovaScreen />}
-              {activeTab === 'vocab' && <VocabVaultScreen />}
-              {activeTab === 'league' && (
-                <LeaderboardScreen onBack={() => setActiveTab('learn')} />
+              {activeTab === 'call' && <LiveVoiceCallScreen onStatsUpdate={setStats} />}
+              {activeTab === 'grammar' && <GrammarNovaScreen onStatsUpdate={setStats} />}
+              {activeTab === 'vocab' && (
+                <VocabVaultScreen stats={stats} onStatsUpdate={setStats} />
               )}
-              {activeTab === 'profile' && <ProfileScreen />}
+              {activeTab === 'league' && (
+                <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />
+              )}
+              {activeTab === 'profile' && (
+                <ProfileScreen stats={stats} onStatsUpdate={setStats} />
+              )}
             </View>
 
             {/* Compact Mobile-Scaled Bottom Navigation Bar */}
@@ -191,6 +260,7 @@ export default function App() {
         )}
       </SafeAreaView>
     </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

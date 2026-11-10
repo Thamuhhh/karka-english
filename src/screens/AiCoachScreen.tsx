@@ -46,6 +46,9 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
       },
     ]);
     stopAllAudio();
+    return () => {
+      stopAllAudio();
+    };
   }, [activeScenario]);
 
   const handleSend = async (textToSend?: string) => {

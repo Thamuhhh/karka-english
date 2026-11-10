@@ -50,8 +50,26 @@ export interface UserStats {
   lastActiveDate: string;
   stardustXp: number;
   cosmicRank: string;
+  gems: number;
+  hearts: number;
+  maxHearts: number;
+  todayXp: number;
+  todayDate: string;
+  dailyGoalXp: number;
   wordsMastered: number;
   conversationsDone: number;
   sentencesChecked: number;
+  completedClasses: string[];
+  masteredWords: string[];
+  soundEnabled: boolean;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  initials: string;
+  color: string;
+  xp: number;
+  streak: number;
+  isCurrentUser?: boolean;
+}

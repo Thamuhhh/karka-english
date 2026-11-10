@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,26 +11,39 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { GrammarCorrection } from '../types';
-import { analyzeSentenceGrammar } from '../api/supernovaAi';
-import { speakText } from '../services/ttsService';
+import { GrammarCorrection, UserStats } from '../types';
+import { analyzeSentenceGrammar, isGeminiConfigured } from '../api/supernovaAi';
+import { speakText, stopAllAudio } from '../services/ttsService';
 import { incrementMetric } from '../services/storageService';
+import { playSoundEffect } from '../services/soundEffectsService';
+
+interface GrammarNovaScreenProps {
+  onStatsUpdate?: (stats: UserStats) => void;
+}
 
 const SAMPLE_SENTENCES = [
   "I didn't went to the office yesterday.",
   "He don't know the answer to this question.",
-  "I am having doubt in this react native code.",
-  "Yesterday only I have completed the full report.",
+  "I am having doubt in this report.",
+  "Yesterday only I have completed the full presentation.",
+  "We will discuss about this tomorrow and revert back.",
 ];
 
-export const GrammarNovaScreen: React.FC = () => {
+export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpdate }) => {
   const [inputText, setInputText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<GrammarCorrection | null>(null);
+  const [recentResults, setRecentResults] = useState<GrammarCorrection[]>([]);
   const [activeAudioField, setActiveAudioField] = useState<string | null>(null);
 
+  useEffect(() => {
+    return () => {
+      stopAllAudio();
+    };
+  }, []);
+
   const handleAnalyze = async (sentenceToTest?: string) => {
-    const text = (sentenceToTest || inputText).trim();
+    const text = (sentenceToTest ?? inputText).trim();
     if (!text || isAnalyzing) return;
 
     if (sentenceToTest) {
@@ -38,12 +51,16 @@ export const GrammarNovaScreen: React.FC = () => {
     }
 
     setIsAnalyzing(true);
-    setResult(null);
-
     try {
       const res = await analyzeSentenceGrammar(text);
       setResult(res);
-      await incrementMetric('sentencesChecked', 1);
+      setRecentResults((prev) => [
+        res,
+        ...prev.filter((r) => r.originalSentence !== res.originalSentence).slice(0, 4),
+      ]);
+      playSoundEffect(res.hasErrors ? 'chime' : 'success');
+      const updated = await incrementMetric('sentencesChecked', 1);
+      onStatsUpdate?.(updated);
     } catch (e) {
       console.warn('Grammar check error:', e);
     } finally {
@@ -56,16 +73,24 @@ export const GrammarNovaScreen: React.FC = () => {
     speakText(text, () => setActiveAudioField(null));
   };
 
+  const onlineMode = isGeminiConfigured();
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name="chat-question-outline" size={24} color={THEME.colors.gold} />
+          <MaterialCommunityIcons name="chat-question-outline" size={22} color={THEME.colors.gold} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.title}>Ask Miss Nova</Text>
           <Text style={styles.subtitle}>Instant grammar diagnosis & Tamil explanation</Text>
+        </View>
+        <View style={[styles.enginePill, onlineMode ? styles.enginePillOnline : styles.enginePillOffline]}>
+          <View style={[styles.engineDot, { backgroundColor: onlineMode ? THEME.colors.accent : THEME.colors.gold }]} />
+          <Text style={[styles.engineText, { color: onlineMode ? THEME.colors.accent : THEME.colors.gold }]}>
+            {onlineMode ? 'Gemini AI' : 'Offline'}
+          </Text>
         </View>
       </View>
 
@@ -132,10 +157,33 @@ export const GrammarNovaScreen: React.FC = () => {
         </ScrollView>
       </View>
 
+      {/* Recent Session History */}
+      {recentResults.length > 1 && (
+        <View style={styles.sampleSection}>
+          <Text style={styles.sampleHeading}>RECENT CHECKS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sampleScroll}>
+            {recentResults.map((item, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.historyChip}
+                onPress={() => {
+                  setInputText(item.originalSentence);
+                  setResult(item);
+                }}
+              >
+                <Text style={styles.historyScore}>{item.fluencyScore}%</Text>
+                <Text style={styles.historyText} numberOfLines={1}>
+                  {item.originalSentence}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Diagnosis Results */}
       {result && (
         <View style={styles.resultContainer}>
-          {/* Score & Verdict Card */}
           <View style={styles.verdictCard}>
             <View style={styles.verdictRow}>
               <View>
@@ -164,7 +212,6 @@ export const GrammarNovaScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Corrected Box */}
             <View style={styles.correctedBox}>
               <Text style={styles.correctedLabel}>CORRECTED SENTENCE</Text>
               <Text style={styles.correctedText}>{result.correctedSentence}</Text>
@@ -181,7 +228,6 @@ export const GrammarNovaScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Grammar Explanation */}
           <View style={styles.infoCard}>
             <View style={styles.tamilHeaderRow}>
               <Ionicons name="book-outline" size={16} color={THEME.colors.primaryGlow} />
@@ -190,7 +236,6 @@ export const GrammarNovaScreen: React.FC = () => {
             <Text style={[styles.infoText, { marginTop: 6 }]}>{result.explanation}</Text>
           </View>
 
-          {/* Tamil Cultural/Mental-Model Clarity */}
           <View style={styles.tamilCard}>
             <View style={styles.tamilHeaderRow}>
               <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.gold} />
@@ -199,7 +244,6 @@ export const GrammarNovaScreen: React.FC = () => {
             <Text style={styles.tamilCardText}>{result.tamilExplanation}</Text>
           </View>
 
-          {/* 3 Variations */}
           <Text style={styles.variationsHeader}>Natural Alternatives</Text>
 
           <View style={styles.variantCard}>
@@ -291,9 +335,35 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontSize: 11.5,
     color: THEME.colors.textSecondary,
     marginTop: 2,
+  },
+  enginePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 5,
+  },
+  enginePillOnline: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+  },
+  enginePillOffline: {
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+  },
+  engineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  engineText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
   },
   inputCard: {
     backgroundColor: THEME.colors.surfaceCard,
@@ -305,7 +375,7 @@ const styles = StyleSheet.create({
   textInput: {
     fontFamily: THEME.fonts.bodyMedium,
     color: THEME.colors.text,
-    fontSize: 15,
+    fontSize: 14.5,
     minHeight: 70,
     textAlignVertical: 'top',
   },
@@ -354,12 +424,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   sampleSection: {
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 14,
+    marginBottom: 4,
   },
   sampleHeading: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11,
+    fontSize: 10.5,
     color: THEME.colors.textMuted,
     marginBottom: 8,
     letterSpacing: 0.6,
@@ -380,8 +450,31 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     fontSize: 12,
   },
+  historyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+    maxWidth: 200,
+    gap: 6,
+  },
+  historyScore: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: THEME.colors.accent,
+  },
+  historyText: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11.5,
+    color: THEME.colors.text,
+    flexShrink: 1,
+  },
   resultContainer: {
-    marginTop: 16,
+    marginTop: 14,
     gap: 12,
   },
   verdictCard: {
@@ -405,7 +498,7 @@ const styles = StyleSheet.create({
   },
   verdictScore: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 26,
+    fontSize: 24,
     color: THEME.colors.text,
   },
   verdictBadge: {
@@ -440,7 +533,7 @@ const styles = StyleSheet.create({
   },
   correctedText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 16,
+    fontSize: 15,
     color: THEME.colors.text,
     marginTop: 4,
     paddingRight: 32,
@@ -529,4 +622,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-

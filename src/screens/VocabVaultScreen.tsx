@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,43 +11,98 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { WordDefinition } from '../types';
+import { UserStats, WordDefinition } from '../types';
 import { STARTER_VOCABULARY, fetchWordDetails } from '../api/dictionary';
 import { fetchRelatedWords } from '../api/datamuse';
-import { speakText, playRemoteAudio } from '../services/ttsService';
-import { incrementMetric } from '../services/storageService';
+import { speakText, playRemoteAudio, stopAllAudio } from '../services/ttsService';
+import {
+  loadVocabularyList,
+  saveVocabularyList,
+  markWordMastered,
+} from '../services/storageService';
+import { playSoundEffect } from '../services/soundEffectsService';
 
-export const VocabVaultScreen: React.FC = () => {
+interface VocabVaultScreenProps {
+  stats?: UserStats;
+  onStatsUpdate?: (stats: UserStats) => void;
+}
+
+type VocabFilter = 'all' | 'review' | 'mastered';
+
+export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({ stats, onStatsUpdate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [wordList, setWordList] = useState<WordDefinition[]>(STARTER_VOCABULARY);
+  const [filter, setFilter] = useState<VocabFilter>('all');
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [relatedSynonyms, setRelatedSynonyms] = useState<string[]>([]);
 
-  const currentWord = wordList[activeCardIndex] || STARTER_VOCABULARY[0];
+  useEffect(() => {
+    loadVocabularyList().then((loaded) => {
+      if (loaded.length > 0) setWordList(loaded);
+    });
+    return () => {
+      stopAllAudio();
+    };
+  }, []);
 
-  const handleSearch = async () => {
-    const q = searchQuery.trim();
+  const masteredSet = useMemo(() => {
+    const s = new Set((stats?.masteredWords || []).map((w) => w.toLowerCase()));
+    wordList.forEach((w) => {
+      if (w.memorized) s.add(w.word.toLowerCase());
+    });
+    return s;
+  }, [stats?.masteredWords, wordList]);
+
+  const filteredWords = useMemo(() => {
+    if (filter === 'mastered') {
+      const m = wordList.filter((w) => masteredSet.has(w.word.toLowerCase()));
+      return m.length > 0 ? m : [];
+    }
+    if (filter === 'review') {
+      return wordList.filter((w) => !masteredSet.has(w.word.toLowerCase()));
+    }
+    return wordList;
+  }, [wordList, filter, masteredSet]);
+
+  const safeIndex =
+    filteredWords.length > 0 ? Math.min(activeCardIndex, filteredWords.length - 1) : 0;
+  const currentWord = filteredWords[safeIndex] || wordList[0] || STARTER_VOCABULARY[0];
+  const isCurrentMastered = masteredSet.has(currentWord.word.toLowerCase());
+
+  const handleSearch = async (overrideWord?: string) => {
+    const q = (overrideWord ?? searchQuery).trim();
     if (!q || isSearching) return;
 
+    if (overrideWord) {
+      setSearchQuery(overrideWord);
+    }
+    setSearchError(null);
     setIsSearching(true);
+
     try {
       const details = await fetchWordDetails(q);
       if (details) {
-        // Prepend to list
-        const updated = [details, ...wordList.filter((w) => w.word.toLowerCase() !== q.toLowerCase())];
+        const updated = [
+          details,
+          ...wordList.filter((w) => w.word.toLowerCase() !== details.word.toLowerCase()),
+        ];
         setWordList(updated);
+        await saveVocabularyList(updated);
+        setFilter('all');
         setActiveCardIndex(0);
         setIsFlipped(false);
 
-        // Fetch related words via Datamuse
-        const syns = await fetchRelatedWords(q);
+        const syns = await fetchRelatedWords(details.word);
         setRelatedSynonyms(syns);
+      } else {
+        setSearchError(`Could not find "${q}" in English dictionary. Check spelling and try again.`);
       }
     } catch (e) {
-      console.warn('Search error:', e);
+      setSearchError('Dictionary service unreachable right now. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -56,24 +111,37 @@ export const VocabVaultScreen: React.FC = () => {
   const handlePlayAudio = async () => {
     setIsPlayingAudio(true);
     if (currentWord.audioUrl) {
-      await playRemoteAudio(currentWord.audioUrl, () => setIsPlayingAudio(false));
+      await playRemoteAudio(
+        currentWord.audioUrl,
+        () => setIsPlayingAudio(false),
+        currentWord.word
+      );
     } else {
       await speakText(currentWord.word, () => setIsPlayingAudio(false));
     }
   };
 
   const handleNextWord = () => {
+    if (filteredWords.length === 0) return;
     setIsFlipped(false);
-    setActiveCardIndex((prev) => (prev + 1) % wordList.length);
+    setActiveCardIndex((prev) => (prev + 1) % filteredWords.length);
   };
 
   const handlePrevWord = () => {
+    if (filteredWords.length === 0) return;
     setIsFlipped(false);
-    setActiveCardIndex((prev) => (prev - 1 + wordList.length) % wordList.length);
+    setActiveCardIndex((prev) => (prev - 1 + filteredWords.length) % filteredWords.length);
   };
 
   const handleMastered = async () => {
-    await incrementMetric('wordsMastered', 1);
+    playSoundEffect('success');
+    const updatedStats = await markWordMastered(currentWord.word);
+    onStatsUpdate?.(updatedStats);
+    setWordList((prev) =>
+      prev.map((w) =>
+        w.word.toLowerCase() === currentWord.word.toLowerCase() ? { ...w, memorized: true } : w
+      )
+    );
     handleNextWord();
   };
 
@@ -82,11 +150,13 @@ export const VocabVaultScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          <Ionicons name="book" size={22} color={THEME.colors.secondary} />
+          <Ionicons name="book" size={20} color={THEME.colors.secondary} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.title}>Vocabulary Vault</Text>
-          <Text style={styles.subtitle}>Master new words with native pronunciation</Text>
+          <Text style={styles.subtitle}>
+            {masteredSet.size} of {wordList.length} words mastered
+          </Text>
         </View>
       </View>
 
@@ -98,127 +168,186 @@ export const VocabVaultScreen: React.FC = () => {
           placeholder="Search any English word (e.g. serendipity)..."
           placeholderTextColor={THEME.colors.textMuted}
           value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
+          onChangeText={(txt) => {
+            setSearchQuery(txt);
+            if (searchError) setSearchError(null);
+          }}
+          onSubmitEditing={() => handleSearch()}
           returnKeyType="search"
         />
         {isSearching ? (
           <ActivityIndicator size="small" color={THEME.colors.primaryGlow} />
         ) : (
-          <TouchableOpacity onPress={handleSearch} style={styles.searchBtn}>
+          <TouchableOpacity onPress={() => handleSearch()} style={styles.searchBtn}>
             <Text style={styles.searchBtnText}>Look Up</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Flashcard (Spaced Repetition Mode) */}
-      <View style={styles.cardIndicatorRow}>
-        <Text style={styles.cardCounter}>
-          CARD {activeCardIndex + 1} OF {wordList.length}
-        </Text>
-        <View style={styles.cefrTag}>
-          <Text style={styles.cefrTagText}>CEFR {currentWord.cefrLevel}</Text>
+      {searchError && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={15} color={THEME.colors.warning} />
+          <Text style={styles.errorBannerText}>{searchError}</Text>
         </View>
+      )}
+
+      {/* Filter Pills */}
+      <View style={styles.filterRow}>
+        {(
+          [
+            { id: 'all', label: `All (${wordList.length})` },
+            { id: 'review', label: `To Review (${Math.max(0, wordList.length - masteredSet.size)})` },
+            { id: 'mastered', label: `Mastered (${masteredSet.size})` },
+          ] as { id: VocabFilter; label: string }[]
+        ).map((tab) => {
+          const active = filter === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.filterPill, active && styles.filterPillActive]}
+              onPress={() => {
+                setFilter(tab.id);
+                setActiveCardIndex(0);
+                setIsFlipped(false);
+              }}
+            >
+              <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <TouchableOpacity
-        style={styles.flashcard}
-        activeOpacity={0.9}
-        onPress={() => setIsFlipped(!isFlipped)}
-      >
-        <View style={styles.cardInner}>
-          {/* Card Front Header */}
-          <View style={styles.cardHeader}>
-            <Text style={styles.partOfSpeech}>{currentWord.partOfSpeech}</Text>
-            <TouchableOpacity
-              style={[styles.audioBtn, isPlayingAudio && styles.audioBtnActive]}
-              onPress={handlePlayAudio}
-            >
-              <Ionicons
-                name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
-                size={22}
-                color={THEME.colors.text}
-              />
-            </TouchableOpacity>
+      {filteredWords.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Ionicons name="checkmark-done-circle-outline" size={34} color={THEME.colors.accent} />
+          <Text style={styles.emptyTitle}>
+            {filter === 'review' ? 'All current words mastered!' : 'No mastered words yet'}
+          </Text>
+          <Text style={styles.emptySub}>
+            {filter === 'review'
+              ? 'Search a new word above to expand your deck.'
+              : 'Tap "Mastered" on flashcards to track your progress.'}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.cardIndicatorRow}>
+            <Text style={styles.cardCounter}>
+              CARD {safeIndex + 1} OF {filteredWords.length}
+            </Text>
+            <View style={styles.cardBadgesRight}>
+              {isCurrentMastered && (
+                <View style={styles.masteredTag}>
+                  <Ionicons name="checkmark-circle" size={11} color={THEME.colors.accent} />
+                  <Text style={styles.masteredTagText}>MASTERED</Text>
+                </View>
+              )}
+              <View style={styles.cefrTag}>
+                <Text style={styles.cefrTagText}>CEFR {currentWord.cefrLevel}</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Word & Phonetic */}
-          <Text style={styles.cardWord}>{currentWord.word}</Text>
-          <Text style={styles.cardPhonetic}>{currentWord.phonetic}</Text>
-
-          {/* Card Back Content (Revealed on tap) */}
-          {isFlipped ? (
-            <View style={styles.revealedSection}>
-              <View style={styles.divider} />
-              <Text style={styles.defLabel}>DEFINITION:</Text>
-              <Text style={styles.defText}>{currentWord.definition}</Text>
-
-              <View style={styles.tamilBox}>
-                <Text style={styles.tamilLabel}>தமிழ் அர்த்தம்:</Text>
-                <Text style={styles.tamilText}>{currentWord.tamilMeaning}</Text>
+          <TouchableOpacity
+            style={styles.flashcard}
+            activeOpacity={0.9}
+            onPress={() => setIsFlipped(!isFlipped)}
+          >
+            <View style={styles.cardInner}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.partOfSpeech}>{currentWord.partOfSpeech}</Text>
+                <TouchableOpacity
+                  style={[styles.audioBtn, isPlayingAudio && styles.audioBtnActive]}
+                  onPress={handlePlayAudio}
+                >
+                  <Ionicons
+                    name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
+                    size={22}
+                    color={THEME.colors.text}
+                  />
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.exampleLabel}>EXAMPLE SENTENCE:</Text>
-              <Text style={styles.exampleText}>"{currentWord.example}"</Text>
+              <Text style={styles.cardWord}>{currentWord.word}</Text>
+              <Text style={styles.cardPhonetic}>{currentWord.phonetic}</Text>
 
-              {currentWord.synonyms.length > 0 && (
-                <View style={styles.synonymsSection}>
-                  <Text style={styles.synonymsLabel}>SYNONYMS:</Text>
-                  <View style={styles.synonymsRow}>
-                    {currentWord.synonyms.map((s, idx) => (
-                      <View key={idx} style={styles.synonymPill}>
-                        <Text style={styles.synonymText}>{s}</Text>
-                      </View>
-                    ))}
+              {isFlipped ? (
+                <View style={styles.revealedSection}>
+                  <View style={styles.divider} />
+                  <Text style={styles.defLabel}>DEFINITION</Text>
+                  <Text style={styles.defText}>{currentWord.definition}</Text>
+
+                  <View style={styles.tamilBox}>
+                    <Text style={styles.tamilLabel}>தமிழ் அர்த்தம்:</Text>
+                    <Text style={styles.tamilText}>{currentWord.tamilMeaning}</Text>
                   </View>
+
+                  <Text style={styles.exampleLabel}>EXAMPLE SENTENCE</Text>
+                  <Text style={styles.exampleText}>"{currentWord.example}"</Text>
+
+                  {currentWord.synonyms.length > 0 && (
+                    <View style={styles.synonymsSection}>
+                      <Text style={styles.synonymsLabel}>SYNONYMS</Text>
+                      <View style={styles.synonymsRow}>
+                        {currentWord.synonyms.map((s, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.synonymPill}
+                            onPress={() => handleSearch(s)}
+                          >
+                            <Text style={styles.synonymText}>{s}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.tapToReveal}>
+                  <MaterialCommunityIcons name="gesture-tap" size={20} color={THEME.colors.primaryGlow} />
+                  <Text style={styles.tapText}>Tap to reveal meaning & Tamil explanation</Text>
                 </View>
               )}
             </View>
-          ) : (
-            <View style={styles.tapToReveal}>
-              <MaterialCommunityIcons name="gesture-tap" size={20} color={THEME.colors.primaryGlow} />
-              <Text style={styles.tapText}>Tap to reveal meaning & Tamil explanation</Text>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
+          </TouchableOpacity>
 
-      {/* Flashcard Action Buttons */}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.navBtn} onPress={handlePrevWord} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={20} color={THEME.colors.text} />
-        </TouchableOpacity>
+          <View style={styles.actionsRow}>
+            <TouchableOpacity style={styles.navBtn} onPress={handlePrevWord} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={20} color={THEME.colors.text} />
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.masteredTouchable} onPress={handleMastered} activeOpacity={0.85}>
-          <LinearGradient
-            colors={THEME.gradients.accent}
-            style={styles.masteredBtnGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.masteredBtnText}>Mastered (+15 XP)</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.masteredTouchable} onPress={handleMastered} activeOpacity={0.85}>
+              <LinearGradient
+                colors={THEME.gradients.accent}
+                style={styles.masteredBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.masteredBtnText}>
+                  {isCurrentMastered ? 'Review Again (+5 XP)' : 'Mark Mastered (+15 XP)'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navBtn} onPress={handleNextWord} activeOpacity={0.8}>
-          <Ionicons name="arrow-forward" size={20} color={THEME.colors.text} />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity style={styles.navBtn} onPress={handleNextWord} activeOpacity={0.8}>
+              <Ionicons name="arrow-forward" size={20} color={THEME.colors.text} />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
-      {/* Related Synonyms */}
       {relatedSynonyms.length > 0 && (
         <View style={styles.relatedSection}>
-          <Text style={styles.relatedHeading}>Related Synonyms</Text>
+          <Text style={styles.relatedHeading}>Related Synonyms (Tap to Look Up)</Text>
           <View style={styles.relatedRow}>
             {relatedSynonyms.map((w, idx) => (
               <TouchableOpacity
                 key={idx}
                 style={styles.relatedChip}
-                onPress={() => {
-                  setSearchQuery(w);
-                  handleSearch();
-                }}
+                onPress={() => handleSearch(w)}
               >
                 <Text style={styles.relatedChipText}>+{w}</Text>
               </TouchableOpacity>
@@ -276,13 +405,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    marginBottom: 18,
+    marginBottom: 12,
   },
   searchInput: {
     fontFamily: THEME.fonts.bodyMedium,
     flex: 1,
     color: THEME.colors.text,
-    fontSize: 14,
+    fontSize: 13.5,
     paddingVertical: 8,
   },
   searchBtn: {
@@ -296,6 +425,71 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     fontSize: 12,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.warningBg,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    marginBottom: 12,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 12,
+    color: THEME.colors.warning,
+    flex: 1,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterPill: {
+    flex: 1,
+    backgroundColor: THEME.colors.surfaceCard,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    alignItems: 'center',
+  },
+  filterPillActive: {
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
+    borderColor: THEME.colors.primary,
+  },
+  filterPillText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+  },
+  filterPillTextActive: {
+    fontFamily: THEME.fonts.bold,
+    color: THEME.colors.primaryGlow,
+  },
+  emptyCard: {
+    backgroundColor: THEME.colors.surfaceCard,
+    borderRadius: THEME.radius.lg,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 15,
+    color: THEME.colors.text,
+  },
+  emptySub: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+  },
   cardIndicatorRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -307,6 +501,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: THEME.colors.textSecondary,
     letterSpacing: 0.8,
+  },
+  cardBadgesRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  masteredTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  masteredTagText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
+    color: THEME.colors.accent,
   },
   cefrTag: {
     backgroundColor: 'rgba(99, 102, 241, 0.2)',
@@ -361,22 +574,22 @@ const styles = StyleSheet.create({
   },
   cardPhonetic: {
     fontFamily: THEME.fonts.body,
-    fontSize: 15,
+    fontSize: 14,
     color: THEME.colors.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
   },
   tapToReveal: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 40,
+    marginTop: 32,
     paddingVertical: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 8,
   },
   tapText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13,
+    fontSize: 12.5,
     color: THEME.colors.primaryGlow,
     marginLeft: 6,
   },
@@ -395,9 +608,9 @@ const styles = StyleSheet.create({
   },
   defText: {
     fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 15,
+    fontSize: 14.5,
     color: THEME.colors.text,
-    lineHeight: 22,
+    lineHeight: 21,
     marginTop: 2,
   },
   tamilBox: {
@@ -447,14 +660,16 @@ const styles = StyleSheet.create({
   },
   synonymPill: {
     backgroundColor: THEME.colors.surfaceElevated,
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
   },
   synonymText: {
-    fontFamily: THEME.fonts.body,
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 12,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.primaryGlow,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -463,9 +678,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   navBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: THEME.colors.surfaceCard,
     justifyContent: 'center',
     alignItems: 'center',
@@ -485,17 +700,17 @@ const styles = StyleSheet.create({
   masteredBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
     borderRadius: 24,
   },
   masteredBtnText: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13.5,
   },
   relatedSection: {
-    marginTop: 24,
+    marginTop: 22,
   },
   relatedHeading: {
     fontFamily: THEME.fonts.bold,
@@ -522,4 +737,3 @@ const styles = StyleSheet.create({
     color: THEME.colors.secondary,
   },
 });
-

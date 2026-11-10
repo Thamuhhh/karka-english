@@ -11,35 +11,27 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { UserStats } from '../types';
+import {
+  getRankedLeaderboard,
+  PROMOTION_CUTOFF_RANK,
+} from '../services/leaderboardService';
 
 interface LeaderboardScreenProps {
+  stats: UserStats;
   onBack?: () => void;
 }
 
-interface LeaderboardUser {
-  rank: number;
-  name: string;
-  initials: string;
-  color: string;
-  xp: number;
-  streak: number;
-  isCurrentUser?: boolean;
-}
+export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ stats, onBack }) => {
+  const rankedUsers = getRankedLeaderboard(stats);
+  const top3 = rankedUsers.slice(0, 3);
+  const rest = rankedUsers.slice(3);
+  const me = rankedUsers.find((u) => u.isCurrentUser);
+  const myRank = me?.rank ?? rankedUsers.length;
+  const inPromotionZone = myRank <= PROMOTION_CUTOFF_RANK;
+  const fifthPlaceXp = rankedUsers[PROMOTION_CUTOFF_RANK - 1]?.xp ?? 1420;
+  const xpNeeded = Math.max(0, fifthPlaceXp - stats.stardustXp + 10);
 
-const LEADERBOARD_DATA: LeaderboardUser[] = [
-  { rank: 1, name: 'Kavitha R.', initials: 'KR', color: '#F59E0B', xp: 2450, streak: 18 },
-  { rank: 2, name: 'Siddharth M.', initials: 'SM', color: '#06B6D4', xp: 2180, streak: 14 },
-  { rank: 3, name: 'Ananya S.', initials: 'AS', color: '#EC4899', xp: 1950, streak: 12 },
-  { rank: 4, name: 'You', initials: 'ME', color: '#7F43FE', xp: 1650, streak: 7, isCurrentUser: true },
-  { rank: 5, name: 'Dinesh Kumar', initials: 'DK', color: '#10B981', xp: 1420, streak: 9 },
-  { rank: 6, name: 'Pooja V.', initials: 'PV', color: '#8B5CF6', xp: 1280, streak: 5 },
-  { rank: 7, name: 'Vijay Anand', initials: 'VA', color: '#3B82F6', xp: 1150, streak: 6 },
-  { rank: 8, name: 'Meera N.', initials: 'MN', color: '#F43F5E', xp: 980, streak: 4 },
-  { rank: 9, name: 'Rahul Dev', initials: 'RD', color: '#14B8A6', xp: 840, streak: 3 },
-  { rank: 10, name: 'Swetha K.', initials: 'SK', color: '#6366F1', xp: 720, streak: 2 },
-];
-
-export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {onBack && (
@@ -62,103 +54,142 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) 
       >
         <View style={styles.leagueTopRow}>
           <View style={styles.leagueIconCircle}>
-            <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.leagueTrophyImg} resizeMode="cover" />
+            <Image
+              source={SUPERNOVA_IMAGES.trophyNova}
+              style={styles.leagueTrophyImg}
+              resizeMode="cover"
+            />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.leagueLabel}>CURRENT LEAGUE</Text>
-            <Text style={styles.leagueTitle}>Gold League</Text>
-            <Text style={styles.leagueSubtitle}>Top 5 advance to Diamond League</Text>
+            <Text style={styles.leagueTitle}>{stats.cosmicRank}</Text>
+            <Text style={styles.leagueSubtitle}>
+              {inPromotionZone
+                ? `Rank #${myRank} — Inside Top ${PROMOTION_CUTOFF_RANK} Promotion Zone`
+                : `Rank #${myRank} — Earn ${xpNeeded} XP for Top ${PROMOTION_CUTOFF_RANK}`}
+            </Text>
           </View>
         </View>
 
-        {/* Timer Bar */}
         <View style={styles.timerBar}>
-          <Ionicons name="time-outline" size={14} color={THEME.colors.primaryGlow} />
-          <Text style={styles.timerText}>Resets in 2 days, 14 hours</Text>
+          <Ionicons name="flash-outline" size={14} color={THEME.colors.primaryGlow} />
+          <Text style={styles.timerText}>
+            Your Score: {stats.stardustXp} XP • {stats.streakDays}d Streak
+          </Text>
         </View>
       </LinearGradient>
 
-      {/* Top 3 Podium Cards */}
+      {/* Top 3 Podium */}
       <View style={styles.podiumContainer}>
         {/* Rank 2 */}
-        <View style={[styles.podiumCol, { marginTop: 24 }]}>
-          <View style={[styles.podiumAvatar, { backgroundColor: LEADERBOARD_DATA[1].color + '28', borderColor: '#94A3B8' }]}>
-            <Text style={styles.podiumInitials}>{LEADERBOARD_DATA[1].initials}</Text>
-            <View style={[styles.podiumBadge, { backgroundColor: '#94A3B8' }]}>
-              <Text style={styles.podiumRankText}>2</Text>
-            </View>
-          </View>
-          <Text style={styles.podiumName} numberOfLines={1}>{LEADERBOARD_DATA[1].name}</Text>
-          <Text style={styles.podiumXp}>{LEADERBOARD_DATA[1].xp} XP</Text>
-        </View>
-
-        {/* Rank 1 (Champion) */}
-        <View style={styles.podiumCol}>
-          <MaterialCommunityIcons name="crown" size={24} color={THEME.colors.gold} style={{ marginBottom: 2 }} />
-          <View style={[styles.podiumAvatar, styles.podiumAvatarGold, { backgroundColor: LEADERBOARD_DATA[0].color + '28' }]}>
-            <Text style={styles.podiumInitialsGold}>{LEADERBOARD_DATA[0].initials}</Text>
-            <View style={[styles.podiumBadge, { backgroundColor: THEME.colors.gold }]}>
-              <Text style={styles.podiumRankText}>1</Text>
-            </View>
-          </View>
-          <Text style={styles.podiumNameGold} numberOfLines={1}>{LEADERBOARD_DATA[0].name}</Text>
-          <Text style={styles.podiumXpGold}>{LEADERBOARD_DATA[0].xp} XP</Text>
-        </View>
-
-        {/* Rank 3 */}
-        <View style={[styles.podiumCol, { marginTop: 32 }]}>
-          <View style={[styles.podiumAvatar, { backgroundColor: LEADERBOARD_DATA[2].color + '28', borderColor: '#B45309' }]}>
-            <Text style={styles.podiumInitials}>{LEADERBOARD_DATA[2].initials}</Text>
-            <View style={[styles.podiumBadge, { backgroundColor: '#B45309' }]}>
-              <Text style={styles.podiumRankText}>3</Text>
-            </View>
-          </View>
-          <Text style={styles.podiumName} numberOfLines={1}>{LEADERBOARD_DATA[2].name}</Text>
-          <Text style={styles.podiumXp}>{LEADERBOARD_DATA[2].xp} XP</Text>
-        </View>
-      </View>
-
-      {/* Promotion Zone Label */}
-      <View style={styles.zoneDivider}>
-        <Ionicons name="trending-up" size={14} color={THEME.colors.success} />
-        <Text style={styles.zoneDividerText}>PROMOTION ZONE (TOP 5 ADVANCE)</Text>
-      </View>
-
-      {/* Ranks 4 to 10 */}
-      <View style={styles.ranksList}>
-        {LEADERBOARD_DATA.slice(3).map((user) => {
-          return (
+        {top3[1] && (
+          <View style={[styles.podiumCol, { marginTop: 20 }]}>
             <View
-              key={user.rank}
               style={[
-                styles.rankItem,
-                user.isCurrentUser && styles.rankItemCurrent,
+                styles.podiumAvatar,
+                { backgroundColor: top3[1].color + '28', borderColor: '#94A3B8' },
+                top3[1].isCurrentUser && styles.podiumYouRing,
               ]}
             >
-              <Text style={[styles.rankNumber, user.isCurrentUser && styles.rankNumberCurrent]}>
-                {user.rank}
-              </Text>
-              <View style={[styles.rankAvatarCircle, { backgroundColor: user.color + '28', borderColor: user.color }]}>
-                <Text style={[styles.rankInitials, { color: user.color }]}>{user.initials}</Text>
-              </View>
-
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.rankName, user.isCurrentUser && styles.rankNameCurrent]}>
-                  {user.name}
-                </Text>
-                <View style={styles.streakRow}>
-                  <MaterialCommunityIcons name="fire" size={12} color={THEME.colors.gold} />
-                  <Text style={styles.streakText}>{user.streak}d streak</Text>
-                </View>
-              </View>
-
-              <View style={styles.xpPill}>
-                <Ionicons name="flash" size={12} color={THEME.colors.secondary} />
-                <Text style={styles.xpPillText}>{user.xp} XP</Text>
+              <Text style={styles.podiumInitials}>{top3[1].initials}</Text>
+              <View style={[styles.podiumBadge, { backgroundColor: '#94A3B8' }]}>
+                <Text style={styles.podiumRankText}>2</Text>
               </View>
             </View>
-          );
-        })}
+            <Text style={styles.podiumName} numberOfLines={1}>{top3[1].name}</Text>
+            <Text style={styles.podiumXp}>{top3[1].xp} XP</Text>
+          </View>
+        )}
+
+        {/* Rank 1 */}
+        {top3[0] && (
+          <View style={styles.podiumCol}>
+            <MaterialCommunityIcons name="crown" size={22} color={THEME.colors.gold} style={{ marginBottom: 2 }} />
+            <View
+              style={[
+                styles.podiumAvatar,
+                styles.podiumAvatarGold,
+                { backgroundColor: top3[0].color + '28' },
+                top3[0].isCurrentUser && styles.podiumYouRing,
+              ]}
+            >
+              <Text style={styles.podiumInitialsGold}>{top3[0].initials}</Text>
+              <View style={[styles.podiumBadge, { backgroundColor: THEME.colors.gold }]}>
+                <Text style={styles.podiumRankText}>1</Text>
+              </View>
+            </View>
+            <Text style={styles.podiumNameGold} numberOfLines={1}>{top3[0].name}</Text>
+            <Text style={styles.podiumXpGold}>{top3[0].xp} XP</Text>
+          </View>
+        )}
+
+        {/* Rank 3 */}
+        {top3[2] && (
+          <View style={[styles.podiumCol, { marginTop: 26 }]}>
+            <View
+              style={[
+                styles.podiumAvatar,
+                { backgroundColor: top3[2].color + '28', borderColor: '#B45309' },
+                top3[2].isCurrentUser && styles.podiumYouRing,
+              ]}
+            >
+              <Text style={styles.podiumInitials}>{top3[2].initials}</Text>
+              <View style={[styles.podiumBadge, { backgroundColor: '#B45309' }]}>
+                <Text style={styles.podiumRankText}>3</Text>
+              </View>
+            </View>
+            <Text style={styles.podiumName} numberOfLines={1}>{top3[2].name}</Text>
+            <Text style={styles.podiumXp}>{top3[2].xp} XP</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.zoneDivider}>
+        <Ionicons name="trending-up" size={14} color={THEME.colors.success} />
+        <Text style={styles.zoneDividerText}>
+          PROMOTION ZONE (TOP {PROMOTION_CUTOFF_RANK} ADVANCE)
+        </Text>
+      </View>
+
+      {/* Remaining Ranks */}
+      <View style={styles.ranksList}>
+        {rest.map((user) => (
+          <View
+            key={`${user.rank}-${user.name}`}
+            style={[
+              styles.rankItem,
+              user.isCurrentUser && styles.rankItemCurrent,
+              user.rank === PROMOTION_CUTOFF_RANK && styles.rankCutoffBorder,
+            ]}
+          >
+            <Text style={[styles.rankNumber, user.isCurrentUser && styles.rankNumberCurrent]}>
+              {user.rank}
+            </Text>
+            <View
+              style={[
+                styles.rankAvatarCircle,
+                { backgroundColor: user.color + '28', borderColor: user.color },
+              ]}
+            >
+              <Text style={[styles.rankInitials, { color: user.color }]}>{user.initials}</Text>
+            </View>
+
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.rankName, user.isCurrentUser && styles.rankNameCurrent]}>
+                {user.name}
+              </Text>
+              <View style={styles.streakRow}>
+                <MaterialCommunityIcons name="fire" size={12} color={THEME.colors.gold} />
+                <Text style={styles.streakText}>{user.streak}d streak</Text>
+              </View>
+            </View>
+
+            <View style={styles.xpPill}>
+              <Ionicons name="flash" size={12} color={THEME.colors.secondary} />
+              <Text style={styles.xpPillText}>{user.xp} XP</Text>
+            </View>
+          </View>
+        ))}
       </View>
 
       <View style={{ height: 40 }} />
@@ -298,28 +329,31 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.gold,
     borderWidth: 2.5,
   },
+  podiumYouRing: {
+    borderColor: THEME.colors.primaryGlow,
+  },
   podiumInitials: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 18,
+    fontSize: 16,
     color: '#FFFFFF',
   },
   podiumInitialsGold: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 22,
+    fontSize: 20,
     color: THEME.colors.gold,
   },
   podiumBadge: {
     position: 'absolute',
     bottom: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 19,
+    height: 19,
+    borderRadius: 9.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
   podiumRankText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#000',
   },
   podiumName: {
@@ -331,7 +365,7 @@ const styles = StyleSheet.create({
   },
   podiumNameGold: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 14,
+    fontSize: 13.5,
     color: THEME.colors.gold,
     marginTop: 10,
     textAlign: 'center',
@@ -368,8 +402,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.surfaceCard,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderRadius: THEME.radius.md,
     borderWidth: 1,
     borderColor: THEME.colors.border,
@@ -378,9 +412,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(127, 67, 254, 0.14)',
     borderColor: THEME.colors.primary,
   },
+  rankCutoffBorder: {
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(16, 185, 129, 0.45)',
+  },
   rankNumber: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 14,
+    fontSize: 13.5,
     color: THEME.colors.textMuted,
     width: 24,
   },
@@ -388,20 +426,20 @@ const styles = StyleSheet.create({
     color: THEME.colors.primaryGlow,
   },
   rankAvatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
   },
   rankInitials: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
+    fontSize: 11.5,
   },
   rankName: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 14,
+    fontSize: 13.5,
     color: THEME.colors.text,
   },
   rankNameCurrent: {
@@ -429,9 +467,8 @@ const styles = StyleSheet.create({
   },
   xpPillText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
+    fontSize: 11.5,
     color: THEME.colors.secondary,
     marginLeft: 4,
   },
 });
-
