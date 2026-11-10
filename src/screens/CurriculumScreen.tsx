@@ -70,119 +70,124 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     }
   }
 
+  const unitTabs: Array<{
+    key: number | 'all';
+    label: string;
+    accentColor: string;
+    isCompact?: boolean;
+  }> = [
+    { key: 'all', label: 'All', accentColor: THEME.colors.primaryGlow, isCompact: true },
+    ...SUPERNOVA_LEVELS.map((lvl) => ({
+      key: lvl.levelNumber,
+      label: `Unit ${lvl.levelNumber}`,
+      accentColor: lvl.accentColor,
+    })),
+  ];
+
   return (
     <View style={styles.container}>
-      {/* Top Obsidian HUD */}
-      <View style={styles.topStatsWrapper}>
-        <View style={[styles.topStatsBar, { maxWidth: MAX_CONTENT_WIDTH }]}>
-          <View style={styles.hudLeftGroup}>
-            <View style={styles.statPillStreak}>
-              <MaterialCommunityIcons
-                name="fire"
-                size={15}
-                color={THEME.colors.gold}
-                style={styles.statIcon}
-              />
-              <Text style={styles.statPillTextStreak}>{stats.streakDays}</Text>
+      {/* Clean Corporate Obsidian Top Navigation Bar */}
+      <LinearGradient
+        colors={['#151422', '#0E0E14']}
+        style={styles.topHeaderContainer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <View style={[styles.topBrandRow, { maxWidth: MAX_CONTENT_WIDTH }]}>
+          <View style={styles.brandGroup}>
+            <View style={styles.brandAvatarRing}>
+              <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.brandAvatarImg} />
             </View>
-
-            <View style={styles.statPillGems}>
-              <Ionicons
-                name="diamond"
-                size={13}
-                color={THEME.colors.secondary}
-                style={styles.statIcon}
-              />
-              <Text style={styles.statPillTextGems}>{stats.gems}</Text>
+            <View>
+              <Text style={styles.brandTitle}>SUPERNOVA</Text>
+              <Text style={styles.brandSubtitle}>
+                {completedCount}/{totalClassesCount} Done · {overallPercent}%
+              </Text>
             </View>
-
-            <TouchableOpacity
-              style={styles.statPillHearts}
-              onPress={onRefillHearts}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="heart" size={13} color="#EF4444" style={styles.statIcon} />
-              <Text style={styles.statPillTextHearts}>{stats.hearts}</Text>
-            </TouchableOpacity>
           </View>
 
-          <View style={styles.hudRightGroup}>
+          <View style={styles.telemetryGroup}>
+            <View style={styles.statsCapsule}>
+              <View style={styles.statChip}>
+                <MaterialCommunityIcons name="fire" size={14} color={THEME.colors.gold} />
+                <Text style={styles.statValueText}>{stats.streakDays}</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <View style={styles.statChip}>
+                <Ionicons name="diamond" size={12.5} color={THEME.colors.secondary} />
+                <Text style={styles.statValueText}>{stats.gems}</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <TouchableOpacity
+                style={styles.statChip}
+                onPress={onRefillHearts}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 6 }}
+              >
+                <Ionicons name="heart" size={12.5} color="#F43F5E" />
+                <Text style={styles.statValueText}>{stats.hearts}</Text>
+              </TouchableOpacity>
+            </View>
+
             {onOpenLeague && (
               <TouchableOpacity
-                style={styles.statPillLeague}
+                style={styles.rankChip}
                 onPress={onOpenLeague}
-                activeOpacity={0.8}
+                activeOpacity={0.75}
               >
                 <MaterialCommunityIcons
-                  name="trophy-award"
-                  size={15}
+                  name="trophy-variant"
+                  size={13}
                   color={THEME.colors.gold}
-                  style={styles.statIcon}
                 />
-                <Text style={styles.statPillTextLeague}>#{userRank}</Text>
+                <Text style={styles.rankChipText}>#{userRank}</Text>
               </TouchableOpacity>
             )}
-
-            <View style={styles.missNovaHeaderPill}>
-              <View style={styles.headerAvatarWrap}>
-                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatar} />
-              </View>
-              <View style={styles.onlineDot} />
-              <Text style={styles.missNovaText}>Nova</Text>
-            </View>
           </View>
         </View>
 
-        {/* Unit Filter Tabs */}
-        <View style={[styles.unitFilterBar, { maxWidth: MAX_CONTENT_WIDTH }]}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.unitFilterRow}
-          >
-            <TouchableOpacity
-              style={[
-                styles.unitFilterPill,
-                selectedUnitFilter === 'all' && styles.unitFilterPillActive,
-              ]}
-              onPress={() => setSelectedUnitFilter('all')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.unitFilterText,
-                  selectedUnitFilter === 'all' && styles.unitFilterTextActive,
-                ]}
+        {/* Full-Width Segmented Underline Unit Tabs */}
+        <View style={[styles.unitTabsRow, { maxWidth: MAX_CONTENT_WIDTH }]}>
+          {unitTabs.map((tab) => {
+            const isSelected = selectedUnitFilter === tab.key;
+            return (
+              <TouchableOpacity
+                key={String(tab.key)}
+                style={[styles.unitTabBtn, tab.isCompact && styles.unitTabBtnCompact]}
+                onPress={() => setSelectedUnitFilter(tab.key)}
+                activeOpacity={0.75}
               >
-                All ({completedCount}/{totalClassesCount})
-              </Text>
-            </TouchableOpacity>
-
-            {SUPERNOVA_LEVELS.map((lvl) => {
-              const isSelected = selectedUnitFilter === lvl.levelNumber;
-              const doneInLvl = lvl.classes.filter((c) => completedClasses.includes(c.id)).length;
-              return (
-                <TouchableOpacity
-                  key={lvl.levelNumber}
-                  style={[styles.unitFilterPill, isSelected && styles.unitFilterPillActive]}
-                  onPress={() => setSelectedUnitFilter(lvl.levelNumber)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.unitDot, { backgroundColor: lvl.accentColor }]} />
-                  <Text style={[styles.unitFilterText, isSelected && styles.unitFilterTextActive]}>
-                    Unit {lvl.levelNumber}
+                <View style={styles.unitTabLabelRow}>
+                  {!tab.isCompact && (
+                    <View
+                      style={[
+                        styles.unitTabDot,
+                        { backgroundColor: tab.accentColor, opacity: isSelected ? 1 : 0.6 },
+                      ]}
+                    />
+                  )}
+                  <Text
+                    style={[styles.unitTabText, isSelected && styles.unitTabTextActive]}
+                    numberOfLines={1}
+                  >
+                    {tab.label}
                   </Text>
-                  <Text style={styles.unitFilterCount}>
-                    {doneInLvl}/{lvl.classes.length}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <Text style={styles.overallPctBadge}>{overallPercent}%</Text>
+                </View>
+                <View
+                  style={[
+                    styles.unitTabIndicator,
+                    isSelected && { backgroundColor: tab.accentColor },
+                  ]}
+                />
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Clean Obsidian Architectural Course Timeline */}
       <ScrollView
@@ -653,180 +658,142 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  topStatsWrapper: {
-    backgroundColor: THEME.colors.surfaceDark,
+  topHeaderContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
   },
-  topStatsBar: {
+  topBrandRow: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 6,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
-  hudLeftGroup: {
+  brandGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 9,
   },
-  hudRightGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statIcon: {
-    marginRight: 3,
-  },
-  statPillStreak: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 26,
-    backgroundColor: THEME.colors.goldLight,
-    paddingHorizontal: 8,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.4)',
-  },
-  statPillTextStreak: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: THEME.colors.gold,
-  },
-  statPillGems: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 26,
-    backgroundColor: THEME.colors.secondaryLight,
-    paddingHorizontal: 8,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
-  },
-  statPillTextGems: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: THEME.colors.secondary,
-  },
-  statPillHearts: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 26,
-    backgroundColor: THEME.colors.errorLight,
-    paddingHorizontal: 8,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-  },
-  statPillTextHearts: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#F87171',
-  },
-  statPillLeague: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 26,
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
-    paddingHorizontal: 8,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.4)',
-  },
-  statPillTextLeague: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: THEME.colors.gold,
-  },
-  missNovaHeaderPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 26,
-    backgroundColor: THEME.colors.primaryLight,
-    paddingHorizontal: 7,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: THEME.colors.primaryGlow,
-  },
-  headerAvatarWrap: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  brandAvatarRing: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: 'rgba(167, 139, 250, 0.65)',
     overflow: 'hidden',
+    backgroundColor: THEME.colors.surfaceCard,
   },
-  missNovaAvatar: {
-    width: 18,
-    height: 18,
+  brandAvatarImg: {
+    width: '100%',
+    height: '100%',
     transform: [{ scale: 1.04 }],
   },
-  onlineDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: THEME.colors.accent,
-    marginLeft: 4,
+  brandTitle: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 12.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.7,
   },
-  missNovaText: {
-    fontFamily: THEME.fonts.bold,
+  brandSubtitle: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 10,
-    color: THEME.colors.primaryGlow,
-    marginLeft: 4,
+    color: THEME.colors.textSecondary,
+    marginTop: -1,
   },
-
-  /* UNIT FILTER TABS */
-  unitFilterBar: {
-    width: '100%',
+  telemetryGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingBottom: 9,
-    gap: 8,
-  },
-  unitFilterRow: {
     gap: 6,
   },
-  unitFilterPill: {
+  statsCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    height: 30,
+    backgroundColor: '#171624',
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#2A2740',
+    paddingHorizontal: 8,
+    gap: 7,
+  },
+  statChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+  },
+  statValueText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
+    color: '#FFFFFF',
+  },
+  statDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#2B2842',
+  },
+  rankChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 30,
+    backgroundColor: 'rgba(127, 67, 254, 0.16)',
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.35)',
+    paddingHorizontal: 8,
+  },
+  rankChipText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
+    color: '#FFFFFF',
+  },
+
+  /* SEGMENTED UNDERLINE UNIT TABS */
+  unitTabsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingHorizontal: 10,
+  },
+  unitTabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 6,
+  },
+  unitTabBtnCompact: {
+    flex: 0.72,
+  },
+  unitTabLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
+    paddingBottom: 7,
   },
-  unitFilterPillActive: {
-    backgroundColor: 'rgba(127, 67, 254, 0.18)',
-    borderColor: THEME.colors.primary,
-  },
-  unitDot: {
-    width: 6,
-    height: 6,
+  unitTabDot: {
+    width: 5.5,
+    height: 5.5,
     borderRadius: 3,
   },
-  unitFilterText: {
+  unitTabText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
+    fontSize: 11.5,
+    color: THEME.colors.textMuted,
   },
-  unitFilterTextActive: {
+  unitTabTextActive: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
   },
-  unitFilterCount: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-  },
-  overallPctBadge: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: THEME.colors.accent,
-    paddingHorizontal: 4,
+  unitTabIndicator: {
+    width: '68%',
+    height: 2.5,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    backgroundColor: 'transparent',
   },
 
   /* COURSE TIMELINE */
