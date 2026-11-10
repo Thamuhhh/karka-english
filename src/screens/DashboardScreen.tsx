@@ -59,7 +59,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({ onSelectTab, onSelec
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Ready to practice today?</Text>
-          <Text style={styles.title}>Supernova AI English</Text>
+          <Text style={styles.title}>NovaBreaker English</Text>
         </View>
         <View style={styles.streakBadge}>
           <MaterialCommunityIcons name="fire" size={20} color={THEME.colors.gold} />

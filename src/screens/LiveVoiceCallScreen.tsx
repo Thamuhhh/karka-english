@@ -350,7 +350,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
               <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatarImg} />
             </View>
 
-            <Text style={styles.missNovaName}>Miss Nova</Text>
+            <Text style={styles.missNovaName}>Nila</Text>
             <Text style={styles.statusLabel}>
               {isMutedAudio
                 ? 'Audio muted'

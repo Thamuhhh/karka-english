@@ -49,7 +49,7 @@ export interface SupernovaClass {
   // Step 3: Guided Translation
   translation: GuidedTranslation;
 
-  // Step 4: Free Speaking with Miss Nova
+  // Step 4: Free Speaking with Nila
   speakingChallenge: FreeSpeakingChallenge;
 }
 
@@ -114,12 +114,12 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
         },
         speakingChallenge: {
           prompt: 'Introduce yourself in 2 confident sentences: your name, where you live, and what you do.',
-          missNovaQuestion: 'Hello! I am Miss Nova, your AI spoken English tutor. Could you tell me your name and what you do?',
+          missNovaQuestion: 'Hello! I am Nila, your AI spoken English tutor. Could you tell me your name and what you do?',
           suggestedAnswers: [
-            'Hi Miss Nova! I am Alex, and I work as a mobile software engineer in Chennai.',
+            'Hi Nila! I am Alex, and I work as a mobile software engineer in Chennai.',
             'Hello! My name is Alex. I am a tech professional passionate about AI.',
           ],
-          sampleNativeResponse: 'Hi Miss Nova! My name is Alex, and I am based in Chennai working in software development.',
+          sampleNativeResponse: 'Hi Nila! My name is Alex, and I am based in Chennai working in software development.',
         },
       },
       {
@@ -160,7 +160,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: 'He-க்கு "doesn\'t know" தான் சரியான வடிவம்.',
         },
         speakingChallenge: {
-          prompt: 'Tell Miss Nova what your best friend or colleague does every day.',
+          prompt: 'Tell Nila what your best friend or colleague does every day.',
           missNovaQuestion: 'Tell me about someone you work or study with. What does that person do daily?',
           suggestedAnswers: [
             'My colleague Ravi writes clean code and attends team standup meetings every morning.',
@@ -254,7 +254,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"Within walking distance" என்பது நடந்து செல்லக்கூடிய தூரத்தைக் குறிக்கும் சிறந்த ஆங்கில சொல்.',
         },
         speakingChallenge: {
-          prompt: 'You just arrived at a new airport. Ask Miss Nova for directions to baggage claim.',
+          prompt: 'You just arrived at a new airport. Ask Nila for directions to baggage claim.',
           missNovaQuestion: 'Hello traveler! You look like you need some help. Where are you heading?',
           suggestedAnswers: [
             'Excuse me! Could you tell me where baggage claim terminal 2 is located?',
@@ -362,7 +362,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"Would you like to leave a message?" என்பது செய்தி ஏதும் விட விரும்புகிறீர்களா என்பதற்கான தொழில்முறை வாக்கியம்.',
         },
         speakingChallenge: {
-          prompt: 'Answer an incoming work call from Miss Nova and take a message for your manager.',
+          prompt: 'Answer an incoming work call from Nila and take a message for your manager.',
           missNovaQuestion: 'Hello! This is Sarah from the engineering team. May I speak with your manager Mr. Raman?',
           suggestedAnswers: [
             'Hi Sarah! Mr. Raman is in an executive meeting right now. Can I take a message for him?',
@@ -456,7 +456,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"Why didn\'t you attend..." என்பதே கேள்வி அமைப்பில் சரியான முறை.',
         },
         speakingChallenge: {
-          prompt: 'Tell Miss Nova about something interesting you did last weekend.',
+          prompt: 'Tell Nila about something interesting you did last weekend.',
           missNovaQuestion: 'How was your weekend? Did you do anything exciting or relaxing?',
           suggestedAnswers: [
             'Last weekend, I went hiking with my friends in the hills and took lots of photos.',
@@ -503,7 +503,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: 'உடனடி உறுதிமொழிக்கு "I will email..." என்பதே பொருத்தமானது.',
         },
         speakingChallenge: {
-          prompt: 'Tell Miss Nova what major skill or project you are going to focus on this year.',
+          prompt: 'Tell Nila what major skill or project you are going to focus on this year.',
           missNovaQuestion: 'What is your primary professional or personal goal for the upcoming months?',
           suggestedAnswers: [
             'I am going to achieve fluent English communication and lead client meetings with total confidence.',
@@ -658,13 +658,13 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: 'மருத்துவரிடம் மருந்து உட்கொள்ளும் முறையைக் கேட்க இதுவே சரியான வாக்கியம்.',
         },
         speakingChallenge: {
-          prompt: 'You are visiting Dr. Nova for a checkup. Explain your symptoms clearly.',
+          prompt: 'You are visiting Dr. Nila for a checkup. Explain your symptoms clearly.',
           missNovaQuestion: 'Good morning! What seems to be the problem today? How long have you been feeling unwell?',
           suggestedAnswers: [
             'Good morning doctor. I have been having a persistent migraine and dizziness since Tuesday.',
             'I have had a sharp pain in my lower back since yesterday after lifting heavy boxes.',
           ],
-          sampleNativeResponse: 'Good morning Dr. Nova! I have been experiencing a nagging headache and fatigue over the past three days.',
+          sampleNativeResponse: 'Good morning Dr. Nila! I have been experiencing a nagging headache and fatigue over the past three days.',
         },
       },
       {
@@ -705,7 +705,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: 'கார்டு தொலைந்துவிட்டால் "I have misplaced my card" என்று தெரிவிப்பதே நாகரிகம்.',
         },
         speakingChallenge: {
-          prompt: 'Call bank customer care (Miss Nova) to report an unauthorized transaction.',
+          prompt: 'Call bank customer care (Nila) to report an unauthorized transaction.',
           missNovaQuestion: 'Thank you for calling NovaBank support. How may I assist you today?',
           suggestedAnswers: [
             'Hi! I noticed an unauthorized charge of ₹2,500 on my account this morning. Could you please look into it?',
@@ -752,7 +752,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"Aligns perfectly with my aspirations" என்பது நேர்காணலில் அதிக மதிப்பு தரும் உயர்நிலை ஆங்கிலம்.',
         },
         speakingChallenge: {
-          prompt: 'Deliver your 60-second elevator pitch to Miss Nova (Hiring Manager).',
+          prompt: 'Deliver your 60-second elevator pitch to Nila (Hiring Manager).',
           missNovaQuestion: 'Welcome to your interview round! To get started, could you walk me through your background and experience?',
           suggestedAnswers: [
             'Certainly! I am a full-stack engineer with 3 years of experience specializing in high-performance React Native and AI interfaces.',
@@ -846,7 +846,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: 'இடைப்பட்ட நேரத்திற்கு "layover" என்ற ஆங்கில சொல்லைப் பயன்படுத்தவும்.',
         },
         speakingChallenge: {
-          prompt: 'You are at international immigration. Answer Miss Nova\'s (Border Officer) questions.',
+          prompt: 'You are at international immigration. Answer Nila\'s (Border Officer) questions.',
           missNovaQuestion: 'Good afternoon. What is the purpose of your visit, and how long do you plan to stay in the country?',
           suggestedAnswers: [
             'Good afternoon officer! I am visiting for a two-week tech conference, and I have a return ticket for the 18th.',
@@ -954,7 +954,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: 'வணிகத் தொடர்பை நீட்டிக்க "Shall we connect on LinkedIn?" என்பதே உலகளாவிய முறை.',
         },
         speakingChallenge: {
-          prompt: 'At a tech mixer, introduce yourself to Miss Nova (Keynote Speaker) and discuss her talk.',
+          prompt: 'At a tech mixer, introduce yourself to Nila (Keynote Speaker) and discuss her talk.',
           missNovaQuestion: 'Hi there! Did you get a chance to catch my morning keynote on generative AI?',
           suggestedAnswers: [
             'Yes I did! I found your insights on conversational agents truly inspiring. My name is Alex.',
@@ -1001,7 +1001,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"Agree to disagree" என்பது இருவேறு கருத்துக்கள் இருந்தாலும் பரஸ்பர மரியாதையைக் குறிக்கும் மரபுத்தொடர்.',
         },
         speakingChallenge: {
-          prompt: 'Debate with Miss Nova: She thinks AI will replace junior developers within 2 years. Share your counter-argument.',
+          prompt: 'Debate with Nila: She thinks AI will replace junior developers within 2 years. Share your counter-argument.',
           missNovaQuestion: 'In my opinion, code generators are so powerful that companies won\'t need to hire junior engineers anymore. What do you think?',
           suggestedAnswers: [
             'I see your point about automation, but junior engineers bring fresh problem-solving perspectives and grow into senior leaders.',
@@ -1048,7 +1048,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"It would be beneficial to..." என்பது மென்மையான, நன்மையான ஆலோசனையைக் குறிக்கும்.',
         },
         speakingChallenge: {
-          prompt: 'Your colleague Miss Nova is feeling burned out by working late every night. Give her gentle, effective advice.',
+          prompt: 'Your colleague Nila is feeling burned out by working late every night. Give her gentle, effective advice.',
           missNovaQuestion: 'I have been working 14 hours a day all week, and I am completely exhausted. What should I do?',
           suggestedAnswers: [
             'You might want to speak with your team lead about re-prioritizing deliverables, because your health must come first.',
@@ -1095,7 +1095,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
           tamilExplanation: '"Immensely grateful" என்பது அளப்பரிய நன்றியுணர்வை வெளிப்படுத்தும் அற்புதமான தொடர்.',
         },
         speakingChallenge: {
-          prompt: 'Share a personal story with Miss Nova about a time you overcame a tough challenge.',
+          prompt: 'Share a personal story with Nila about a time you overcame a tough challenge.',
           missNovaQuestion: 'Can you recall a moment in your life where you felt overwhelmed, but eventually pushed through and succeeded?',
           suggestedAnswers: [
             'During my college final project, our server crashed the night before evaluation, but we worked all night, fixed the database, and scored the top grade.',
@@ -1138,11 +1138,11 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
             'Continuous try gives English speaking freely.',
           ],
           correctOptionIndex: 1,
-          explanation: '"Attain effortless English fluency" encapsulates the core philosophy of Supernova English.',
+          explanation: '"Attain effortless English fluency" encapsulates the core philosophy of NovaBreaker English.',
           tamilExplanation: '"Attain effortless English fluency" என்பது அநாயாசமான சரளப் பேச்சை அடையும் நிலையை உணர்த்துகிறது.',
         },
         speakingChallenge: {
-          prompt: 'Final Graduation Challenge! Pitch your journey or project to Miss Nova and claim your Master Certificate.',
+          prompt: 'Final Graduation Challenge! Pitch your journey or project to Nila and claim your Master Certificate.',
           missNovaQuestion: 'Congratulations on reaching the final milestone! What does mastering spoken English mean for your future?',
           suggestedAnswers: [
             'Mastering English gives me the power to share my ideas globally, build international businesses, and inspire others in my community.',

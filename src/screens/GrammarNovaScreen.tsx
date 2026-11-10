@@ -83,7 +83,7 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
           <Ionicons name="sparkles" size={20} color={THEME.colors.primaryGlow} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.title}>Ask Miss Nova</Text>
+          <Text style={styles.title}>Ask Nila</Text>
           <Text style={styles.subtitle}>Instant grammar diagnosis & Tamil explanation</Text>
         </View>
         <View style={[styles.enginePill, onlineMode ? styles.enginePillOnline : styles.enginePillOffline]}>

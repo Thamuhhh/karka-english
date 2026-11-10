@@ -497,7 +497,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 <View style={styles.novaMiniAvatar}>
                   <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaMiniImg} />
                 </View>
-                <Text style={styles.promptSpeakerName}>Nova</Text>
+                <Text style={styles.promptSpeakerName}>Nila</Text>
                 <TouchableOpacity
                   style={styles.audioIconBtn}
                   onPress={() =>

@@ -97,7 +97,7 @@ export async function analyzeSentenceGrammar(sentence: string): Promise<GrammarC
   }
 
   if (userGeminiApiKey) {
-    const prompt = `You are "Supernova English AI", a precise English linguistics tutor for Tamil-speaking professionals.
+    const prompt = `You are "Nila", the NovaBreaker AI English linguistics tutor for Tamil-speaking professionals.
 Analyze the following sentence:
 "${trimmed}"
 

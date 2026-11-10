@@ -65,7 +65,7 @@ interface NavTabItem {
 
 const NAV_TABS: NavTabItem[] = [
   { id: 'learn', label: 'Course', family: 'mci', activeIcon: 'compass', inactiveIcon: 'compass-outline' },
-  { id: 'grammar', label: 'Ask Nova', family: 'ion', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline' },
+  { id: 'grammar', label: 'Ask Nila', family: 'ion', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline' },
   { id: 'call', label: 'Speak', family: 'ion', activeIcon: 'mic', inactiveIcon: 'mic-outline', isCenter: true },
   { id: 'vocab', label: 'Vocab', family: 'ion', activeIcon: 'book', inactiveIcon: 'book-outline' },
   { id: 'profile', label: 'Profile', family: 'ion', activeIcon: 'person', inactiveIcon: 'person-outline' },

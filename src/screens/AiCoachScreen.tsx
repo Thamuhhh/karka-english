@@ -146,7 +146,7 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
         </View>
         <View style={styles.liveTag}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>Supernova AI</Text>
+          <Text style={styles.liveText}>Nila AI</Text>
         </View>
       </View>
 
@@ -251,7 +251,7 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
           <View style={[styles.msgWrapper, styles.msgWrapperBot]}>
             <View style={[styles.msgBubble, styles.botBubble, styles.loadingBubble]}>
               <ActivityIndicator size="small" color={THEME.colors.primaryGlow} />
-              <Text style={styles.loadingText}>Miss Nova is thinking...</Text>
+              <Text style={styles.loadingText}>Nila is thinking...</Text>
             </View>
           </View>
         )}

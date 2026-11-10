@@ -323,7 +323,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
       <View style={styles.sectionCard}>
         <View style={styles.sectionTitleRow}>
           <Ionicons name="school-outline" size={20} color={THEME.colors.gold} />
-          <Text style={styles.sectionTitle}>Supernova English</Text>
+          <Text style={styles.sectionTitle}>NovaBreaker English</Text>
         </View>
         <Text style={styles.aboutText}>
           Built for learners aiming to speak fluent English naturally. Combines structured lessons, grammar diagnostics, vocabulary mastery, and Tamil mental-model guides.
