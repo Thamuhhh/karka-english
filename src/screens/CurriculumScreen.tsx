@@ -944,10 +944,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   tamilConceptText: {
-    fontFamily: THEME.fonts.bodyMedium,
+    fontFamily: THEME.fonts.tamilMedium,
     fontSize: 13.5,
     color: '#F1EFFC',
-    lineHeight: 20,
+    lineHeight: 24,
   },
   stagesSection: {
     paddingHorizontal: 22,

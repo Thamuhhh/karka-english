@@ -526,14 +526,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   detailLabelTamil: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontFamily: THEME.fonts.tamilBold,
+    fontSize: 10.5,
     color: THEME.colors.gold,
+    lineHeight: 17,
   },
   detailTamilText: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 12,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
     color: THEME.colors.text,
+    lineHeight: 21,
     marginTop: 1,
   },
   detailNative: {

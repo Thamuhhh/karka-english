@@ -620,16 +620,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tamilLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontFamily: THEME.fonts.tamilBold,
+    fontSize: 10.5,
     color: THEME.colors.gold,
+    lineHeight: 17,
   },
   tamilText: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 13,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 13.5,
     color: THEME.colors.text,
     marginTop: 2,
-    lineHeight: 18,
+    lineHeight: 23,
   },
   exampleLabel: {
     fontFamily: THEME.fonts.bold,

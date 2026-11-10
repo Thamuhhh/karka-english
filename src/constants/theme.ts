@@ -73,6 +73,10 @@ export const THEME = {
     bodyMedium: 'Montserrat_500Medium',
     bodySemiBold: 'Montserrat_600SemiBold',
     bodyBold: 'Montserrat_700Bold',
+    tamil: 'NotoSansTamil_400Regular',
+    tamilMedium: 'NotoSansTamil_500Medium',
+    tamilSemiBold: 'NotoSansTamil_600SemiBold',
+    tamilBold: 'NotoSansTamil_700Bold',
   },
   spacing: {
     xs: 4,

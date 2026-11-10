@@ -25,6 +25,12 @@ import {
   Montserrat_600SemiBold,
   Montserrat_700Bold,
 } from '@expo-google-fonts/montserrat';
+import {
+  NotoSansTamil_400Regular,
+  NotoSansTamil_500Medium,
+  NotoSansTamil_600SemiBold,
+  NotoSansTamil_700Bold,
+} from '@expo-google-fonts/noto-sans-tamil';
 
 import { THEME } from './src/constants/theme';
 import { CurriculumScreen } from './src/screens/CurriculumScreen';
@@ -59,6 +65,10 @@ export default function App() {
     Montserrat_500Medium,
     Montserrat_600SemiBold,
     Montserrat_700Bold,
+    NotoSansTamil_400Regular,
+    NotoSansTamil_500Medium,
+    NotoSansTamil_600SemiBold,
+    NotoSansTamil_700Bold,
   });
 
   const [stats, setStats] = useState<UserStats>(createDefaultStats);

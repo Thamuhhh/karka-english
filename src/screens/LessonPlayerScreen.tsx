@@ -942,10 +942,10 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   tamilModelBody: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 13,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 13.5,
     color: THEME.colors.text,
-    lineHeight: 20,
+    lineHeight: 23,
   },
   comparisonBox: {
     backgroundColor: THEME.colors.surfaceCard,
@@ -974,16 +974,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wrongLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontFamily: THEME.fonts.tamilBold,
+    fontSize: 10.5,
     color: THEME.colors.error,
     marginLeft: 6,
+    lineHeight: 16,
   },
   rightLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10,
+    fontFamily: THEME.fonts.tamilBold,
+    fontSize: 10.5,
     color: THEME.colors.success,
     marginLeft: 6,
+    lineHeight: 16,
     flex: 1,
   },
   wrongSentence: {
@@ -1006,10 +1008,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   whyNote: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontFamily: THEME.fonts.tamil,
+    fontSize: 12.5,
     color: THEME.colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 21,
     flex: 1,
   },
 
@@ -1027,9 +1029,10 @@ const styles = StyleSheet.create({
     color: THEME.colors.gold,
   },
   tamilThoughtText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 16,
+    fontFamily: THEME.fonts.tamilBold,
+    fontSize: 15.5,
     color: THEME.colors.text,
+    lineHeight: 26,
     marginTop: 4,
   },
   slotLineArea: {
@@ -1265,9 +1268,10 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
   },
   aiTamilExplainText: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 12,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
     color: THEME.colors.gold,
+    lineHeight: 21,
     flex: 1,
   },
   nativeRephraseBox: {
@@ -1496,9 +1500,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   jumbleTamilNote: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 12,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
     color: THEME.colors.gold,
+    lineHeight: 21,
     marginTop: 2,
   },
 });

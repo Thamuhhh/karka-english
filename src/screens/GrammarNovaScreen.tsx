@@ -581,10 +581,10 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   tamilCardText: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 13,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 13.5,
     color: THEME.colors.text,
-    lineHeight: 20,
+    lineHeight: 23,
   },
   variationsHeader: {
     fontFamily: THEME.fonts.bold,

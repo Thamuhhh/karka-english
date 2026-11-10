@@ -410,14 +410,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tamilLabel: {
-    fontFamily: THEME.fonts.bold,
+    fontFamily: THEME.fonts.tamilBold,
     fontSize: 11,
     color: THEME.colors.gold,
+    lineHeight: 18,
   },
   tamilMeaning: {
-    fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 13,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 13.5,
     color: THEME.colors.text,
+    lineHeight: 22,
     marginTop: 2,
   },
   exampleText: {
@@ -531,9 +533,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   quizTamilHint: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontFamily: THEME.fonts.tamil,
+    fontSize: 12.5,
     color: THEME.colors.textSecondary,
+    lineHeight: 21,
     marginTop: 4,
   },
 });

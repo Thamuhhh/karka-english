@@ -698,9 +698,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tamilFeedbackText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
     color: THEME.colors.gold,
+    lineHeight: 21,
     marginTop: 2,
   },
   quickPromptsRow: {
