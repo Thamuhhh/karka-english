@@ -26,3 +26,4 @@ export async function fetchRhymingWords(word: string): Promise<string[]> {
     return [];
   }
 }
+

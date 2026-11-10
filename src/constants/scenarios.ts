@@ -62,3 +62,4 @@ export const SCENARIOS: RoleplayScenario[] = [
       "Yo! How was your day? I'm thinking of ordering some pizza tonight—what toppings are you down for?",
   },
 ];
+

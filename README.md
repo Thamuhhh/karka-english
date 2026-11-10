@@ -68,3 +68,4 @@ npm run web
 2. Get your free key from [Google AI Studio](https://aistudio.google.com).
 3. Paste it into **Free Google Gemini AI Key** and tap **Save**.
 4. The app will immediately unlock live Gemini Flash streaming!
+

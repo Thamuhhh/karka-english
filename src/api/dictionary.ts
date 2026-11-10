@@ -110,3 +110,4 @@ export async function fetchWordDetails(word: string): Promise<WordDefinition | n
     return cached || null;
   }
 }
+

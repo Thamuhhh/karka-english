@@ -259,3 +259,4 @@ function generateLocalScenarioReply(userMsg: string, scenario: RoleplayScenario)
 
   return `I hear you! That's really interesting. What else would you like to share about that?`;
 }
+

@@ -54,3 +54,4 @@ export interface UserStats {
   conversationsDone: number;
   sentencesChecked: number;
 }
+
