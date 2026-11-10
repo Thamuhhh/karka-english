@@ -1,5 +1,7 @@
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { synthesizeGeminiSpeech } from '../api/supernovaAi';
 
 let currentSound: Audio.Sound | null = null;
@@ -71,34 +73,63 @@ function writeUint16LE(view: Uint8Array, offset: number, value: number) {
   view[offset + 1] = (value >> 8) & 0xff;
 }
 
-/** Wraps raw 16-bit mono PCM bytes from Gemini TTS into a playable RIFF/WAV data URI. */
-function inlineAudioToPlayableUri(base64Data: string, mimeType: string): string {
+function hashCacheKey(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+/** Converts Gemini TTS PCM/audio payload into a local file:// WAV URI (Android/iOS) or data URI (web). */
+async function inlineAudioToPlayableUri(
+  cacheKey: string,
+  base64Data: string,
+  mimeType: string
+): Promise<string> {
   const lower = mimeType.toLowerCase();
-  if (lower.includes('wav') || lower.includes('mp3') || lower.includes('mpeg') || lower.includes('aac')) {
-    const cleanMime = mimeType.split(';')[0].trim();
-    return `data:${cleanMime};base64,${base64Data}`;
+  let finalBase64 = base64Data;
+  let ext = 'wav';
+  let cleanMime = 'audio/wav';
+
+  if (lower.includes('mp3') || lower.includes('mpeg')) {
+    ext = 'mp3';
+    cleanMime = 'audio/mpeg';
+  } else if (lower.includes('aac')) {
+    ext = 'aac';
+    cleanMime = 'audio/aac';
+  } else if (!lower.includes('wav')) {
+    const pcm = decodeBase64Bytes(base64Data);
+    const sampleRate = parseSampleRate(mimeType);
+    const wav = new Uint8Array(44 + pcm.length);
+
+    writeAscii(wav, 0, 'RIFF');
+    writeUint32LE(wav, 4, 36 + pcm.length);
+    writeAscii(wav, 8, 'WAVE');
+    writeAscii(wav, 12, 'fmt ');
+    writeUint32LE(wav, 16, 16);
+    writeUint16LE(wav, 20, 1); // PCM
+    writeUint16LE(wav, 22, 1); // Mono
+    writeUint32LE(wav, 24, sampleRate);
+    writeUint32LE(wav, 28, sampleRate * 2);
+    writeUint16LE(wav, 32, 2);
+    writeUint16LE(wav, 34, 16);
+    writeAscii(wav, 36, 'data');
+    writeUint32LE(wav, 40, pcm.length);
+    wav.set(pcm, 44);
+
+    finalBase64 = encodeBase64Bytes(wav);
   }
 
-  const pcm = decodeBase64Bytes(base64Data);
-  const sampleRate = parseSampleRate(mimeType);
-  const wav = new Uint8Array(44 + pcm.length);
+  if (Platform.OS !== 'web' && FileSystem.cacheDirectory) {
+    const fileUri = `${FileSystem.cacheDirectory}nila_tts_${hashCacheKey(cacheKey)}.${ext}`;
+    await FileSystem.writeAsStringAsync(fileUri, finalBase64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return fileUri;
+  }
 
-  writeAscii(wav, 0, 'RIFF');
-  writeUint32LE(wav, 4, 36 + pcm.length);
-  writeAscii(wav, 8, 'WAVE');
-  writeAscii(wav, 12, 'fmt ');
-  writeUint32LE(wav, 16, 16);
-  writeUint16LE(wav, 20, 1); // PCM
-  writeUint16LE(wav, 22, 1); // Mono
-  writeUint32LE(wav, 24, sampleRate);
-  writeUint32LE(wav, 28, sampleRate * 2);
-  writeUint16LE(wav, 32, 2);
-  writeUint16LE(wav, 34, 16);
-  writeAscii(wav, 36, 'data');
-  writeUint32LE(wav, 40, pcm.length);
-  wav.set(pcm, 44);
-
-  return `data:audio/wav;base64,${encodeBase64Bytes(wav)}`;
+  return `data:${cleanMime};base64,${finalBase64}`;
 }
 
 function cacheAudioUri(key: string, uri: string) {
@@ -107,36 +138,6 @@ function cacheAudioUri(key: string, uri: string) {
     if (oldestKey) geminiAudioCache.delete(oldestKey);
   }
   geminiAudioCache.set(key, uri);
-}
-
-/** Splits Tamil explanations containing quoted English phrases so offline TTS pronounces both cleanly. */
-function splitMixedTamilEnglishSegments(text: string): BilingualSpeechSegment[] {
-  const segments: BilingualSpeechSegment[] = [];
-  const tamilOnlyCount = (chunk: string) => chunk.replace(/[\s"'.,!?\-—()]/g, '').length;
-  const englishPattern = /([A-Za-z][A-Za-z0-9'\s.,!?]*[A-Za-z0-9!?']|[A-Za-z]{2,})/g;
-  let lastIdx = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = englishPattern.exec(text)) !== null) {
-    if (match.index > lastIdx) {
-      const tamilChunk = text.slice(lastIdx, match.index).replace(/["“”]/g, '').trim();
-      if (tamilChunk && tamilOnlyCount(tamilChunk) >= 3) {
-        segments.push({ text: tamilChunk, lang: 'ta-IN' });
-      }
-    }
-    const enChunk = match[0].trim();
-    if (enChunk) segments.push({ text: enChunk, lang: 'en' });
-    lastIdx = englishPattern.lastIndex;
-  }
-
-  if (lastIdx < text.length) {
-    const tailChunk = text.slice(lastIdx).replace(/["“”]/g, '').trim();
-    if (tailChunk && tamilOnlyCount(tailChunk) >= 2) {
-      segments.push({ text: tailChunk, lang: 'ta-IN' });
-    }
-  }
-
-  return segments.length > 0 ? segments : [{ text, lang: 'ta-IN' }];
 }
 
 export type EnglishAccent = 'en-US' | 'en-GB' | 'en-AU';
@@ -273,14 +274,22 @@ async function playCachedOrSynthesizedAudio(
   finishOnce: () => void
 ): Promise<boolean> {
   try {
-    let wavUri = geminiAudioCache.get(cacheKey);
-    if (!wavUri) {
+    let audioUri = geminiAudioCache.get(cacheKey);
+    if (audioUri && Platform.OS !== 'web' && audioUri.startsWith('file://')) {
+      const info = await FileSystem.getInfoAsync(audioUri).catch(() => ({ exists: false }));
+      if (!info.exists) {
+        geminiAudioCache.delete(cacheKey);
+        audioUri = undefined;
+      }
+    }
+
+    if (!audioUri) {
       const generated = await synthesizeGeminiSpeech(text, mode, currentAccent);
       if (!generated || sequenceToken !== activeSequenceId) {
         return false;
       }
-      wavUri = inlineAudioToPlayableUri(generated.base64, generated.mimeType);
-      cacheAudioUri(cacheKey, wavUri);
+      audioUri = await inlineAudioToPlayableUri(cacheKey, generated.base64, generated.mimeType);
+      cacheAudioUri(cacheKey, audioUri);
     }
 
     if (sequenceToken !== activeSequenceId) {
@@ -293,8 +302,8 @@ async function playCachedOrSynthesizedAudio(
     }).catch(() => {});
 
     const { sound } = await Audio.Sound.createAsync(
-      { uri: wavUri },
-      { shouldPlay: true, rate: 1.08, shouldCorrectPitch: true }
+      { uri: audioUri },
+      { shouldPlay: true, rate: 1.06, shouldCorrectPitch: true }
     );
     if (sequenceToken !== activeSequenceId) {
       await sound.unloadAsync().catch(() => {});
@@ -411,14 +420,8 @@ export async function speakTamil(text: string, onDone?: () => void) {
     return;
   }
 
-  // Fallback splits Tamil script & quoted English words so offline TTS never mangles English words
-  const segments = splitMixedTamilEnglishSegments(clean);
-  if (segments.length <= 1) {
-    speakWithLanguage(clean, 'ta-IN', finishOnce);
-    return;
-  }
-
-  runBilingualSequence(sequenceToken, segments, finishOnce);
+  // Keep offline fallback in a single consistent voice (avoid jarring mid-sentence AI switches)
+  speakWithLanguage(clean.replace(/["“”]/g, ''), 'ta-IN', finishOnce);
 }
 
 export interface BilingualSpeechSegment {

@@ -24,7 +24,7 @@ export function isGeminiConfigured(): boolean {
 }
 
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
-const GEMINI_TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
+const GEMINI_TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
 const MODEL_COOLDOWN_MS = 60_000;
 const modelCooldownUntil: Record<string, number> = {};
 let lastGeminiError: string | null = null;
@@ -1034,20 +1034,17 @@ export async function synthesizeGeminiSpeech(
   const activeKey = resolveGeminiKey();
   if (!clean || !activeKey) return null;
 
-  const accentLabel =
-    accent === 'en-GB' ? 'British' : accent === 'en-AU' ? 'Australian' : 'American';
-  const stylePrompt =
+  const styledText =
     mode === 'tamil-coach'
-      ? 'You are Nila, a lively, friendly young Tamil English coach from Chennai. Speak at a brisk, natural conversational pace without dragging or long pauses. Read the Tamil parts in warm everyday Chennai Tamil slang, and switch cleanly to clear English on English words.'
-      : `You are Nila, a lively, clear English tutor speaking at a natural upbeat ${accentLabel} conversational pace.`;
+      ? `Say warmly and naturally: ${clean}`
+      : accent === 'en-GB'
+        ? `Say clearly in a friendly British accent: ${clean}`
+        : `Say cheerfully and clearly: ${clean}`;
 
   const json = await callGeminiWithTimeout(
     activeKey,
     {
-      systemInstruction: {
-        parts: [{ text: stylePrompt }],
-      },
-      contents: [{ role: 'user', parts: [{ text: clean }] }],
+      contents: [{ role: 'user', parts: [{ text: styledText }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: {
@@ -1059,7 +1056,7 @@ export async function synthesizeGeminiSpeech(
         },
       },
     },
-    9000,
+    11000,
     {
       models: GEMINI_TTS_MODELS,
       isValidResponse: (data) => Boolean(extractInlineAudio(data)),
