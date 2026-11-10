@@ -19,6 +19,7 @@ import {
   SUPERNOVA_IMAGES,
   getLessonNodeEmblem,
 } from '../constants/supernovaAssets';
+import { LiveStreakBadge } from '../components/LiveStreakBadge';
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
@@ -102,9 +103,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Minimalist Centered App Name Header */}
+      {/* Top Navigation Header: Brand Left + Live Streak Right */}
       <View style={styles.topNavHeader}>
         <Text style={styles.appNameText}>NovaBreaker</Text>
+        <LiveStreakBadge streakDays={stats.streakDays} />
       </View>
 
       {/* Single Unified Obsidian Topography Canvas */}
@@ -562,16 +564,17 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.07)',
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   appNameText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 17,
+    fontSize: 18,
     color: '#FFFFFF',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
   },
 
   /* COURSE TIMELINE */
