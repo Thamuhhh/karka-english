@@ -133,6 +133,48 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     }
   }
 
+  const renderUnitBandContent = (
+    levelNum: number,
+    levelName: string,
+    totalClasses: number,
+    completedCount: number,
+    progressPct: number,
+    isDone: boolean,
+    isInline: boolean
+  ) => (
+    <>
+      <View style={styles.unitEditorialMetaRow}>
+        <View style={styles.unitEyebrowGroup}>
+          <View style={[styles.unitDot, isDone && styles.unitDotCompleted]} />
+          <Text style={styles.unitEyebrowText}>
+            UNIT {String(levelNum).padStart(2, '0')} · {progressPct}%
+          </Text>
+        </View>
+        <Text style={styles.unitProgressStatText}>
+          {completedCount}/{totalClasses}
+        </Text>
+      </View>
+
+      <Text
+        style={isInline ? styles.unitInlineTitle : styles.unitEditorialTitle}
+        numberOfLines={1}
+      >
+        {formatShortUnitTitle(levelName)}
+      </Text>
+
+      <View style={styles.unitHairlineTrack}>
+        {progressPct > 0 && (
+          <LinearGradient
+            colors={['#7F43FE', '#A78BFA']}
+            style={[styles.unitHairlineFill, { width: `${progressPct}%` }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        )}
+      </View>
+    </>
+  );
+
   return (
     <View style={styles.container}>
       {/* Single Solid Unified Header: Brand + Live Streak + Sticky Active Unit */}
@@ -159,40 +201,15 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
               },
             ]}
           >
-            <View style={styles.unitEditorialMetaRow}>
-              <View style={styles.unitEyebrowGroup}>
-                <View
-                  style={[
-                    styles.unitDot,
-                    isActiveUnitDone && styles.unitDotCompleted,
-                  ]}
-                />
-                <Text style={styles.unitEyebrowText}>
-                  UNIT {String(activeLevel.levelNumber).padStart(2, '0')} · {activeLevel.cefrTag}
-                </Text>
-              </View>
-              <Text style={styles.unitProgressStatText}>
-                {activeCompletedCount}/{activeLevel.classes.length} · {activeProgressPct}%
-              </Text>
-            </View>
-
-            <Text style={styles.unitEditorialTitle} numberOfLines={1}>
-              {formatShortUnitTitle(activeLevel.levelName)}
-            </Text>
-
-            <View style={styles.unitHairlineTrack}>
-              {activeProgressPct > 0 && (
-                <LinearGradient
-                  colors={['#7F43FE', '#A78BFA']}
-                  style={[
-                    styles.unitHairlineFill,
-                    { width: `${activeProgressPct}%` },
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                />
-              )}
-            </View>
+            {renderUnitBandContent(
+              activeLevel.levelNumber,
+              activeLevel.levelName,
+              activeLevel.classes.length,
+              activeCompletedCount,
+              activeProgressPct,
+              isActiveUnitDone,
+              false
+            )}
           </Animated.View>
         </View>
       </View>
@@ -242,40 +259,15 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             >
               {levelIdx > 0 && (
                 <View style={styles.inlineUnitBreak}>
-                  <View style={styles.unitEditorialMetaRow}>
-                    <View style={styles.unitEyebrowGroup}>
-                      <View
-                        style={[
-                          styles.unitDot,
-                          isUnitCompleted && styles.unitDotCompleted,
-                        ]}
-                      />
-                      <Text style={styles.unitEyebrowText}>
-                        UNIT {String(level.levelNumber).padStart(2, '0')} · {level.cefrTag}
-                      </Text>
-                    </View>
-                    <Text style={styles.unitProgressStatText}>
-                      {completedInLevel}/{level.classes.length} · {progressPercent}%
-                    </Text>
-                  </View>
-
-                  <Text style={styles.unitInlineTitle} numberOfLines={1}>
-                    {formatShortUnitTitle(level.levelName)}
-                  </Text>
-
-                  <View style={styles.unitHairlineTrack}>
-                    {progressPercent > 0 && (
-                      <LinearGradient
-                        colors={['#7F43FE', '#A78BFA']}
-                        style={[
-                          styles.unitHairlineFill,
-                          { width: `${progressPercent}%` },
-                        ]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                      />
-                    )}
-                  </View>
+                  {renderUnitBandContent(
+                    level.levelNumber,
+                    level.levelName,
+                    level.classes.length,
+                    completedInLevel,
+                    progressPercent,
+                    isUnitCompleted,
+                    true
+                  )}
                 </View>
               )}
 
