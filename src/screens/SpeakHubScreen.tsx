@@ -27,7 +27,7 @@ const SPEAK_MODES: Array<{
 ];
 
 /**
- * Unified Speak hub integrating Live Talk, Ask Nila, and Vocabulary Vault.
+ * Unified Speak studio integrating Live Talk, Ask Nila, and Vocabulary Vault.
  */
 export const SpeakHubScreen: React.FC<SpeakHubScreenProps> = ({ stats, onStatsUpdate }) => {
   const [mode, setMode] = useState<SpeakMode>('talk');
@@ -40,33 +40,36 @@ export const SpeakHubScreen: React.FC<SpeakHubScreenProps> = ({ stats, onStatsUp
 
   return (
     <View style={styles.container}>
-      {/* Unified Top Segmented Mode Switcher */}
-      <View style={styles.modeBarOuter}>
-        <View style={styles.modeTrack}>
+      {/* Borderless Editorial Mode Tabs */}
+      <View style={styles.modeHeader}>
+        <View style={styles.modeRow}>
           {SPEAK_MODES.map((item) => {
             const isActive = mode === item.id;
             return (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.modePill, isActive && styles.modePillActive]}
+                style={styles.modeTab}
                 onPress={() => handleSelectMode(item.id)}
-                activeOpacity={0.82}
+                activeOpacity={0.8}
               >
-                <Ionicons
-                  name={isActive ? item.activeIcon : item.inactiveIcon}
-                  size={15}
-                  color={isActive ? '#FFFFFF' : THEME.colors.textSecondary}
-                />
-                <Text style={[styles.modeLabel, isActive && styles.modeLabelActive]}>
-                  {item.label}
-                </Text>
+                <View style={styles.modeTabContent}>
+                  <Ionicons
+                    name={isActive ? item.activeIcon : item.inactiveIcon}
+                    size={16}
+                    color={isActive ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                  />
+                  <Text style={[styles.modeLabel, isActive && styles.modeLabelActive]}>
+                    {item.label}
+                  </Text>
+                </View>
+                <View style={[styles.modeIndicator, isActive && styles.modeIndicatorActive]} />
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
 
-      {/* Active Mode Content Stage */}
+      {/* Active Mode Workspace */}
       <View style={styles.stage}>
         {mode === 'talk' && <LiveVoiceCallScreen onStatsUpdate={onStatsUpdate} />}
         {mode === 'nila' && <GrammarNovaScreen onStatsUpdate={onStatsUpdate} embedded />}
@@ -83,44 +86,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  modeBarOuter: {
+  modeHeader: {
+    width: '100%',
+    backgroundColor: THEME.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modeRow: {
+    flexDirection: 'row',
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
-    backgroundColor: THEME.colors.background,
+    paddingHorizontal: 14,
+    paddingTop: 10,
   },
-  modeTrack: {
-    flexDirection: 'row',
-    backgroundColor: '#14131E',
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: '#252238',
-    gap: 4,
-  },
-  modePill: {
+  modeTab: {
     flex: 1,
+    alignItems: 'center',
+  },
+  modeTabContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
     gap: 6,
-  },
-  modePillActive: {
-    backgroundColor: THEME.colors.primary,
+    paddingVertical: 9,
   },
   modeLabel: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12.5,
+    color: THEME.colors.textMuted,
   },
   modeLabelActive: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
+  },
+  modeIndicator: {
+    width: '62%',
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'transparent',
+  },
+  modeIndicatorActive: {
+    backgroundColor: THEME.colors.primaryGlow,
   },
   stage: {
     flex: 1,

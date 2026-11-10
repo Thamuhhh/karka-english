@@ -9,8 +9,10 @@ import {
   Easing,
   TextInput,
   Image,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { playSoundEffect } from '../services/soundEffectsService';
@@ -24,31 +26,33 @@ interface LiveVoiceCallScreenProps {
   onStatsUpdate?: (stats: UserStats) => void;
 }
 
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+
 const SCENARIO_PROMPTS: Record<string, string[]> = {
   'interview-tech': [
-    'I am a software engineer experienced in building mobile and web apps.',
-    'In my last project, I reduced API response time by optimizing queries.',
-    'I collaborate closely with design and QA during sprint planning.',
+    'I build mobile apps with React Native and TypeScript.',
+    'In my last project, I optimized API latency cleanly.',
+    'I collaborate closely with design and QA teams.',
   ],
   'cafe-order': [
-    'Hi! Could I please get a large iced latte with oat milk?',
-    'Could you also warm up a butter croissant for me?',
-    'That will be takeaway, please. Can I pay by card?',
+    'Hi! Could I get a large iced oat latte, please?',
+    'Could you warm up a butter croissant for me?',
+    'Takeaway please. Can I pay by card?',
   ],
   'airport-travel': [
-    'I am here on vacation for ten days to explore the city.',
-    'Here is my passport and hotel reservation confirmation.',
-    'Yes, my return flight is scheduled for next Sunday.',
+    'I am here on vacation for ten days.',
+    'Here is my passport and hotel confirmation.',
+    'Yes, my return flight is next Sunday.',
   ],
   'workplace-standup': [
-    'Yesterday I completed the checkout UI, and today I am writing unit tests.',
-    'No major blockers, just waiting on a quick backend PR review.',
-    'I will coordinate with QA right after our sync.',
+    'Yesterday I finished checkout UI; today writing tests.',
+    'No major blockers, waiting on PR review.',
+    'I will sync with QA right after standup.',
   ],
   'casual-hangout': [
-    'My day was pretty productive! How about ordering pepperoni pizza?',
-    'I am totally down to catch a movie later tonight.',
-    'Let us grab iced coffee before heading home.',
+    'My day was good! Let us order pepperoni pizza.',
+    'I am down to watch a movie tonight.',
+    'Let us grab iced coffee on the way home.',
   ],
 };
 
@@ -59,6 +63,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const [isCalling, setIsCalling] = useState(true);
   const [isMutedAudio, setIsMutedAudio] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showScenarios, setShowScenarios] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
@@ -75,7 +80,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
   const pulseAnim1 = useRef(new Animated.Value(1)).current;
   const pulseAnim2 = useRef(new Animated.Value(1)).current;
-  const pulseAnim3 = useRef(new Animated.Value(1)).current;
+  const waveAnim = useRef(new Animated.Value(0)).current;
   const transcriptScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -92,60 +97,68 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
   useEffect(() => {
     if (isAiSpeaking || isUserSpeaking) {
-      const loopAnim = Animated.loop(
-        Animated.stagger(250, [
+      const loopPulse = Animated.loop(
+        Animated.stagger(240, [
           Animated.sequence([
             Animated.timing(pulseAnim1, {
-              toValue: 1.32,
-              duration: 750,
+              toValue: 1.24,
+              duration: 720,
               easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
             Animated.timing(pulseAnim1, {
               toValue: 1,
-              duration: 750,
+              duration: 720,
               easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
           ]),
           Animated.sequence([
             Animated.timing(pulseAnim2, {
-              toValue: 1.45,
-              duration: 750,
+              toValue: 1.4,
+              duration: 720,
               easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
             Animated.timing(pulseAnim2, {
               toValue: 1,
-              duration: 750,
+              duration: 720,
               easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(pulseAnim3, {
-              toValue: 1.58,
-              duration: 750,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim3, {
-              toValue: 1,
-              duration: 750,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
           ]),
         ])
       );
-      loopAnim.start();
-      return () => loopAnim.stop();
-    } else {
-      pulseAnim1.setValue(1);
-      pulseAnim2.setValue(1);
-      pulseAnim3.setValue(1);
+
+      const loopWave = Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveAnim, {
+            toValue: 1,
+            duration: 380,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.timing(waveAnim, {
+            toValue: 0,
+            duration: 380,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ])
+      );
+
+      loopPulse.start();
+      loopWave.start();
+      return () => {
+        loopPulse.stop();
+        loopWave.stop();
+      };
     }
-  }, [isAiSpeaking, isUserSpeaking, pulseAnim1, pulseAnim2, pulseAnim3]);
+
+    pulseAnim1.setValue(1);
+    pulseAnim2.setValue(1);
+    waveAnim.setValue(0);
+  }, [isAiSpeaking, isUserSpeaking, pulseAnim1, pulseAnim2, waveAnim]);
 
   useEffect(() => {
     speakAiMessage(messages[0].content);
@@ -155,7 +168,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   }, []);
 
   const speakAiMessage = (text: string) => {
-    if (isMutedAudio) {
+    if (isMutedAudio || !text.trim()) {
       setIsAiSpeaking(false);
       return;
     }
@@ -165,13 +178,15 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     });
   };
 
-  const handleSwitchTopic = () => {
-    const nextIdx = (activeScenarioIdx + 1) % SCENARIOS.length;
-    const nextScenario = SCENARIOS[nextIdx];
+  const handleSelectScenario = (idx: number) => {
+    const nextScenario = SCENARIOS[idx];
+    if (!nextScenario) return;
     stopAllAudio();
     playSoundEffect('button');
-    setActiveScenarioIdx(nextIdx);
+    setActiveScenarioIdx(idx);
+    setShowScenarios(false);
     setLastFeedback(null);
+    setCallDuration(0);
     const introMsg: ChatMessage = {
       id: `init-${nextScenario.id}-${Date.now()}`,
       role: 'assistant',
@@ -240,7 +255,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
       playSoundEffect('callRing');
       setTimeout(() => {
         speakAiMessage('Welcome back! Go ahead whenever you are ready.');
-      }, 900);
+      }, 700);
     }
   };
 
@@ -255,60 +270,113 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
   const currentQuickPrompts =
     SCENARIO_PROMPTS[activeScenario.id] || SCENARIO_PROMPTS['interview-tech'];
+  const latestAiText =
+    [...messages].reverse().find((m) => m.role === 'assistant')?.content ||
+    activeScenario.initialMessage;
+  const hasTyped = userTranscript.trim().length > 0;
 
   return (
     <View style={styles.container}>
-      {/* Top Call Header */}
-      <View style={styles.callHeader}>
-        <View style={styles.callHeaderLeft}>
-          <View style={styles.liveIndicator}>
-            <View
-              style={[
-                styles.liveDot,
-                { backgroundColor: isCalling ? THEME.colors.primaryGlow : THEME.colors.textMuted },
-              ]}
-            />
-            <Text style={styles.liveTimerText}>
-              {isCalling ? formatTime(callDuration) : 'Paused'}
-            </Text>
-          </View>
-          <Text style={styles.scenarioTitleTag} numberOfLines={1}>
+      {/* Minimal Session Utility Bar (Zero Heavy Box) */}
+      <View style={styles.sessionBar}>
+        <TouchableOpacity
+          style={styles.scenarioTrigger}
+          onPress={() => setShowScenarios((prev) => !prev)}
+          activeOpacity={0.78}
+        >
+          <View
+            style={[
+              styles.liveDot,
+              {
+                backgroundColor: isCalling
+                  ? THEME.colors.primaryGlow
+                  : THEME.colors.textMuted,
+              },
+            ]}
+          />
+          <Text style={styles.timerText}>{isCalling ? formatTime(callDuration) : 'Paused'}</Text>
+          <Text style={styles.dotSeparator}>·</Text>
+          <Text style={styles.scenarioLabel} numberOfLines={1}>
             {activeScenario.title}
           </Text>
-        </View>
+          <Ionicons
+            name={showScenarios ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={THEME.colors.textSecondary}
+          />
+        </TouchableOpacity>
 
-        <View style={styles.headerActionsRight}>
+        <View style={styles.utilityActions}>
           <TouchableOpacity
-            style={[styles.iconPillBtn, showTranscript && styles.iconPillBtnActive]}
+            style={[styles.utilityBtn, showTranscript && styles.utilityBtnActive]}
             onPress={() => setShowTranscript((prev) => !prev)}
+            activeOpacity={0.78}
           >
             <Ionicons
-              name="chatbox-ellipses-outline"
-              size={14}
+              name={showTranscript ? 'chatbubbles' : 'chatbubbles-outline'}
+              size={16}
               color={showTranscript ? '#FFFFFF' : THEME.colors.textSecondary}
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.scenarioPillBtn} onPress={handleSwitchTopic}>
+          <TouchableOpacity
+            style={styles.utilityBtn}
+            onPress={toggleMute}
+            activeOpacity={0.78}
+          >
             <Ionicons
-              name="swap-horizontal"
-              size={14}
-              color={THEME.colors.primaryGlow}
-              style={{ marginRight: 4 }}
+              name={isMutedAudio ? 'volume-mute-outline' : 'volume-high-outline'}
+              size={17}
+              color={isMutedAudio ? THEME.colors.textMuted : THEME.colors.primaryGlow}
             />
-            <Text style={styles.scenarioPillText}>Switch</Text>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Collapsible Horizontal Scenario Selector */}
+      {showScenarios && (
+        <View style={styles.scenarioDrawer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scenarioDrawerContent}
+          >
+            {SCENARIOS.map((sc, idx) => {
+              const selected = idx === activeScenarioIdx;
+              return (
+                <TouchableOpacity
+                  key={sc.id}
+                  style={[styles.scenarioChip, selected && styles.scenarioChipActive]}
+                  onPress={() => handleSelectScenario(idx)}
+                  activeOpacity={0.82}
+                >
+                  <Ionicons
+                    name={sc.avatar as keyof typeof Ionicons.glyphMap}
+                    size={13}
+                    color={selected ? '#FFFFFF' : THEME.colors.textSecondary}
+                  />
+                  <Text
+                    style={[styles.scenarioChipText, selected && styles.scenarioChipTextActive]}
+                  >
+                    {sc.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Main Content Stage: Transcript Chat OR Ambient Voice Studio */}
       {showTranscript ? (
         <ScrollView
           ref={transcriptScrollRef}
-          style={styles.transcriptScroll}
+          style={styles.mainScroll}
           contentContainerStyle={styles.transcriptContent}
+          showsVerticalScrollIndicator={false}
           onContentSizeChange={() => transcriptScrollRef.current?.scrollToEnd({ animated: true })}
         >
-          <Text style={styles.transcriptRoleHeader}>{activeScenario.persona}</Text>
+          <Text style={styles.personaEyebrow}>{activeScenario.persona}</Text>
           {messages.map((msg) => {
             const isUser = msg.role === 'user';
             return (
@@ -324,164 +392,222 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           })}
         </ScrollView>
       ) : (
-        <>
-          {/* Avatar Stage */}
+        <ScrollView
+          style={styles.mainScroll}
+          contentContainerStyle={styles.studioScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Ambient Voice Orb Stage */}
           <View style={styles.avatarStage}>
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                { width: 172, height: 172, borderRadius: 86, opacity: 0.14, transform: [{ scale: pulseAnim3 }] },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                { width: 146, height: 146, borderRadius: 73, opacity: 0.24, transform: [{ scale: pulseAnim2 }] },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                { width: 120, height: 120, borderRadius: 60, opacity: 0.36, transform: [{ scale: pulseAnim1 }] },
-              ]}
-            />
+            <View style={styles.orbWrap}>
+              <Animated.View
+                style={[
+                  styles.auraRingOuter,
+                  {
+                    borderColor: isUserSpeaking
+                      ? 'rgba(251, 191, 36, 0.28)'
+                      : 'rgba(127, 67, 254, 0.24)',
+                    transform: [{ scale: pulseAnim2 }],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.auraRingInner,
+                  {
+                    backgroundColor: isUserSpeaking
+                      ? 'rgba(251, 191, 36, 0.14)'
+                      : 'rgba(127, 67, 254, 0.16)',
+                    transform: [{ scale: pulseAnim1 }],
+                  },
+                ]}
+              />
 
-            <View style={styles.missNovaCircle}>
-              <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatarImg} />
+              <View
+                style={[
+                  styles.portraitRing,
+                  isAiSpeaking && styles.portraitRingSpeaking,
+                  isUserSpeaking && styles.portraitRingListening,
+                ]}
+              >
+                <Image
+                  source={SUPERNOVA_IMAGES.novaAvatar}
+                  style={styles.portraitImg}
+                  resizeMode="cover"
+                />
+              </View>
             </View>
 
-            <Text style={styles.missNovaName}>Nila</Text>
-            <Text style={styles.statusLabel}>
-              {isMutedAudio
-                ? 'Audio muted'
-                : isAiSpeaking
-                ? 'Speaking...'
-                : isUserSpeaking
-                ? 'Hold & speak or type below'
-                : 'Ready to practice'}
+            <View style={styles.statusRow}>
+              <View style={styles.waveBars}>
+                {[0.55, 1, 0.72, 0.9, 0.5].map((ratio, barIdx) => {
+                  const high = 0.55 + ratio * 0.8;
+                  const barScale =
+                    isAiSpeaking || isUserSpeaking
+                      ? waveAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: barIdx % 2 === 0 ? [0.42, high] : [high, 0.42],
+                        })
+                      : 0.42;
+                  return (
+                    <Animated.View
+                      key={barIdx}
+                      style={[
+                        styles.waveBar,
+                        {
+                          backgroundColor: isUserSpeaking
+                            ? THEME.colors.gold
+                            : isAiSpeaking
+                            ? THEME.colors.primaryGlow
+                            : '#4E496B',
+                          transform: [{ scaleY: barScale }],
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={styles.statusLabel}>
+                {isMutedAudio
+                  ? 'Audio muted'
+                  : isUserSpeaking
+                  ? 'Listening to you...'
+                  : isAiSpeaking
+                  ? 'Speaking...'
+                  : isCalling
+                  ? 'Tap replay or speak below'
+                  : 'Session paused'}
+              </Text>
+            </View>
+
+            <Text style={styles.personaCaption} numberOfLines={1}>
+              {activeScenario.persona}
             </Text>
           </View>
 
-          {/* Subtitle Banner */}
-          <View style={styles.subtitleBox}>
-            <Text style={styles.subtitleText} numberOfLines={3}>
-              "{messages[messages.length - 1]?.content}"
-            </Text>
+          {/* Open Spoken Dialogue Quote (Zero Box Border) */}
+          <View style={styles.quoteBlock}>
+            <Text style={styles.quoteText}>"{latestAiText}"</Text>
+            <TouchableOpacity
+              style={styles.replayChip}
+              onPress={() => speakAiMessage(latestAiText)}
+              activeOpacity={0.78}
+            >
+              <Ionicons name="volume-medium-outline" size={14} color={THEME.colors.primaryGlow} />
+              <Text style={styles.replayText}>Listen again</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Real-Time Grammar Feedback */}
+          {/* Left-Accented Subtle Coach Feedback Strip */}
           {lastFeedback && (
-            <View style={styles.feedbackCard}>
-              <View style={styles.feedbackHeader}>
-                <Ionicons
-                  name={lastFeedback.hasErrors ? 'alert-circle' : 'checkmark-circle'}
-                  size={16}
-                  color={lastFeedback.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow}
-                />
+            <View
+              style={[
+                styles.coachStrip,
+                {
+                  borderLeftColor: lastFeedback.hasErrors
+                    ? THEME.colors.gold
+                    : THEME.colors.primaryGlow,
+                },
+              ]}
+            >
+              <View style={styles.coachTopRow}>
                 <Text
                   style={[
-                    styles.feedbackScoreText,
-                    { color: lastFeedback.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow },
+                    styles.coachScoreText,
+                    {
+                      color: lastFeedback.hasErrors
+                        ? THEME.colors.gold
+                        : THEME.colors.primaryGlow,
+                    },
                   ]}
                 >
-                  Fluency Score: {lastFeedback.fluencyScore}/100{' '}
-                  {lastFeedback.hasErrors ? '• Suggestion Ready' : '• Well Said!'}
+                  Fluency {lastFeedback.fluencyScore}/100 ·{' '}
+                  {lastFeedback.hasErrors ? 'Natural Polish' : 'Great Phrasing'}
                 </Text>
               </View>
               {lastFeedback.hasErrors && (
-                <Text style={styles.correctedSentenceText}>"{lastFeedback.correctedSentence}"</Text>
+                <Text style={styles.correctedText}>"{lastFeedback.correctedSentence}"</Text>
               )}
-              <Text style={styles.tamilFeedbackText}>{lastFeedback.tamilExplanation}</Text>
+              <Text style={styles.tamilTipText}>{lastFeedback.tamilExplanation}</Text>
             </View>
           )}
-        </>
+        </ScrollView>
       )}
 
-      {/* Contextual Quick Reply Suggestions */}
-      <View style={styles.quickPromptsRow}>
+      {/* Contextual Single-Line Quick Reply Chips */}
+      <View style={styles.promptsWrap}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+          contentContainerStyle={styles.promptsContent}
         >
           {currentQuickPrompts.map((prompt, idx) => (
             <TouchableOpacity
               key={idx}
-              style={styles.promptPill}
+              style={styles.promptChip}
               onPress={() => handleSendSpokenText(prompt)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.promptPillText}>{prompt}</Text>
+              <Text style={styles.promptChipText} numberOfLines={1}>
+                {prompt}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Bottom Speaking & Call Controls */}
-      <View style={styles.callControlsContainer}>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.voiceTextInput}
-            placeholder="Type your response here..."
-            placeholderTextColor={THEME.colors.textMuted}
-            value={userTranscript}
-            onChangeText={setUserTranscript}
-            onSubmitEditing={() => handleSendSpokenText()}
+      {/* Single Floating Voice Composer Dock */}
+      <View style={styles.composerDock}>
+        <TouchableOpacity
+          style={[styles.pauseCircleBtn, !isCalling && styles.pauseCircleBtnResume]}
+          onPress={toggleCallState}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={isCalling ? 'pause' : 'play'}
+            size={16}
+            color={isCalling ? THEME.colors.textSecondary : '#FFFFFF'}
           />
-          <TouchableOpacity
-            style={[styles.sendVoiceBtn, !userTranscript.trim() && { opacity: 0.5 }]}
-            onPress={() => handleSendSpokenText()}
-            disabled={!userTranscript.trim()}
-          >
-            <Ionicons name="arrow-up" size={20} color={THEME.colors.text} />
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.controlButtonsBar}>
-          <TouchableOpacity
-            style={[
-              styles.callActionBtn,
-              {
-                backgroundColor: isCalling ? '#28223A' : THEME.colors.primary,
-                borderWidth: 1,
-                borderColor: isCalling ? '#3D3456' : THEME.colors.primaryGlow,
-              },
-            ]}
-            onPress={toggleCallState}
-          >
-            <Image source={SUPERNOVA_IMAGES.endCall} style={styles.endCallIcon} resizeMode="contain" />
-          </TouchableOpacity>
+        <TextInput
+          style={styles.composerInput}
+          placeholder="Reply or hold mic to speak..."
+          placeholderTextColor={THEME.colors.textMuted}
+          value={userTranscript}
+          onChangeText={setUserTranscript}
+          onSubmitEditing={() => handleSendSpokenText()}
+          returnKeyType="send"
+        />
 
+        {hasTyped ? (
+          <TouchableOpacity onPress={() => handleSendSpokenText()} activeOpacity={0.85}>
+            <LinearGradient
+              colors={THEME.gradients.primary}
+              style={styles.actionCircleBtn}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
           <TouchableOpacity
-            style={[styles.bigMicBtn, isUserSpeaking && styles.bigMicBtnActive]}
-            activeOpacity={0.8}
+            style={[styles.micCircleBtn, isUserSpeaking && styles.micCircleBtnListening]}
+            activeOpacity={0.82}
             onPressIn={() => setIsUserSpeaking(true)}
             onPressOut={() => {
               setIsUserSpeaking(false);
-              if (userTranscript.trim()) {
-                handleSendSpokenText();
-              } else {
-                handleSendSpokenText(currentQuickPrompts[0]);
-              }
+              handleSendSpokenText(currentQuickPrompts[0]);
             }}
           >
-            <Image source={SUPERNOVA_IMAGES.bubbleMic} style={styles.bubbleMicIcon} resizeMode="contain" />
-            <Text style={styles.micLabel}>
-              {isUserSpeaking ? 'Release' : 'Practice'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.callActionBtnSecondary, isMutedAudio && styles.callActionBtnMuted]}
-            onPress={toggleMute}
-            onLongPress={() => speakAiMessage(messages[messages.length - 1]?.content || '')}
-          >
             <Ionicons
-              name={isMutedAudio ? 'volume-mute' : 'volume-high'}
-              size={22}
-              color={isMutedAudio ? THEME.colors.textMuted : THEME.colors.primaryGlow}
+              name={isUserSpeaking ? 'radio' : 'mic'}
+              size={18}
+              color="#FFFFFF"
             />
           </TouchableOpacity>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -495,89 +621,114 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     alignSelf: 'center',
   },
-  callHeader: {
+
+  /* SESSION BAR */
+  sessionBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
-  callHeaderLeft: {
+  scenarioTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  liveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginRight: 5,
-  },
-  liveTimerText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: THEME.colors.text,
-  },
-  scenarioTitleTag: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    marginLeft: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
     flexShrink: 1,
-  },
-  headerActionsRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginRight: 10,
     gap: 6,
   },
-  iconPillBtn: {
-    width: 30,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: THEME.colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  timerText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  dotSeparator: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  scenarioLabel: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+    flexShrink: 1,
+  },
+  utilityActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  utilityBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconPillBtnActive: {
+  utilityBtnActive: {
     backgroundColor: THEME.colors.primary,
-    borderColor: THEME.colors.primary,
   },
-  scenarioPillBtn: {
+
+  /* COLLAPSIBLE SCENARIO PICKER */
+  scenarioDrawer: {
+    paddingBottom: 6,
+  },
+  scenarioDrawerContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  scenarioChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    gap: 6,
+    backgroundColor: '#151422',
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#27243D',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  scenarioPillText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
-    color: THEME.colors.primaryGlow,
+  scenarioChipActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primaryGlow,
   },
-  transcriptScroll: {
+  scenarioChipText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+  },
+  scenarioChipTextActive: {
+    fontFamily: THEME.fonts.bold,
+    color: '#FFFFFF',
+  },
+
+  /* MAIN STAGE & TRANSCRIPT */
+  mainScroll: {
     flex: 1,
   },
+  studioScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
   transcriptContent: {
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     gap: 10,
   },
-  transcriptRoleHeader: {
+  personaEyebrow: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
     color: THEME.colors.primaryGlow,
@@ -595,219 +746,242 @@ const styles = StyleSheet.create({
   },
   chatBubble: {
     maxWidth: '82%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 16,
   },
   chatBubbleUser: {
     backgroundColor: THEME.colors.primary,
     borderBottomRightRadius: 4,
   },
   chatBubbleBot: {
-    backgroundColor: THEME.colors.surfaceCard,
+    backgroundColor: '#161423',
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: '#252238',
     borderBottomLeftRadius: 4,
   },
   chatBubbleText: {
     fontFamily: THEME.fonts.body,
     fontSize: 13.5,
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     lineHeight: 19,
   },
+
+  /* AMBIENT VOICE ORB STAGE */
   avatarStage: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    position: 'relative',
+    marginBottom: 16,
   },
-  rippleRing: {
-    position: 'absolute',
-    backgroundColor: THEME.colors.primary,
-  },
-  missNovaCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(127, 67, 254, 0.25)',
-    borderWidth: 2.5,
-    borderColor: THEME.colors.primary,
+  orbWrap: {
+    width: 132,
+    height: 132,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
+  },
+  auraRingOuter: {
+    position: 'absolute',
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    borderWidth: 1,
+  },
+  auraRingInner: {
+    position: 'absolute',
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+  },
+  portraitRing: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: '#161424',
+    borderWidth: 2,
+    borderColor: 'rgba(167, 139, 250, 0.45)',
     overflow: 'hidden',
   },
-  missNovaAvatarImg: {
-    width: 96,
-    height: 96,
+  portraitRingSpeaking: {
+    borderColor: THEME.colors.primaryGlow,
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.65,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  portraitRingListening: {
+    borderColor: THEME.colors.gold,
+    shadowColor: '#FBBF24',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  portraitImg: {
+    width: '100%',
+    height: '100%',
     transform: [{ scale: 1.04 }],
   },
-  endCallIcon: {
-    width: 20,
-    height: 20,
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
   },
-  bubbleMicIcon: {
-    width: 28,
-    height: 28,
+  waveBars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 14,
   },
-  missNovaName: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 18,
-    color: THEME.colors.text,
-    marginTop: 10,
+  waveBar: {
+    width: 2.5,
+    height: 12,
+    borderRadius: 1.5,
   },
   statusLabel: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 12,
-    color: THEME.colors.primaryGlow,
-    marginTop: 2,
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12.5,
+    color: '#E9D5FF',
   },
-  subtitleBox: {
-    backgroundColor: THEME.colors.surfaceCard,
-    marginHorizontal: 14,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+  personaCaption: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11.5,
+    color: THEME.colors.textMuted,
+    marginTop: 3,
   },
-  subtitleText: {
+
+  /* OPEN SPOKEN QUOTE */
+  quoteBlock: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  quoteText: {
     fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 14,
-    color: THEME.colors.text,
+    fontSize: 15.5,
+    color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 23,
   },
-  feedbackCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    marginHorizontal: 14,
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+  replayChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
   },
-  feedbackHeader: {
+  replayText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11.5,
+    color: '#C4B5FD',
+  },
+
+  /* LEFT-ACCENTED COACH TIP */
+  coachStrip: {
+    marginTop: 16,
+    backgroundColor: 'rgba(24, 22, 38, 0.85)',
+    borderLeftWidth: 3,
+    borderRadius: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+  },
+  coachTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  feedbackScoreText: {
+  coachScoreText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
-    marginLeft: 6,
+    fontSize: 11.5,
   },
-  correctedSentenceText: {
+  correctedText: {
     fontFamily: THEME.fonts.semiBold,
     fontSize: 13,
-    color: '#E9D5FF',
+    color: '#FFFFFF',
     marginTop: 4,
+    lineHeight: 19,
   },
-  tamilFeedbackText: {
+  tamilTipText: {
     fontFamily: THEME.fonts.tamilMedium,
-    fontSize: 12.5,
-    color: THEME.colors.gold,
-    lineHeight: 21,
-    marginTop: 2,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    lineHeight: 20,
+    marginTop: 3,
   },
-  quickPromptsRow: {
-    marginVertical: 10,
+
+  /* QUICK REPLY CHIPS */
+  promptsWrap: {
+    paddingTop: 4,
+    paddingBottom: 8,
   },
-  promptPill: {
-    backgroundColor: THEME.colors.surfaceCard,
+  promptsContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  promptChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderRadius: 999,
+    maxWidth: 250,
   },
-  promptPillText: {
+  promptChipText: {
     fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
   },
-  callControlsContainer: {
-    marginTop: 'auto',
-    backgroundColor: THEME.colors.surface,
-    paddingTop: 10,
-    paddingBottom: 14,
-    paddingHorizontal: 14,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-  },
-  inputRow: {
+
+  /* FLOATING COMPOSER PILL DOCK */
+  composerDock: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  voiceTextInput: {
-    fontFamily: THEME.fonts.body,
-    flex: 1,
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    color: THEME.colors.text,
-    fontSize: 13,
+    backgroundColor: '#161423',
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: 'rgba(167, 139, 250, 0.22)',
+    borderRadius: 28,
+    marginHorizontal: 14,
+    marginBottom: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    gap: 8,
   },
-  sendVoiceBtn: {
+  pauseCircleBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pauseCircleBtnResume: {
+    backgroundColor: THEME.colors.primary,
+  },
+  composerInput: {
+    flex: 1,
+    fontFamily: THEME.fonts.body,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  actionCircleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micCircleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
   },
-  controlButtonsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  callActionBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  callActionBtnSecondary: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: THEME.colors.surfaceCard,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  callActionBtnMuted: {
-    borderColor: '#484366',
-    backgroundColor: '#232036',
-  },
-  bigMicBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: THEME.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2.5,
-    borderColor: THEME.colors.primaryGlow,
-    shadowColor: THEME.colors.primary,
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  bigMicBtnActive: {
+  micCircleBtnListening: {
     backgroundColor: THEME.colors.gold,
-    borderColor: THEME.colors.goldGlow,
-  },
-  micLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 9,
-    color: THEME.colors.text,
-    marginTop: 2,
-    textTransform: 'uppercase',
   },
 });
