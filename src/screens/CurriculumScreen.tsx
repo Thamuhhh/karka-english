@@ -104,10 +104,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Top Navigation Header: Brand Left + Live Streak Right */}
+      {/* Unified Top Navigation Header (Seamless with Sticky Unit Band) */}
       <View style={styles.topNavHeader}>
-        <Text style={styles.appNameText}>NovaBreaker</Text>
-        <LiveStreakBadge streakDays={stats.streakDays} />
+        <View style={styles.topNavHeaderInner}>
+          <Text style={styles.appNameText}>NovaBreaker</Text>
+          <LiveStreakBadge streakDays={stats.streakDays} />
+        </View>
       </View>
 
       {/* Single Unified Obsidian Topography Canvas */}
@@ -564,10 +566,15 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   topNavHeader: {
+    width: '100%',
     backgroundColor: THEME.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
-    paddingVertical: 14,
+  },
+  topNavHeaderInner: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingTop: 14,
+    paddingBottom: 6,
     paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -603,7 +610,7 @@ const styles = StyleSheet.create({
   },
   stickyUnitHeader: {
     width: '100%',
-    backgroundColor: 'rgba(14, 14, 20, 0.94)',
+    backgroundColor: THEME.colors.background,
     zIndex: 10,
   },
   stickyUnitHeaderInner: {
@@ -611,7 +618,7 @@ const styles = StyleSheet.create({
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 10,
   },
   unitMapSection: {
