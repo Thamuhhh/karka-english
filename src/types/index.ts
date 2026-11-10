@@ -17,6 +17,7 @@ export interface GrammarCorrection {
   hasErrors: boolean;
   explanation: string;
   tamilExplanation: string;
+  pronunciationTip?: string;
   formalVersion: string;
   casualVersion: string;
   nativeIdiomaticVersion: string;

@@ -3,11 +3,59 @@ import { Audio } from 'expo-av';
 
 let currentSound: Audio.Sound | null = null;
 let activeSequenceId = 0;
+let cachedVoices: Speech.Voice[] | null = null;
 
 export type EnglishAccent = 'en-US' | 'en-GB' | 'en-AU';
 
 let currentAccent: EnglishAccent = 'en-US';
 let currentSpeechRate: number = 0.95;
+
+async function ensureVoicesLoaded(): Promise<Speech.Voice[]> {
+  if (cachedVoices) return cachedVoices;
+  try {
+    const list = await Speech.getAvailableVoicesAsync();
+    cachedVoices = Array.isArray(list) ? list : [];
+    return cachedVoices;
+  } catch {
+    return [];
+  }
+}
+
+async function pickPreferredVoiceId(language: string): Promise<string | undefined> {
+  const voices = await ensureVoicesLoaded();
+  if (voices.length === 0) return undefined;
+
+  const targetLower = language.toLowerCase();
+  const baseLang = targetLower.split('-')[0];
+  const matching = voices.filter((v) => {
+    const vl = (v.language || '').toLowerCase();
+    return vl === targetLower || vl.startsWith(`${baseLang}-`) || vl === baseLang;
+  });
+  if (matching.length === 0) return undefined;
+
+  const scoreVoice = (v: Speech.Voice): number => {
+    let score = 0;
+    const id = `${v.identifier} ${v.name}`.toLowerCase();
+    if ((v.language || '').toLowerCase() === targetLower) score += 30;
+    if (v.quality === Speech.VoiceQuality.Enhanced) score += 40;
+    if (id.includes('network') || id.includes('neural') || id.includes('wavenet')) score += 25;
+    if (
+      id.includes('samantha') ||
+      id.includes('karen') ||
+      id.includes('serena') ||
+      id.includes('tpf') ||
+      id.includes('sfg') ||
+      id.includes('taf') ||
+      id.includes('female')
+    ) {
+      score += 10;
+    }
+    return score;
+  };
+
+  const best = [...matching].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+  return best?.identifier;
+}
 
 export function setPreferredAccent(accent: EnglishAccent) {
   currentAccent = accent;
@@ -39,7 +87,7 @@ async function stopPlaybackOnly() {
   }
 }
 
-function speakWithLanguage(
+async function speakWithLanguage(
   text: string,
   language: string,
   onDone?: () => void,
@@ -56,8 +104,10 @@ function speakWithLanguage(
   const baseRate = rateOverride ?? currentSpeechRate;
 
   try {
+    const voiceId = await pickPreferredVoiceId(language);
     Speech.speak(text, {
       language,
+      ...(voiceId ? { voice: voiceId } : {}),
       rate: language === 'ta-IN' ? Math.min(baseRate, 0.92) : baseRate,
       pitch: 1.0,
       onDone: finishOnce,

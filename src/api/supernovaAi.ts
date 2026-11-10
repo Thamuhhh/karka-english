@@ -654,3 +654,128 @@ Respond warmly in natural spoken English (1-2 short sentences) reacting specific
   const reply = localReplies[Math.min(userTurnNum - 1, localReplies.length - 1)] || localReplies[0];
   return { reply, feedback };
 }
+
+export type SpokenAudioContext =
+  | { mode: 'scenario'; scenario: RoleplayScenario }
+  | { mode: 'lesson'; lesson: SupernovaClass };
+
+export type SpokenAudioResult =
+  | { ok: true; transcript: string; reply: string; feedback: GrammarCorrection }
+  | { ok: false; reason: 'no_key' | 'unintelligible' | 'network' };
+
+/**
+ * Evaluates a real recorded user voice turn via Gemini 2.5 Flash multimodal audio:
+ * transcribes speech, coaches pronunciation & grammar (EN + Tamil), and generates Nila's reply.
+ */
+export async function analyzeAndReplySpokenAudio(
+  base64Audio: string,
+  mimeType: string,
+  history: ChatMessage[],
+  context: SpokenAudioContext
+): Promise<SpokenAudioResult> {
+  const activeKey = resolveGeminiKey();
+  if (!activeKey) {
+    return { ok: false, reason: 'no_key' };
+  }
+
+  const recentLines = history
+    .slice(-6)
+    .map((m) => `${m.role === 'assistant' ? 'Coach' : 'Learner'}: ${m.content}`)
+    .join('\n');
+
+  const roleContext =
+    context.mode === 'scenario'
+      ? `Roleplay Persona: ${context.scenario.persona}\nScenario: ${context.scenario.description}\nStyle: ${context.scenario.systemPrompt}`
+      : `Lesson: ${context.lesson.title}\nGoal: ${context.lesson.speakingChallenge.prompt}\nGrammar Target: ${context.lesson.grammarTopic}`;
+
+  const prompt = `Listen carefully to the learner's English speech audio (spoken by a Tamil-native learner).
+${roleContext}
+Recent Conversation:
+${recentLines || '(First learner turn)'}
+
+Tasks:
+1. Transcribe accurately what the learner actually spoke in the audio (keep empty string "" if audio is silent or unintelligible).
+2. Score fluency & pronunciation clarity from 40 to 100.
+3. Give a short actionable pronunciationTip (1 concise sentence on clarity, syllable stress, or pacing).
+4. Correct grammar/phrasing naturally if needed, and explain briefly in English and Tamil.
+5. Write a warm, natural 1-2 sentence reply continuing this conversation with one clear follow-up question.
+
+Respond ONLY with valid JSON without markdown backticks:
+{
+  "transcript": "string",
+  "fluencyScore": number,
+  "pronunciationTip": "string",
+  "hasErrors": boolean,
+  "correctedSentence": "string",
+  "explanation": "string",
+  "tamilExplanation": "string",
+  "reply": "string"
+}`;
+
+  const json = await callGeminiWithTimeout(
+    activeKey,
+    {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: base64Audio } },
+          ],
+        },
+      ],
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.45 },
+    },
+    15000
+  );
+
+  const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) {
+    return { ok: false, reason: 'network' };
+  }
+
+  try {
+    const parsed = JSON.parse(rawText);
+    const transcript = typeof parsed.transcript === 'string' ? parsed.transcript.trim() : '';
+    if (!transcript) {
+      return { ok: false, reason: 'unintelligible' };
+    }
+
+    const corrected =
+      typeof parsed.correctedSentence === 'string' && parsed.correctedSentence.trim()
+        ? parsed.correctedSentence.trim()
+        : transcript;
+
+    const feedback: GrammarCorrection = {
+      originalSentence: transcript,
+      correctedSentence: corrected,
+      hasErrors: Boolean(parsed.hasErrors),
+      explanation:
+        typeof parsed.explanation === 'string' && parsed.explanation.trim()
+          ? parsed.explanation.trim()
+          : 'Clear spoken response!',
+      tamilExplanation:
+        typeof parsed.tamilExplanation === 'string' && parsed.tamilExplanation.trim()
+          ? parsed.tamilExplanation.trim()
+          : 'நன்றாக பேசினீர்கள்! தொடர்ந்து பயிற்சி செய்யுங்கள்.',
+      pronunciationTip:
+        typeof parsed.pronunciationTip === 'string' && parsed.pronunciationTip.trim()
+          ? parsed.pronunciationTip.trim()
+          : undefined,
+      formalVersion: corrected,
+      casualVersion: corrected,
+      nativeIdiomaticVersion: corrected,
+      fluencyScore: Math.max(40, Math.min(100, Number(parsed.fluencyScore) || 82)),
+    };
+
+    const reply =
+      typeof parsed.reply === 'string' && parsed.reply.trim()
+        ? parsed.reply.trim()
+        : 'Great job! Tell me a bit more about that.';
+
+    return { ok: true, transcript, reply, feedback };
+  } catch (e) {
+    console.warn('Gemini audio JSON parse error:', e);
+    return { ok: false, reason: 'network' };
+  }
+}

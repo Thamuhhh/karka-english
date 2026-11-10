@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -11,13 +13,19 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { playSoundEffect } from '../services/soundEffectsService';
 import { speakText, stopAllAudio } from '../services/ttsService';
-import { sendChatMessage } from '../api/supernovaAi';
+import {
+  beginAudioCapture,
+  finishAudioCapture,
+  abortAudioCapture,
+} from '../services/voiceRecorderService';
+import { analyzeAndReplySpokenAudio, sendChatMessage } from '../api/supernovaAi';
 import { SCENARIOS } from '../constants/scenarios';
 import { ChatMessage, GrammarCorrection, UserStats } from '../types';
 import { addXp, incrementMetric } from '../services/storageService';
@@ -67,6 +75,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const [callDuration, setCallDuration] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [userTranscript, setUserTranscript] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -77,6 +86,8 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     },
   ]);
   const [lastFeedback, setLastFeedback] = useState<GrammarCorrection | null>(null);
+
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   const pulseAnim1 = useRef(new Animated.Value(1)).current;
   const pulseAnim2 = useRef(new Animated.Value(1)).current;
@@ -164,6 +175,8 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     speakAiMessage(messages[0].content);
     return () => {
       stopAllAudio();
+      abortAudioCapture(recordingRef.current);
+      recordingRef.current = null;
     };
   }, []);
 
@@ -182,6 +195,9 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     const nextScenario = SCENARIOS[idx];
     if (!nextScenario) return;
     stopAllAudio();
+    abortAudioCapture(recordingRef.current);
+    recordingRef.current = null;
+    setIsUserSpeaking(false);
     playSoundEffect('button');
     setActiveScenarioIdx(idx);
     setShowScenarios(false);
@@ -236,6 +252,86 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     } catch (e) {
       console.warn('Call error:', e);
       setIsAiSpeaking(false);
+    }
+  };
+
+  const handleMicToggle = async () => {
+    if (isProcessingAudio) return;
+
+    if (!isUserSpeaking) {
+      if (!isCalling) setIsCalling(true);
+      setIsAiSpeaking(false);
+      const started = await beginAudioCapture();
+      if (!started.ok) {
+        Alert.alert(
+          started.reason === 'denied' ? 'Microphone Permission' : 'Microphone Error',
+          started.reason === 'denied'
+            ? 'Please allow microphone access so Nila can hear your English pronunciation.'
+            : 'Could not start microphone recording on this device.'
+        );
+        return;
+      }
+      recordingRef.current = started.recording;
+      setIsUserSpeaking(true);
+      return;
+    }
+
+    const activeRecording = recordingRef.current;
+    recordingRef.current = null;
+    setIsUserSpeaking(false);
+    if (!activeRecording) return;
+
+    setIsProcessingAudio(true);
+    try {
+      const encoded = await finishAudioCapture(activeRecording);
+      if (!encoded) {
+        Alert.alert(
+          'Too Short',
+          'Tap the mic, speak clearly for at least 1 second, then tap again to send.'
+        );
+        return;
+      }
+
+      const result = await analyzeAndReplySpokenAudio(
+        encoded.base64,
+        encoded.mimeType,
+        messages,
+        { mode: 'scenario', scenario: activeScenario }
+      );
+
+      if (!result.ok) {
+        const msg =
+          result.reason === 'no_key'
+            ? 'Add EXPO_PUBLIC_GEMINI_API_KEY in .env and restart with npx expo start -c.'
+            : result.reason === 'unintelligible'
+              ? 'Could not hear words clearly. Try speaking closer to your microphone.'
+              : 'Could not reach Gemini right now. Check your internet connection or API quota.';
+        Alert.alert('Voice Check', msg);
+        return;
+      }
+
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: result.transcript,
+        timestamp: Date.now(),
+      };
+      const botMsg: ChatMessage = {
+        id: `bot-${Date.now()}`,
+        role: 'assistant',
+        content: result.reply,
+        timestamp: Date.now(),
+      };
+
+      setLastFeedback(result.feedback);
+      setMessages((prev) => [...prev, userMsg, botMsg]);
+      await addXp(15);
+      const updated = await incrementMetric('conversationsDone', 1);
+      onStatsUpdate?.(updated);
+
+      speakAiMessage(result.reply);
+    } finally {
+      setIsProcessingAudio(false);
     }
   };
 
@@ -470,12 +566,14 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
               <Text style={styles.statusLabel}>
                 {isMutedAudio
                   ? 'Audio muted'
+                  : isProcessingAudio
+                  ? 'Checking pronunciation & reply...'
                   : isUserSpeaking
-                  ? 'Listening to you...'
+                  ? 'Listening... Tap mic to send'
                   : isAiSpeaking
                   ? 'Speaking...'
                   : isCalling
-                  ? 'Tap replay or speak below'
+                  ? 'Tap mic to speak'
                   : 'Session paused'}
               </Text>
             </View>
@@ -528,6 +626,11 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
               {lastFeedback.hasErrors && (
                 <Text style={styles.correctedText}>"{lastFeedback.correctedSentence}"</Text>
               )}
+              {lastFeedback.pronunciationTip && (
+                <Text style={styles.pronunciationTipText}>
+                  Pronunciation: {lastFeedback.pronunciationTip}
+                </Text>
+              )}
               <Text style={styles.tamilTipText}>{lastFeedback.tamilExplanation}</Text>
             </View>
           )}
@@ -572,7 +675,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
         <TextInput
           style={styles.composerInput}
-          placeholder="Reply or hold mic to speak..."
+          placeholder={isUserSpeaking ? 'Listening... tap mic to send' : 'Reply or tap mic to speak...'}
           placeholderTextColor={THEME.colors.textMuted}
           value={userTranscript}
           onChangeText={setUserTranscript}
@@ -595,17 +698,18 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           <TouchableOpacity
             style={[styles.micCircleBtn, isUserSpeaking && styles.micCircleBtnListening]}
             activeOpacity={0.82}
-            onPressIn={() => setIsUserSpeaking(true)}
-            onPressOut={() => {
-              setIsUserSpeaking(false);
-              handleSendSpokenText(currentQuickPrompts[0]);
-            }}
+            disabled={isProcessingAudio}
+            onPress={handleMicToggle}
           >
-            <Ionicons
-              name={isUserSpeaking ? 'radio' : 'mic'}
-              size={18}
-              color="#FFFFFF"
-            />
+            {isProcessingAudio ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons
+                name={isUserSpeaking ? 'stop' : 'mic'}
+                size={18}
+                color="#FFFFFF"
+              />
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -902,6 +1006,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: 4,
     lineHeight: 19,
+  },
+  pronunciationTipText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
+    color: '#FDE68A',
+    marginTop: 4,
+    lineHeight: 18,
   },
   tamilTipText: {
     fontFamily: THEME.fonts.tamilMedium,

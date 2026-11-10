@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
@@ -22,6 +23,12 @@ import {
   stopAllAudio,
 } from '../services/ttsService';
 import {
+  beginAudioCapture,
+  finishAudioCapture,
+  abortAudioCapture,
+} from '../services/voiceRecorderService';
+import {
+  analyzeAndReplySpokenAudio,
   checkLessonTranslation,
   sendLessonRealTalkReply,
   TranslationEvalResult,
@@ -160,7 +167,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   ]);
   const [replyDraft, setReplyDraft] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const [isRecordingTalk, setIsRecordingTalk] = useState(false);
   const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
+  const talkRecordingRef = useRef<Audio.Recording | null>(null);
 
   const handlePlayVoice = (text: string, id: string, rateOverride?: number) => {
     stopAllAudio();
@@ -201,11 +210,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   useEffect(() => {
     return () => {
       stopAllAudio();
+      abortAudioCapture(talkRecordingRef.current);
+      talkRecordingRef.current = null;
     };
   }, []);
 
   const goToSlide = (next: SlideType) => {
     stopAllAudio();
+    abortAudioCapture(talkRecordingRef.current);
+    talkRecordingRef.current = null;
+    setIsRecordingTalk(false);
     setPlayingAudioId(null);
     setCurrentSlide(next);
     slideScrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -376,6 +390,95 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
       }, 100);
     } catch (e) {
       console.warn('Real talk error:', e);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const handleRealTalkMicToggle = async () => {
+    if (isReplying) return;
+
+    if (!isRecordingTalk) {
+      stopAllAudio();
+      setPlayingAudioId(null);
+      const started = await beginAudioCapture();
+      if (!started.ok) {
+        Alert.alert(
+          started.reason === 'denied' ? 'Microphone Permission' : 'Microphone Error',
+          started.reason === 'denied'
+            ? 'Please allow microphone access to practice Real Talk pronunciation with Nila.'
+            : 'Could not start microphone recording right now.'
+        );
+        return;
+      }
+      talkRecordingRef.current = started.recording;
+      setIsRecordingTalk(true);
+      return;
+    }
+
+    const activeRecording = talkRecordingRef.current;
+    talkRecordingRef.current = null;
+    setIsRecordingTalk(false);
+    if (!activeRecording) return;
+
+    setIsReplying(true);
+    try {
+      const encoded = await finishAudioCapture(activeRecording);
+      if (!encoded) {
+        Alert.alert(
+          'Too Short',
+          'Tap the mic, speak clearly for 1–2 seconds, then tap again to send.'
+        );
+        return;
+      }
+
+      const result = await analyzeAndReplySpokenAudio(
+        encoded.base64,
+        encoded.mimeType,
+        realTalkMessages,
+        { mode: 'lesson', lesson }
+      );
+
+      if (!result.ok) {
+        const msg =
+          result.reason === 'no_key'
+            ? 'Add EXPO_PUBLIC_GEMINI_API_KEY in .env and restart with npx expo start -c.'
+            : result.reason === 'unintelligible'
+              ? 'Could not hear words clearly. Try speaking closer to the mic.'
+              : 'Could not reach Gemini right now. Check your network or API key.';
+        Alert.alert('Voice Check', msg);
+        return;
+      }
+
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: result.transcript,
+        timestamp: Date.now(),
+      };
+      const nilaMsgId = `nila-${Date.now()}`;
+      const nilaMsg: ChatMessage = {
+        id: nilaMsgId,
+        role: 'assistant',
+        content: result.reply,
+        timestamp: Date.now(),
+      };
+
+      setLastTurnFeedback(result.feedback);
+      setChecksTotal((prev) => prev + 1);
+      if (result.feedback.fluencyScore >= 70) {
+        setChecksCorrect((prev) => prev + 1);
+      }
+      setRealTalkMessages((prev) => [...prev, userMsg, nilaMsg]);
+      if (!result.feedback.hasErrors) {
+        playSoundEffect('success');
+      }
+      if (!voiceMuted) {
+        handlePlayVoice(result.reply, nilaMsgId);
+      }
+      setTimeout(() => {
+        slideScrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } finally {
       setIsReplying(false);
     }
@@ -984,6 +1087,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   </View>
                 </View>
                 <Text style={styles.feedbackTamil}>{lastTurnFeedback.tamilExplanation}</Text>
+                {lastTurnFeedback.pronunciationTip && (
+                  <Text style={styles.feedbackPronunciation}>
+                    Pronunciation: {lastTurnFeedback.pronunciationTip}
+                  </Text>
+                )}
                 <Text style={styles.feedbackEnglish}>{lastTurnFeedback.explanation}</Text>
               </View>
             )}
@@ -1007,32 +1115,55 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               </ScrollView>
             </View>
 
-            {/* Chat Reply Composer */}
+            {/* Chat Reply Composer + Real Voice Mic */}
             <View style={styles.talkComposerRow}>
               <TextInput
                 style={styles.talkInput}
-                placeholder="Reply naturally to Nila..."
+                placeholder={isRecordingTalk ? 'Listening... tap mic to send' : 'Reply or tap mic to speak...'}
                 placeholderTextColor={THEME.colors.textMuted}
                 value={replyDraft}
                 onChangeText={setReplyDraft}
                 multiline
                 maxLength={240}
               />
-              <TouchableOpacity
-                style={[
-                  styles.talkSendBtn,
-                  (!replyDraft.trim() || isReplying) && styles.talkSendBtnDisabled,
-                ]}
-                onPress={() => handleSendRealTalk()}
-                disabled={!replyDraft.trim() || isReplying}
-                activeOpacity={0.85}
-              >
-                {isReplying ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons name="send" size={16} color="#FFFFFF" />
-                )}
-              </TouchableOpacity>
+              {replyDraft.trim().length > 0 ? (
+                <TouchableOpacity
+                  style={[
+                    styles.talkSendBtn,
+                    isReplying && styles.talkSendBtnDisabled,
+                  ]}
+                  onPress={() => handleSendRealTalk()}
+                  disabled={isReplying}
+                  activeOpacity={0.85}
+                >
+                  {isReplying ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="send" size={16} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.talkSendBtn,
+                    isRecordingTalk && styles.talkMicListeningBtn,
+                    isReplying && styles.talkSendBtnDisabled,
+                  ]}
+                  onPress={handleRealTalkMicToggle}
+                  disabled={isReplying}
+                  activeOpacity={0.85}
+                >
+                  {isReplying ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons
+                      name={isRecordingTalk ? 'stop' : 'mic'}
+                      size={17}
+                      color="#FFFFFF"
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -2033,8 +2164,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  talkMicListeningBtn: {
+    backgroundColor: THEME.colors.gold,
+  },
   talkSendBtnDisabled: {
     backgroundColor: '#2A2740',
+  },
+  feedbackPronunciation: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
+    color: '#FDE68A',
+    marginTop: 4,
+    lineHeight: 18,
   },
 
   /* VICTORY SUMMARY */
