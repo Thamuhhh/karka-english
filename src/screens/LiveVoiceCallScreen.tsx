@@ -77,6 +77,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [isSendingText, setIsSendingText] = useState(false);
   const [animatedBotMsgId, setAnimatedBotMsgId] = useState<string | null>(null);
+  const [expandedMsgFeedbackId, setExpandedMsgFeedbackId] = useState<string | null>(null);
   const [userTranscript, setUserTranscript] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -192,6 +193,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     setActiveScenarioIdx(idx);
     setShowScenarios(false);
     setAnimatedBotMsgId(null);
+    setExpandedMsgFeedbackId(null);
     setLastFeedback(null);
     const introMsg: ChatMessage = {
       id: `init-${nextScenario.id}-${Date.now()}`,
@@ -234,7 +236,9 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
       };
 
       setAnimatedBotMsgId(botMsg.id);
-      setMessages([...newHistory, botMsg]);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === userMsg.id ? { ...m, feedback } : m)).concat(botMsg)
+      );
       speakAiMessage(reply);
       await addXp(10);
       const updated = await incrementMetric('conversationsDone', 1);
@@ -308,6 +312,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
         role: 'user',
         content: result.transcript,
         timestamp: Date.now(),
+        feedback: result.feedback,
       };
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
@@ -344,6 +349,63 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
       stopAllAudio();
       setIsAiSpeaking(false);
     }
+  };
+
+  const getNaturalPhrase = (fb: GrammarCorrection): string => {
+    const candidate = fb.hasErrors
+      ? fb.correctedSentence
+      : fb.nativeIdiomaticVersion || fb.correctedSentence;
+    return candidate.trim();
+  };
+
+  const renderNaturalImprovementStrip = (fb: GrammarCorrection) => {
+    const improvedPhrase = getNaturalPhrase(fb);
+    const showsAlternative =
+      improvedPhrase.length > 0 &&
+      improvedPhrase.toLowerCase() !== fb.originalSentence.trim().toLowerCase();
+
+    return (
+      <View
+        style={[
+          styles.coachStrip,
+          {
+            borderLeftColor: fb.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow,
+          },
+        ]}
+      >
+        <View style={styles.coachTopRow}>
+          <Text
+            style={[
+              styles.coachScoreText,
+              { color: fb.hasErrors ? THEME.colors.gold : THEME.colors.primaryGlow },
+            ]}
+          >
+            NATURAL IMPROVEMENT · {fb.fluencyScore}/100
+          </Text>
+          {improvedPhrase.length > 0 && (
+            <TouchableOpacity
+              style={styles.coachListenBtn}
+              onPress={() => speakText(improvedPhrase)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="volume-medium-outline" size={14} color="#C4B5FD" />
+              <Text style={styles.coachListenText}>Hear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {showsAlternative && (
+          <Text style={styles.correctedText}>"{improvedPhrase}"</Text>
+        )}
+        {fb.pronunciationTip && (
+          <Text style={styles.pronunciationTipText}>
+            Pronunciation: {fb.pronunciationTip}
+          </Text>
+        )}
+        <Text style={styles.tamilTipText}>{fb.tamilExplanation}</Text>
+      </View>
+    );
   };
 
   const isAwaitingReply = isProcessingAudio || isSendingText;
@@ -467,18 +529,58 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           <Text style={styles.personaEyebrow}>{activeScenario.persona}</Text>
           {messages.map((msg) => {
             const isUser = msg.role === 'user';
+            const msgFeedback = isUser ? msg.feedback : undefined;
+            const isExpanded = expandedMsgFeedbackId === msg.id;
+            const naturalPhrase = msgFeedback ? getNaturalPhrase(msgFeedback) : '';
+            const hasDiff =
+              naturalPhrase.length > 0 &&
+              naturalPhrase.toLowerCase() !== msg.content.trim().toLowerCase();
+
             return (
-              <AnimatedChatBubble
-                key={msg.id}
-                style={[styles.chatRow, isUser ? styles.chatRowUser : styles.chatRowBot]}
-              >
-                <View style={[styles.chatBubble, isUser ? styles.chatBubbleUser : styles.chatBubbleBot]}>
-                  <TypewriterText
-                    text={msg.content}
-                    animate={!isUser && msg.id === animatedBotMsgId}
-                    style={styles.chatBubbleText}
-                  />
+              <AnimatedChatBubble key={msg.id} style={styles.msgGroup}>
+                <View style={[styles.chatRow, isUser ? styles.chatRowUser : styles.chatRowBot]}>
+                  <View
+                    style={[styles.chatBubble, isUser ? styles.chatBubbleUser : styles.chatBubbleBot]}
+                  >
+                    <TypewriterText
+                      text={msg.content}
+                      animate={!isUser && msg.id === animatedBotMsgId}
+                      style={styles.chatBubbleText}
+                    />
+                  </View>
                 </View>
+
+                {msgFeedback && (
+                  <View style={styles.inlineImproveWrap}>
+                    <TouchableOpacity
+                      style={styles.inlineImprovePill}
+                      onPress={() =>
+                        setExpandedMsgFeedbackId(isExpanded ? null : msg.id)
+                      }
+                      activeOpacity={0.78}
+                    >
+                      <View
+                        style={[
+                          styles.inlineScoreDot,
+                          {
+                            backgroundColor: msgFeedback.hasErrors
+                              ? THEME.colors.gold
+                              : THEME.colors.primaryGlow,
+                          },
+                        ]}
+                      />
+                      <Text style={styles.inlineImproveLabel} numberOfLines={1}>
+                        {hasDiff ? `Natural: "${naturalPhrase}"` : `Natural phrasing · ${msgFeedback.fluencyScore}/100`}
+                      </Text>
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={12}
+                        color={THEME.colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                    {isExpanded && renderNaturalImprovementStrip(msgFeedback)}
+                  </View>
+                )}
               </AnimatedChatBubble>
             );
           })}
@@ -577,13 +679,9 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
                   ? 'Listening... Tap mic to send'
                   : isAiSpeaking
                   ? 'Speaking...'
-                  : 'Ready · Tap mic or type'}
+                  : 'Tap mic or type'}
               </Text>
             </View>
-
-            <Text style={styles.personaCaption} numberOfLines={1}>
-              {activeScenario.persona}
-            </Text>
           </View>
 
           {/* Open Spoken Dialogue Quote (Zero Box Border) */}
@@ -615,68 +713,34 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             </TouchableOpacity>
           </View>
 
-          {/* Left-Accented Subtle Coach Feedback Strip */}
-          {lastFeedback && (
-            <View
-              style={[
-                styles.coachStrip,
-                {
-                  borderLeftColor: lastFeedback.hasErrors
-                    ? THEME.colors.gold
-                    : THEME.colors.primaryGlow,
-                },
-              ]}
-            >
-              <View style={styles.coachTopRow}>
-                <Text
-                  style={[
-                    styles.coachScoreText,
-                    {
-                      color: lastFeedback.hasErrors
-                        ? THEME.colors.gold
-                        : THEME.colors.primaryGlow,
-                    },
-                  ]}
-                >
-                  Fluency {lastFeedback.fluencyScore}/100 ·{' '}
-                  {lastFeedback.hasErrors ? 'Natural Polish' : 'Great Phrasing'}
-                </Text>
-              </View>
-              {lastFeedback.hasErrors && (
-                <Text style={styles.correctedText}>"{lastFeedback.correctedSentence}"</Text>
-              )}
-              {lastFeedback.pronunciationTip && (
-                <Text style={styles.pronunciationTipText}>
-                  Pronunciation: {lastFeedback.pronunciationTip}
-                </Text>
-              )}
-              <Text style={styles.tamilTipText}>{lastFeedback.tamilExplanation}</Text>
-            </View>
-          )}
+          {/* Left-Accented Subtle Natural Improvement Strip */}
+          {lastFeedback && renderNaturalImprovementStrip(lastFeedback)}
         </ScrollView>
       )}
 
-      {/* Contextual Single-Line Quick Reply Chips */}
-      <View style={styles.promptsWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.promptsContent}
-        >
-          {currentQuickPrompts.map((prompt, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={styles.promptChip}
-              onPress={() => handleSendSpokenText(prompt)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.promptChipText} numberOfLines={1}>
-                {prompt}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Contextual Quick Starter Chips (Shown only before first user turn) */}
+      {messages.length <= 1 && !showScenarios && (
+        <View style={styles.promptsWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.promptsContent}
+          >
+            {currentQuickPrompts.map((prompt, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.promptChip}
+                onPress={() => handleSendSpokenText(prompt)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.promptChipText} numberOfLines={1}>
+                  {prompt}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Single Floating Voice Composer Dock */}
       <View style={styles.composerDock}>
@@ -844,6 +908,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
+  msgGroup: {
+    gap: 5,
+  },
+  inlineImproveWrap: {
+    alignItems: 'flex-end',
+    paddingLeft: 28,
+  },
+  inlineImprovePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    maxWidth: '92%',
+  },
+  inlineScoreDot: {
+    width: 5.5,
+    height: 5.5,
+    borderRadius: 3,
+  },
+  inlineImproveLabel: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11,
+    color: '#D5CFE8',
+    flexShrink: 1,
+  },
   chatRow: {
     flexDirection: 'row',
   },
@@ -880,31 +972,31 @@ const styles = StyleSheet.create({
   avatarStage: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   orbWrap: {
-    width: 132,
-    height: 132,
+    width: 114,
+    height: 114,
     justifyContent: 'center',
     alignItems: 'center',
   },
   auraRingOuter: {
     position: 'absolute',
-    width: 126,
-    height: 126,
-    borderRadius: 63,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     borderWidth: 1,
   },
   auraRingInner: {
     position: 'absolute',
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-  },
-  portraitRing: {
     width: 92,
     height: 92,
     borderRadius: 46,
+  },
+  portraitRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#161424',
     borderWidth: 2,
     borderColor: 'rgba(167, 139, 250, 0.45)',
@@ -950,14 +1042,8 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#E9D5FF',
-  },
-  personaCaption: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11.5,
-    color: THEME.colors.textMuted,
-    marginTop: 3,
   },
 
   /* OPEN SPOKEN QUOTE */
@@ -988,29 +1074,45 @@ const styles = StyleSheet.create({
     color: '#C4B5FD',
   },
 
-  /* LEFT-ACCENTED COACH TIP */
+  /* LEFT-ACCENTED NATURAL IMPROVEMENT */
   coachStrip: {
-    marginTop: 16,
-    backgroundColor: 'rgba(24, 22, 38, 0.85)',
-    borderLeftWidth: 3,
-    borderRadius: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    marginTop: 18,
+    width: '100%',
+    borderLeftWidth: 2,
+    paddingLeft: 12,
+    paddingVertical: 2,
   },
   coachTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   coachScoreText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
+    fontSize: 10,
+    letterSpacing: 0.7,
+  },
+  coachListenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
+  },
+  coachListenText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 10.5,
+    color: '#C4B5FD',
   },
   correctedText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13,
+    fontSize: 14,
     color: '#FFFFFF',
-    marginTop: 4,
-    lineHeight: 19,
+    marginTop: 5,
+    lineHeight: 20,
   },
   pronunciationTipText: {
     fontFamily: THEME.fonts.medium,

@@ -256,57 +256,48 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({
         </View>
       )}
 
-      {/* Calm Empty Coach Welcome State */}
+      {/* Minimal Empty Cue */}
       {!result && !isAnalyzing && (
-        <View style={styles.emptyCoachState}>
-          <View style={styles.coachPortraitHalo}>
-            <Image
-              source={SUPERNOVA_IMAGES.novaAvatar}
-              style={styles.coachPortraitImg}
-              resizeMode="cover"
-            />
-          </View>
-          <Text style={styles.emptyCoachTitle}>Ready to refine your sentence</Text>
-          <Text style={styles.emptyCoachBody}>
-            Tap any example above or type your own sentence to see natural phrasing and Tamil reasoning.
-          </Text>
-        </View>
+        <Text style={styles.emptyMinimalHint}>
+          Tap a sample above or enter any English sentence for natural polish and Tamil tips.
+        </Text>
       )}
 
-      {/* Open Borderless Editorial Diagnosis (Zero Nested Boxes) */}
+      {/* Open Borderless Editorial Diagnosis */}
       {result && (
         <View style={styles.editorialReport}>
-          {/* Open Score Verdict Row */}
-          <View style={styles.verdictRow}>
-            <View>
-              <Text style={styles.eyebrowMuted}>FLUENCY SCORE</Text>
-              <View style={styles.scoreLine}>
-                <Text style={styles.scoreMain}>{result.fluencyScore}</Text>
-                <Text style={styles.scoreDenom}>/100</Text>
-              </View>
-            </View>
-
-            <View style={styles.verdictStatus}>
-              <View
-                style={[
-                  styles.verdictDot,
-                  {
-                    backgroundColor: result.hasErrors
-                      ? THEME.colors.gold
-                      : THEME.colors.primaryGlow,
-                  },
-                ]}
-              />
-              <Text style={styles.verdictLabel}>
-                {result.hasErrors ? 'Refined' : 'Natural'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Left-Accent Natural English Rewrite */}
-          <View style={styles.heroRewriteBlock}>
+          {/* Left-Accent Natural Improvement Hero */}
+          <View
+            style={[
+              styles.heroRewriteBlock,
+              {
+                borderLeftColor: result.hasErrors
+                  ? THEME.colors.gold
+                  : THEME.colors.primaryGlow,
+              },
+            ]}
+          >
             <View style={styles.blockTopRow}>
-              <Text style={styles.violetEyebrow}>NATURAL ENGLISH</Text>
+              <View style={styles.verdictBadge}>
+                <View
+                  style={[
+                    styles.verdictDot,
+                    {
+                      backgroundColor: result.hasErrors
+                        ? THEME.colors.gold
+                        : THEME.colors.primaryGlow,
+                    },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.violetEyebrow,
+                    result.hasErrors && { color: THEME.colors.gold },
+                  ]}
+                >
+                  NATURAL IMPROVEMENT · {result.fluencyScore}/100
+                </Text>
+              </View>
               <TouchableOpacity
                 style={styles.listenChip}
                 onPress={() => playVoice(result.correctedSentence, 'corrected')}
@@ -323,18 +314,10 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({
             <Text style={styles.heroRewriteText}>{result.correctedSentence}</Text>
           </View>
 
-          {/* Open Key Note */}
-          <View style={styles.editorialSection}>
-            <Text style={styles.eyebrowMuted}>KEY NOTE</Text>
-            <Text style={styles.explanationBody}>{result.explanation}</Text>
-          </View>
-
-          <View style={styles.hairlineDivider} />
-
-          {/* Open Tamil Breakdown */}
+          {/* Unified Tamil + Key Note */}
           <View style={styles.editorialSection}>
             <View style={styles.blockTopRow}>
-              <Text style={styles.violetEyebrow}>TAMIL EXPLANATION</Text>
+              <Text style={styles.violetEyebrow}>TAMIL & GRAMMAR NOTE</Text>
               <TouchableOpacity
                 style={styles.listenChip}
                 onPress={() => playTamilVoice(result.tamilExplanation, 'tamil-explain')}
@@ -351,13 +334,14 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({
               </TouchableOpacity>
             </View>
             <Text style={styles.tamilBody}>{result.tamilExplanation}</Text>
+            <Text style={styles.explanationBody}>{result.explanation}</Text>
           </View>
 
           <View style={styles.hairlineDivider} />
 
           {/* Open Hairline-Separated Alternative Tones */}
           <View style={styles.editorialSection}>
-            <Text style={styles.eyebrowMuted}>ALTERNATIVE TONES</Text>
+            <Text style={styles.eyebrowMuted}>OTHER WAYS TO SAY IT</Text>
             {TONE_VARIANTS.map((tone, idx) => {
               const phrase = result[tone.key];
               const isPlaying = activeAudioField === tone.fieldId;
@@ -586,49 +570,20 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  /* EMPTY COACH STATE */
-  emptyCoachState: {
-    alignItems: 'center',
-    paddingVertical: 38,
-    paddingHorizontal: 22,
-  },
-  coachPortraitHalo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(167, 139, 250, 0.45)',
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  coachPortraitImg: {
-    width: '100%',
-    height: '100%',
-  },
-  emptyCoachTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15.5,
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  emptyCoachBody: {
+  /* MINIMAL EMPTY CUE */
+  emptyMinimalHint: {
     fontFamily: THEME.fonts.body,
     fontSize: 12.5,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textMuted,
     textAlign: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
     lineHeight: 19,
-    marginTop: 5,
   },
 
   /* OPEN EDITORIAL REPORT */
   editorialReport: {
-    marginTop: 22,
-  },
-  verdictRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 16,
+    marginTop: 20,
   },
   eyebrowMuted: {
     fontFamily: THEME.fonts.bold,
@@ -637,45 +592,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
     marginBottom: 4,
   },
-  scoreLine: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 2,
-  },
-  scoreMain: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 28,
-    color: '#FFFFFF',
-    lineHeight: 32,
-  },
-  scoreDenom: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 13,
-    color: THEME.colors.textMuted,
-  },
-  verdictStatus: {
+  verdictBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingBottom: 4,
+    flexShrink: 1,
   },
   verdictDot: {
-    width: 7,
-    height: 7,
+    width: 6.5,
+    height: 6.5,
     borderRadius: 3.5,
   },
-  verdictLabel: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12.5,
-    color: '#E9D5FF',
-  },
   heroRewriteBlock: {
-    backgroundColor: 'rgba(127, 67, 254, 0.09)',
-    borderLeftWidth: 3,
+    backgroundColor: 'rgba(127, 67, 254, 0.06)',
+    borderLeftWidth: 2.5,
     borderLeftColor: THEME.colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     marginBottom: 18,
   },
   blockTopRow: {
@@ -715,10 +649,10 @@ const styles = StyleSheet.create({
   },
   explanationBody: {
     fontFamily: THEME.fonts.body,
-    fontSize: 13.5,
-    color: '#C9C5DE',
-    lineHeight: 20,
-    marginTop: 2,
+    fontSize: 12.5,
+    color: THEME.colors.textSecondary,
+    lineHeight: 19,
+    marginTop: 6,
   },
   tamilBody: {
     fontFamily: THEME.fonts.tamilMedium,
