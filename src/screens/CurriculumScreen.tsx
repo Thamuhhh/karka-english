@@ -30,6 +30,13 @@ interface CurriculumScreenProps {
 
 const MAX_CONTENT_WIDTH = 480;
 
+const LESSON_STAGES = [
+  { key: 'pattern', label: 'Pattern', family: 'mci' as const, icon: 'lightbulb-on-outline' },
+  { key: 'scramble', label: 'Scramble', family: 'mci' as const, icon: 'puzzle-outline' },
+  { key: 'translate', label: 'Translate', family: 'mci' as const, icon: 'translate' },
+  { key: 'speak', label: 'Speak', family: 'ion' as const, icon: 'mic-outline' },
+];
+
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
 }
@@ -42,6 +49,15 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
 
   const completedClasses = stats.completedClasses;
+  const isSelectedCompleted = selectedLesson
+    ? completedClasses.includes(selectedLesson.id)
+    : false;
+  const selectedXpReward = selectedLesson
+    ? isSelectedCompleted
+      ? Math.max(25, Math.round(selectedLesson.xpReward * 0.5))
+      : selectedLesson.xpReward
+    : 0;
+  const selectedGemReward = isSelectedCompleted ? 2 : 5;
 
   const nextActiveClassId =
     SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
@@ -313,7 +329,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* LESSON START MODAL */}
+      {/* Sleek Obsidian Lesson Sheet Modal */}
       <Modal
         visible={!!selectedLesson}
         transparent
@@ -328,169 +344,112 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           />
 
           {selectedLesson && (
-            <LinearGradient
-              colors={['#241B42', '#151424']}
+            <View
               style={[
                 styles.modalCard,
-                { width: Math.min(windowWidth - 32, 460), maxHeight: windowHeight * 0.86 },
+                { width: Math.min(windowWidth - 32, 420), maxHeight: windowHeight * 0.85 },
               ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
             >
-              <View style={styles.modalHeroWrap}>
-                <Image
-                  source={getUnitBanner(selectedLesson.levelNumber)}
-                  style={styles.modalHeroImg}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={['rgba(21,20,36,0.2)', 'rgba(21,20,36,0.96)']}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.modalHeaderOverlay}>
-                  <View style={styles.modalBadgeRow}>
-                    <View style={styles.modalLevelPill}>
-                      <Text style={styles.modalLevelText}>
-                        LESSON {selectedLesson.id.replace('sn-', '').replace('-', '.')}
+              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                <View style={styles.modalTopHeader}>
+                  <View style={styles.modalHeaderRow}>
+                    <View style={styles.modalEmblemWrap}>
+                      <Image
+                        source={getLessonNodeEmblem(selectedLesson.id)}
+                        style={styles.modalEmblemImg}
+                        resizeMode="cover"
+                      />
+                    </View>
+
+                    <View style={styles.modalTitleBlock}>
+                      <Text style={styles.modalEyebrow}>
+                        LESSON {selectedLesson.id.replace('sn-', '').replace('-', '.')}  ·{' '}
+                        {selectedLesson.duration.toUpperCase()}
+                      </Text>
+                      <Text style={styles.modalTitle}>
+                        {formatShortLessonTitle(selectedLesson.title)}
                       </Text>
                     </View>
-                    <View style={styles.modalDurationPill}>
-                      <Ionicons name="time-outline" size={13} color={THEME.colors.text} />
-                      <Text style={styles.modalDurationText}>{selectedLesson.duration}</Text>
-                    </View>
+
+                    <TouchableOpacity
+                      style={styles.closeBtn}
+                      onPress={() => setSelectedLesson(null)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close" size={16} color="#9C98B8" />
+                    </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.closeBtn}
-                    onPress={() => setSelectedLesson(null)}
-                  >
-                    <Ionicons name="close" size={18} color="#FFFFFF" />
-                  </TouchableOpacity>
+                  <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
                 </View>
-              </View>
 
-              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                <View style={styles.modalBody}>
-                  <View style={styles.modalNovaRow}>
-                    <View style={styles.modalAvatarRing}>
-                      <View style={styles.modalAvatarInnerClip}>
-                        <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.modalNovaAvatar} />
-                      </View>
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 14 }}>
-                      <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
-                      <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
-                    </View>
-                  </View>
+                <View style={styles.tamilConceptBox}>
+                  <Text style={styles.tamilConceptLabel}>TAMIL KEY INSIGHT</Text>
+                  <Text style={styles.tamilConceptText}>
+                    "{selectedLesson.rule.tamilMentalModel}"
+                  </Text>
+                </View>
 
-                  <View style={styles.tamilConceptBox}>
-                    <Text style={styles.tamilConceptLabel}>CONCEPT IN TAMIL</Text>
-                    <Text style={styles.tamilConceptText}>
-                      "{selectedLesson.rule.tamilMentalModel}"
-                    </Text>
-                  </View>
-
-                  <View style={styles.methodologyBox}>
-                    <Text style={styles.methodologyTitle}>LESSON STAGES</Text>
-                    <View style={styles.stepGrid}>
-                      <View style={styles.stepItem}>
-                        <View
-                          style={[
-                            styles.stepIconWrap,
-                            { backgroundColor: 'rgba(251, 191, 36, 0.14)' },
-                          ]}
-                        >
+                <View style={styles.stagesSection}>
+                  <Text style={styles.sectionEyebrow}>LESSON FLOW</Text>
+                  <View style={styles.stepGrid}>
+                    {LESSON_STAGES.map((stage) => (
+                      <View key={stage.key} style={styles.stepPill}>
+                        {stage.family === 'mci' ? (
                           <MaterialCommunityIcons
-                            name="lightbulb-on-outline"
-                            size={18}
-                            color={THEME.colors.gold}
-                          />
-                        </View>
-                        <Text style={styles.stepText}>Pattern</Text>
-                      </View>
-                      <View style={styles.stepItem}>
-                        <View
-                          style={[
-                            styles.stepIconWrap,
-                            { backgroundColor: 'rgba(6, 182, 212, 0.14)' },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name="puzzle-outline"
-                            size={18}
-                            color={THEME.colors.secondary}
-                          />
-                        </View>
-                        <Text style={styles.stepText}>Scramble</Text>
-                      </View>
-                      <View style={styles.stepItem}>
-                        <View
-                          style={[
-                            styles.stepIconWrap,
-                            { backgroundColor: 'rgba(16, 185, 129, 0.14)' },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name="translate"
-                            size={18}
-                            color={THEME.colors.accent}
-                          />
-                        </View>
-                        <Text style={styles.stepText}>Translate</Text>
-                      </View>
-                      <View style={styles.stepItem}>
-                        <View
-                          style={[
-                            styles.stepIconWrap,
-                            { backgroundColor: 'rgba(127, 67, 254, 0.16)' },
-                          ]}
-                        >
-                          <Ionicons
-                            name="mic-outline"
-                            size={18}
+                            name={stage.icon as any}
+                            size={16}
                             color={THEME.colors.primaryGlow}
                           />
-                        </View>
-                        <Text style={styles.stepText}>Speaking</Text>
+                        ) : (
+                          <Ionicons
+                            name={stage.icon as any}
+                            size={16}
+                            color={THEME.colors.primaryGlow}
+                          />
+                        )}
+                        <Text style={styles.stepText} numberOfLines={1}>
+                          {stage.label}
+                        </Text>
                       </View>
-                    </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.rewardsStrip}>
+                  <View style={styles.rewardItem}>
+                    <MaterialCommunityIcons
+                      name="trophy-variant"
+                      size={15}
+                      color={THEME.colors.gold}
+                    />
+                    <Text style={styles.rewardText}>+{selectedXpReward} XP</Text>
                   </View>
 
-                  <View style={styles.rewardsRow}>
-                    <View style={styles.rewardItem}>
-                      <MaterialCommunityIcons
-                        name="trophy-award"
-                        size={17}
-                        color={THEME.colors.gold}
-                      />
-                      <Text style={styles.rewardText}>
-                        +
-                        {completedClasses.includes(selectedLesson.id)
-                          ? Math.max(25, Math.round(selectedLesson.xpReward * 0.5))
-                          : selectedLesson.xpReward}{' '}
-                        XP
-                      </Text>
-                    </View>
-                    <View style={styles.rewardItem}>
-                      <Ionicons
-                        name={stats.hearts > 0 ? 'heart' : 'shield-checkmark'}
-                        size={16}
-                        color={stats.hearts > 0 ? '#EF4444' : THEME.colors.accent}
-                      />
-                      <Text style={styles.rewardText}>
-                        {stats.hearts > 0
-                          ? `${stats.hearts} ${stats.hearts === 1 ? 'Life' : 'Lives'}`
-                          : 'Shield'}
-                      </Text>
-                    </View>
-                    <View style={styles.rewardItem}>
-                      <Ionicons name="diamond" size={16} color={THEME.colors.secondary} />
-                      <Text style={styles.rewardText}>
-                        +{completedClasses.includes(selectedLesson.id) ? 2 : 5} Gems
-                      </Text>
-                    </View>
+                  <View style={styles.rewardDivider} />
+
+                  <View style={styles.rewardItem}>
+                    <Ionicons name="diamond" size={14} color={THEME.colors.secondary} />
+                    <Text style={styles.rewardText}>+{selectedGemReward} Gems</Text>
                   </View>
 
+                  <View style={styles.rewardDivider} />
+
+                  <View style={styles.rewardItem}>
+                    <Ionicons
+                      name={stats.hearts > 0 ? 'heart' : 'shield-checkmark'}
+                      size={14.5}
+                      color={stats.hearts > 0 ? '#F43F5E' : THEME.colors.accent}
+                    />
+                    <Text style={styles.rewardText}>
+                      {stats.hearts > 0
+                        ? `${stats.hearts} ${stats.hearts === 1 ? 'Life' : 'Lives'}`
+                        : 'Shield'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalActionsWrap}>
                   <TouchableOpacity
                     style={styles.modalStartBtn}
                     activeOpacity={0.85}
@@ -501,19 +460,17 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     }}
                   >
                     <LinearGradient
-                      colors={THEME.gradients.primary}
+                      colors={['#8B5CF6', '#6D28D9']}
                       style={styles.modalStartBtnInner}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
                       <Text style={styles.modalStartBtnText}>
-                        {completedClasses.includes(selectedLesson.id)
-                          ? `PRACTICE AGAIN (+${Math.max(25, Math.round(selectedLesson.xpReward * 0.5))} XP)`
-                          : `START LESSON (+${selectedLesson.xpReward} XP)`}
+                        {isSelectedCompleted ? 'Practice Again' : 'Start Lesson'}
                       </Text>
                       <Ionicons
                         name="arrow-forward"
-                        size={18}
+                        size={17}
                         color="#FFFFFF"
                         style={{ marginLeft: 8 }}
                       />
@@ -521,7 +478,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   </TouchableOpacity>
                 </View>
               </ScrollView>
-            </LinearGradient>
+            </View>
           )}
         </View>
       </Modal>
@@ -890,156 +847,113 @@ const styles = StyleSheet.create({
   /* MODAL POPUP */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.82)',
+    backgroundColor: 'rgba(6, 6, 10, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 18,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    borderRadius: THEME.radius.xl,
+    backgroundColor: '#141320',
+    borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(127, 67, 254, 0.5)',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 12,
+    borderWidth: 1,
+    borderColor: '#2B2842',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.55,
+    shadowRadius: 28,
+    elevation: 16,
   },
-  modalHeroWrap: {
-    aspectRatio: 2.0,
-    width: '100%',
-    justifyContent: 'flex-start',
-    backgroundColor: THEME.colors.surfaceDark,
+  modalTopHeader: {
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 16,
   },
-  modalHeroImg: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: '100%',
-    height: '100%',
-  },
-  modalHeaderOverlay: {
+  modalHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 14,
   },
-  modalBody: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 4,
-  },
-  modalBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modalLevelPill: {
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    marginRight: 8,
-  },
-  modalLevelText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  modalDurationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(14, 14, 20, 0.72)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  modalDurationText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11,
-    color: '#FFFFFF',
-    marginLeft: 4,
-  },
-  closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(14, 14, 20, 0.72)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalNovaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  modalAvatarRing: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 2,
-    borderColor: THEME.colors.primaryGlow,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalAvatarInnerClip: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+  modalEmblemWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#322E4D',
+    backgroundColor: '#1C1A2B',
   },
-  modalNovaAvatar: {
+  modalEmblemImg: {
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.04 }],
   },
+  modalTitleBlock: {
+    flex: 1,
+    marginLeft: 14,
+    paddingRight: 10,
+  },
+  modalEyebrow: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: '#A78BFA',
+    letterSpacing: 0.7,
+  },
   modalTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 17,
+    fontSize: 18,
     color: '#FFFFFF',
-    marginBottom: 2,
+    lineHeight: 24,
+    marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#1E1C2D',
+    borderWidth: 1,
+    borderColor: '#2E2B44',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalSubtitle: {
     fontFamily: THEME.fonts.body,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    lineHeight: 16,
+    fontSize: 13,
+    color: '#9D99B5',
+    lineHeight: 19,
+    marginTop: 12,
   },
   tamilConceptBox: {
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
-    borderRadius: THEME.radius.md,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.3)',
-    marginBottom: 14,
+    marginHorizontal: 22,
+    marginBottom: 18,
+    backgroundColor: '#1A1829',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
   },
   tamilConceptLabel: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.gold,
-    marginBottom: 4,
+    color: '#A78BFA',
+    marginBottom: 5,
     letterSpacing: 0.8,
   },
   tamilConceptText: {
     fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 13,
-    color: THEME.colors.gold,
-    lineHeight: 18,
+    fontSize: 13.5,
+    color: '#F1EFFC',
+    lineHeight: 20,
   },
-  methodologyBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: THEME.radius.md,
-    padding: 12,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+  stagesSection: {
+    paddingHorizontal: 22,
+    marginBottom: 18,
   },
-  methodologyTitle: {
+  sectionEyebrow: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textMuted,
@@ -1048,67 +962,70 @@ const styles = StyleSheet.create({
   },
   stepGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 7,
   },
-  stepItem: {
-    alignItems: 'center',
+  stepPill: {
     flex: 1,
-  },
-  stepIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
+    backgroundColor: '#191826',
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#27253B',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'center',
+    gap: 5,
   },
   stepText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
+    fontSize: 10.5,
+    color: '#D7D4EC',
     textAlign: 'center',
   },
-  rewardsRow: {
+  rewardsStrip: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: THEME.radius.md,
-    paddingVertical: 10,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    marginHorizontal: 22,
+    paddingVertical: 13,
+    marginBottom: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
   },
   rewardItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  rewardDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   rewardText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 12,
     color: '#FFFFFF',
-    marginLeft: 6,
+  },
+  modalActionsWrap: {
+    paddingHorizontal: 22,
+    paddingBottom: 22,
   },
   modalStartBtn: {
-    borderRadius: THEME.radius.lg,
+    borderRadius: 14,
     overflow: 'hidden',
-    borderBottomWidth: 4,
-    borderBottomColor: THEME.colors.primaryBorder,
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
   },
   modalStartBtnInner: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 15,
+    height: 50,
   },
   modalStartBtnText: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 15,
+    fontSize: 14.5,
     color: '#FFFFFF',
-    letterSpacing: 0.8,
+    letterSpacing: 0.4,
   },
 });
