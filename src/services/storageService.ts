@@ -250,6 +250,36 @@ export async function markWordMastered(word: string): Promise<UserStats> {
   return stats;
 }
 
+export async function toggleSavedWord(
+  word: string
+): Promise<{ stats: UserStats; saved: boolean }> {
+  const clean = word.trim().toLowerCase();
+  const stats = await loadUserStats();
+  const alreadySaved = stats.masteredWords.includes(clean);
+
+  let saved = false;
+  if (alreadySaved) {
+    stats.masteredWords = stats.masteredWords.filter((w) => w !== clean);
+    saved = false;
+  } else {
+    stats.masteredWords = [...stats.masteredWords, clean];
+    stats.stardustXp += 10;
+    stats.todayXp += 10;
+    saved = true;
+  }
+
+  stats.wordsMastered = stats.masteredWords.length;
+  await saveUserStats(stats);
+
+  const words = await loadVocabularyList();
+  const updatedWords = words.map((w) =>
+    w.word.toLowerCase() === clean ? { ...w, memorized: saved } : w
+  );
+  await saveVocabularyList(updatedWords);
+
+  return { stats, saved };
+}
+
 export async function loadVocabularyList(): Promise<WordDefinition[]> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.SAVED_WORDS);

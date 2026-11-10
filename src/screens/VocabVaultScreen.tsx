@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { UserStats, WordDefinition } from '../types';
 import { STARTER_VOCABULARY, fetchWordDetails } from '../api/dictionary';
@@ -18,7 +17,7 @@ import { speakText, playRemoteAudio, stopAllAudio } from '../services/ttsService
 import {
   loadVocabularyList,
   saveVocabularyList,
-  markWordMastered,
+  toggleSavedWord,
 } from '../services/storageService';
 import { playSoundEffect } from '../services/soundEffectsService';
 
@@ -28,9 +27,22 @@ interface VocabVaultScreenProps {
   embedded?: boolean;
 }
 
-type VocabFilter = 'all' | 'review' | 'mastered';
+type LexiconTab = 'all' | 'saved';
 
 const MAX_CONTENT_WIDTH = 480;
+
+function mergeVocabularyEntries(cached: WordDefinition[]): WordDefinition[] {
+  const seen = new Set<string>();
+  const merged: WordDefinition[] = [];
+  for (const item of [...cached, ...STARTER_VOCABULARY]) {
+    const key = item.word.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+  return merged;
+}
 
 export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
   stats,
@@ -41,22 +53,23 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [wordList, setWordList] = useState<WordDefinition[]>(STARTER_VOCABULARY);
-  const [filter, setFilter] = useState<VocabFilter>('all');
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [activeTab, setActiveTab] = useState<LexiconTab>('all');
+  const [expandedWord, setExpandedWord] = useState<string | null>(
+    STARTER_VOCABULARY[0]?.word.toLowerCase() || null
+  );
+  const [playingWord, setPlayingWord] = useState<string | null>(null);
   const [relatedSynonyms, setRelatedSynonyms] = useState<string[]>([]);
 
   useEffect(() => {
     loadVocabularyList().then((loaded) => {
-      if (loaded.length > 0) setWordList(loaded);
+      setWordList(mergeVocabularyEntries(loaded));
     });
     return () => {
       stopAllAudio();
     };
   }, []);
 
-  const masteredSet = useMemo(() => {
+  const savedSet = useMemo(() => {
     const s = new Set((stats?.masteredWords || []).map((w) => w.toLowerCase()));
     wordList.forEach((w) => {
       if (w.memorized) s.add(w.word.toLowerCase());
@@ -64,23 +77,21 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
     return s;
   }, [stats?.masteredWords, wordList]);
 
-  const filteredWords = useMemo(() => {
-    if (filter === 'mastered') {
-      const m = wordList.filter((w) => masteredSet.has(w.word.toLowerCase()));
-      return m.length > 0 ? m : [];
-    }
-    if (filter === 'review') {
-      return wordList.filter((w) => !masteredSet.has(w.word.toLowerCase()));
-    }
-    return wordList;
-  }, [wordList, filter, masteredSet]);
+  const displayedWords = useMemo(() => {
+    const base =
+      activeTab === 'saved'
+        ? wordList.filter((w) => savedSet.has(w.word.toLowerCase()))
+        : wordList;
 
-  const safeIndex =
-    filteredWords.length > 0 ? Math.min(activeCardIndex, filteredWords.length - 1) : 0;
-  const currentWord = filteredWords[safeIndex] || wordList[0] || STARTER_VOCABULARY[0];
-  const isCurrentMastered = masteredSet.has(currentWord.word.toLowerCase());
-  const masteryPct =
-    wordList.length > 0 ? Math.round((masteredSet.size / wordList.length) * 100) : 0;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return base;
+
+    return base.filter(
+      (w) =>
+        w.word.toLowerCase().includes(query) ||
+        w.definition.toLowerCase().includes(query)
+    );
+  }, [wordList, activeTab, savedSet, searchQuery]);
 
   const handleSearch = async (overrideWord?: string) => {
     const q = (overrideWord ?? searchQuery).trim();
@@ -101,9 +112,9 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
         ];
         setWordList(updated);
         await saveVocabularyList(updated);
-        setFilter('all');
-        setActiveCardIndex(0);
-        setIsFlipped(false);
+        setActiveTab('all');
+        setSearchQuery('');
+        setExpandedWord(details.word.toLowerCase());
 
         const syns = await fetchRelatedWords(details.word);
         setRelatedSynonyms(syns);
@@ -117,41 +128,29 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
     }
   };
 
-  const handlePlayAudio = async () => {
-    setIsPlayingAudio(true);
-    if (currentWord.audioUrl) {
-      await playRemoteAudio(
-        currentWord.audioUrl,
-        () => setIsPlayingAudio(false),
-        currentWord.word
-      );
+  const handlePlayWordAudio = async (entry: WordDefinition) => {
+    const key = entry.word.toLowerCase();
+    setPlayingWord(key);
+    if (entry.audioUrl) {
+      await playRemoteAudio(entry.audioUrl, () => setPlayingWord(null), entry.word);
     } else {
-      await speakText(currentWord.word, () => setIsPlayingAudio(false));
+      await speakText(entry.word, () => setPlayingWord(null));
     }
   };
 
-  const handleNextWord = () => {
-    if (filteredWords.length === 0) return;
-    setIsFlipped(false);
-    setActiveCardIndex((prev) => (prev + 1) % filteredWords.length);
-  };
-
-  const handlePrevWord = () => {
-    if (filteredWords.length === 0) return;
-    setIsFlipped(false);
-    setActiveCardIndex((prev) => (prev - 1 + filteredWords.length) % filteredWords.length);
-  };
-
-  const handleMastered = async () => {
-    playSoundEffect('success');
-    const updatedStats = await markWordMastered(currentWord.word);
+  const handleToggleBookmark = async (word: string) => {
+    const { stats: updatedStats, saved } = await toggleSavedWord(word);
+    playSoundEffect(saved ? 'success' : 'button');
     onStatsUpdate?.(updatedStats);
+    const clean = word.trim().toLowerCase();
     setWordList((prev) =>
-      prev.map((w) =>
-        w.word.toLowerCase() === currentWord.word.toLowerCase() ? { ...w, memorized: true } : w
-      )
+      prev.map((w) => (w.word.toLowerCase() === clean ? { ...w, memorized: saved } : w))
     );
-    handleNextWord();
+  };
+
+  const handleToggleExpand = (word: string) => {
+    const key = word.toLowerCase();
+    setExpandedWord((prev) => (prev === key ? null : key));
   };
 
   const hasQuery = searchQuery.trim().length > 0;
@@ -162,35 +161,21 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
       contentContainerStyle={[styles.content, embedded && styles.contentEmbedded]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Corporate Executive Header & Progress Metric */}
+      {/* Corporate Executive Lexicon Header */}
       <View style={[styles.headerRow, embedded && styles.headerRowEmbedded]}>
         <View style={styles.headerTextBlock}>
-          {!embedded && <Text style={styles.title}>Vocabulary Vault</Text>}
-          <Text style={styles.subtitle}>
-            {masteredSet.size} of {wordList.length} words mastered
-          </Text>
+          {!embedded && <Text style={styles.title}>Corporate Lexicon</Text>}
+          <Text style={styles.subtitle}>Executive vocabulary &amp; live dictionary</Text>
         </View>
-        <Text style={styles.pctStat}>{masteryPct}%</Text>
+        <Text style={styles.savedCountStat}>{savedSet.size} Saved</Text>
       </View>
 
-      {/* Thin Executive Progress Hairline */}
-      <View style={styles.progressTrack}>
-        {masteryPct > 0 && (
-          <LinearGradient
-            colors={['#7F43FE', '#A78BFA']}
-            style={[styles.progressFill, { width: `${masteryPct}%` }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          />
-        )}
-      </View>
-
-      {/* Minimalist Search Command Bar */}
+      {/* Search & Live Lookup Command Bar */}
       <View style={[styles.searchBar, hasQuery && styles.searchBarActive]}>
         <Ionicons name="search" size={16} color={THEME.colors.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Look up any word (e.g. leverage, articulate)..."
+          placeholder="Filter directory or look up any word..."
           placeholderTextColor={THEME.colors.textMuted}
           value={searchQuery}
           onChangeText={(txt) => {
@@ -200,6 +185,17 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
           onSubmitEditing={() => handleSearch()}
           returnKeyType="search"
         />
+        {hasQuery && !isSearching && (
+          <TouchableOpacity
+            onPress={() => {
+              setSearchQuery('');
+              setSearchError(null);
+            }}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="close-circle" size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+        )}
         {isSearching ? (
           <ActivityIndicator size="small" color={THEME.colors.primaryGlow} />
         ) : (
@@ -223,28 +219,23 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
         </View>
       )}
 
-      {/* Corporate Segmented Filter Track */}
-      <View style={styles.filterTrack}>
+      {/* Clean Corporate Segmented Switcher: All Terms | Saved */}
+      <View style={styles.segmentTrack}>
         {(
           [
-            { id: 'all', label: `All (${wordList.length})` },
-            { id: 'review', label: `Review (${Math.max(0, wordList.length - masteredSet.size)})` },
-            { id: 'mastered', label: `Mastered (${masteredSet.size})` },
-          ] as { id: VocabFilter; label: string }[]
+            { id: 'all', label: `All Terms (${wordList.length})` },
+            { id: 'saved', label: `Saved (${savedSet.size})` },
+          ] as { id: LexiconTab; label: string }[]
         ).map((tab) => {
-          const active = filter === tab.id;
+          const active = activeTab === tab.id;
           return (
             <TouchableOpacity
               key={tab.id}
-              style={[styles.filterSegment, active && styles.filterSegmentActive]}
-              onPress={() => {
-                setFilter(tab.id);
-                setActiveCardIndex(0);
-                setIsFlipped(false);
-              }}
+              style={[styles.segmentBtn, active && styles.segmentBtnActive]}
+              onPress={() => setActiveTab(tab.id)}
               activeOpacity={0.82}
             >
-              <Text style={[styles.filterText, active && styles.filterTextActive]}>
+              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -252,148 +243,15 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
         })}
       </View>
 
-      {filteredWords.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons
-            name="checkmark-done-circle-outline"
-            size={30}
-            color={THEME.colors.primaryGlow}
-          />
-          <Text style={styles.emptyTitle}>
-            {filter === 'review' ? 'All words mastered' : 'No mastered words yet'}
-          </Text>
-          <Text style={styles.emptySub}>
-            {filter === 'review'
-              ? 'Look up a new word above to expand your deck.'
-              : 'Tap Mark Mastered on any card to build your deck.'}
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* Card Index & Level Metadata Line */}
-          <View style={styles.metaRow}>
-            <Text style={styles.cardCounter}>
-              {String(safeIndex + 1).padStart(2, '0')} / {String(filteredWords.length).padStart(2, '0')}
-            </Text>
-            <View style={styles.metaRight}>
-              {isCurrentMastered && (
-                <View style={styles.masteredStatus}>
-                  <View style={styles.masteredDot} />
-                  <Text style={styles.masteredStatusText}>Mastered</Text>
-                </View>
-              )}
-              <Text style={styles.cefrLabel}>CEFR {currentWord.cefrLevel}</Text>
-            </View>
-          </View>
-
-          {/* Clean Corporate Executive Word Sheet */}
-          <TouchableOpacity
-            style={styles.wordSheet}
-            activeOpacity={0.92}
-            onPress={() => setIsFlipped(!isFlipped)}
-          >
-            <View style={styles.sheetTopRow}>
-              <Text style={styles.posEyebrow}>{currentWord.partOfSpeech}</Text>
-              <TouchableOpacity
-                style={[styles.audioBtn, isPlayingAudio && styles.audioBtnActive]}
-                onPress={handlePlayAudio}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Ionicons
-                  name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
-                  size={18}
-                  color={isPlayingAudio ? '#FFFFFF' : THEME.colors.primaryGlow}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.wordTitle}>{currentWord.word}</Text>
-            {!!currentWord.phonetic && (
-              <Text style={styles.wordPhonetic}>{currentWord.phonetic}</Text>
-            )}
-
-            {isFlipped ? (
-              <View style={styles.detailsStack}>
-                <View style={styles.sheetDivider} />
-
-                <Text style={styles.fieldEyebrow}>DEFINITION</Text>
-                <Text style={styles.defBody}>{currentWord.definition}</Text>
-
-                {/* Left-Accented Tamil Explanation (Zero Heavy Box) */}
-                <View style={styles.tamilStrip}>
-                  <Text style={styles.fieldEyebrow}>TAMIL MEANING</Text>
-                  <Text style={styles.tamilBody}>{currentWord.tamilMeaning}</Text>
-                </View>
-
-                <Text style={styles.fieldEyebrow}>USAGE IN CONTEXT</Text>
-                <Text style={styles.exampleBody}>"{currentWord.example}"</Text>
-
-                {currentWord.synonyms.length > 0 && (
-                  <View style={styles.synonymsWrap}>
-                    <Text style={styles.fieldEyebrow}>SYNONYMS</Text>
-                    <View style={styles.chipsRow}>
-                      {currentWord.synonyms.map((s, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={styles.synonymChip}
-                          onPress={() => handleSearch(s)}
-                          activeOpacity={0.78}
-                        >
-                          <Text style={styles.synonymChipText}>{s}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View style={styles.revealPrompt}>
-                <Ionicons name="eye-outline" size={16} color={THEME.colors.textMuted} />
-                <Text style={styles.revealText}>Tap card to inspect definition &amp; usage</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Clean Executive Action Bar */}
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.navCircle} onPress={handlePrevWord} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={18} color={THEME.colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.masterBtnWrap}
-              onPress={handleMastered}
-              activeOpacity={0.86}
-            >
-              {isCurrentMastered ? (
-                <View style={styles.reviewAgainBtn}>
-                  <Ionicons name="refresh" size={16} color={THEME.colors.primaryGlow} />
-                  <Text style={styles.reviewAgainText}>Review Again (+5 XP)</Text>
-                </View>
-              ) : (
-                <LinearGradient
-                  colors={['#8B5CF6', '#7F43FE']}
-                  style={styles.masteredGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Ionicons name="checkmark" size={17} color="#FFFFFF" />
-                  <Text style={styles.masteredText}>Mark Mastered (+15 XP)</Text>
-                </LinearGradient>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.navCircle} onPress={handleNextWord} activeOpacity={0.8}>
-              <Ionicons name="arrow-forward" size={18} color={THEME.colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
-
+      {/* Related Terms (After Live Dictionary Lookup) */}
       {relatedSynonyms.length > 0 && (
-        <View style={styles.relatedSection}>
-          <Text style={styles.fieldEyebrow}>RELATED TERMS</Text>
-          <View style={styles.chipsRow}>
+        <View style={styles.relatedStrip}>
+          <Text style={styles.eyebrowLabel}>RELATED TERMS</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.relatedScroll}
+          >
             {relatedSynonyms.map((w, idx) => (
               <TouchableOpacity
                 key={idx}
@@ -401,10 +259,141 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
                 onPress={() => handleSearch(w)}
                 activeOpacity={0.78}
               >
-                <Text style={styles.relatedChipText}>{w}</Text>
+                <Text style={styles.relatedChipText}>+{w}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Expandable Corporate Word Directory */}
+      {displayedWords.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons
+            name={activeTab === 'saved' ? 'bookmark-outline' : 'search-outline'}
+            size={28}
+            color={THEME.colors.primaryGlow}
+          />
+          <Text style={styles.emptyTitle}>
+            {activeTab === 'saved' && !hasQuery
+              ? 'No saved words yet'
+              : `No matching entries`}
+          </Text>
+          <Text style={styles.emptySub}>
+            {activeTab === 'saved' && !hasQuery
+              ? 'Tap the bookmark icon on any term to save it here for quick reference.'
+              : 'Tap Lookup above to fetch the full definition from the English dictionary.'}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.directoryList}>
+          {displayedWords.map((entry, idx) => {
+            const key = entry.word.toLowerCase();
+            const isExpanded = expandedWord === key;
+            const isSaved = savedSet.has(key);
+            const isPlaying = playingWord === key;
+
+            return (
+              <View
+                key={`${key}-${idx}`}
+                style={[
+                  styles.entryRow,
+                  idx > 0 && styles.entryRowHairline,
+                  isExpanded && styles.entryRowExpanded,
+                ]}
+              >
+                {/* Summary Row */}
+                <TouchableOpacity
+                  style={styles.entrySummary}
+                  onPress={() => handleToggleExpand(entry.word)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.entryMainCol}>
+                    <View style={styles.entryTitleLine}>
+                      <Text style={styles.entryWord}>{entry.word}</Text>
+                      <Text style={styles.entryPos}>{entry.partOfSpeech}</Text>
+                      <Text style={styles.entryCefr}>{entry.cefrLevel}</Text>
+                    </View>
+                    {!isExpanded && (
+                      <Text style={styles.entryPreview} numberOfLines={1}>
+                        {entry.definition}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.entryQuickActions}>
+                    <TouchableOpacity
+                      style={[styles.iconActionBtn, isPlaying && styles.iconActionBtnActive]}
+                      onPress={() => handlePlayWordAudio(entry)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons
+                        name={isPlaying ? 'volume-high' : 'volume-medium-outline'}
+                        size={16}
+                        color={isPlaying ? '#FFFFFF' : THEME.colors.primaryGlow}
+                      />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.iconActionBtn}
+                      onPress={() => handleToggleBookmark(entry.word)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons
+                        name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                        size={16}
+                        color={isSaved ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                      />
+                    </TouchableOpacity>
+
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={THEME.colors.textMuted}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Expanded Executive Entry Details */}
+                {isExpanded && (
+                  <View style={styles.expandedBody}>
+                    {!!entry.phonetic && (
+                      <Text style={styles.phoneticText}>{entry.phonetic}</Text>
+                    )}
+
+                    <Text style={styles.fieldEyebrow}>DEFINITION</Text>
+                    <Text style={styles.defBody}>{entry.definition}</Text>
+
+                    <View style={styles.tamilStrip}>
+                      <Text style={styles.fieldEyebrow}>TAMIL MEANING</Text>
+                      <Text style={styles.tamilBody}>{entry.tamilMeaning}</Text>
+                    </View>
+
+                    <Text style={styles.fieldEyebrow}>EXECUTIVE USAGE</Text>
+                    <Text style={styles.exampleBody}>"{entry.example}"</Text>
+
+                    {entry.synonyms.length > 0 && (
+                      <View style={styles.synonymsWrap}>
+                        <Text style={styles.fieldEyebrow}>SYNONYMS</Text>
+                        <View style={styles.chipsRow}>
+                          {entry.synonyms.map((syn, sIdx) => (
+                            <TouchableOpacity
+                              key={sIdx}
+                              style={styles.synonymChip}
+                              onPress={() => handleSearch(syn)}
+                              activeOpacity={0.78}
+                            >
+                              <Text style={styles.synonymChipText}>{syn}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -430,15 +419,15 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
 
-  /* CORPORATE HEADER & PROGRESS */
+  /* CORPORATE HEADER */
   headerRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   headerRowEmbedded: {
-    marginBottom: 7,
+    marginBottom: 10,
   },
   headerTextBlock: {
     flex: 1,
@@ -455,22 +444,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textSecondary,
   },
-  pctStat: {
+  savedCountStat: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 12,
+    fontSize: 11.5,
     color: THEME.colors.primaryGlow,
-  },
-  progressTrack: {
-    width: '100%',
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#221F33',
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 1,
   },
 
   /* SEARCH BAR */
@@ -533,33 +510,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  /* SEGMENTED FILTER */
-  filterTrack: {
+  /* VIEW SEGMENT */
+  segmentTrack: {
     flexDirection: 'row',
     backgroundColor: '#14131E',
     borderRadius: 11,
     padding: 3,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  filterSegment: {
+  segmentBtn: {
     flex: 1,
     paddingVertical: 7,
     borderRadius: 8,
     alignItems: 'center',
   },
-  filterSegmentActive: {
+  segmentBtnActive: {
     backgroundColor: '#231E3A',
   },
-  filterText: {
+  segmentText: {
     fontFamily: THEME.fonts.medium,
-    fontSize: 11.5,
+    fontSize: 12,
     color: THEME.colors.textMuted,
   },
-  filterTextActive: {
+  segmentTextActive: {
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
+  },
+
+  /* RELATED TERMS */
+  relatedStrip: {
+    marginBottom: 12,
+  },
+  eyebrowLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.9,
+    marginBottom: 6,
+  },
+  relatedScroll: {
+    gap: 8,
+  },
+  relatedChip: {
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  relatedChipText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
+    color: '#C4B5FD',
   },
 
   /* EMPTY STATE */
@@ -582,113 +585,93 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  /* METADATA LINE */
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 2,
+  /* DIRECTORY ROWS */
+  directoryList: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
-  cardCounter: {
+  entryRow: {
+    paddingVertical: 13,
+    paddingHorizontal: 4,
+  },
+  entryRowHairline: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  entryRowExpanded: {
+    backgroundColor: 'rgba(21, 20, 34, 0.72)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginVertical: 4,
+    borderTopWidth: 0,
+  },
+  entrySummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  entryMainCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  entryTitleLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  entryWord: {
     fontFamily: THEME.fonts.bold,
+    fontSize: 16.5,
+    color: '#FFFFFF',
+  },
+  entryPos: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 11,
     color: THEME.colors.textMuted,
-    letterSpacing: 0.9,
   },
-  metaRight: {
+  entryCefr: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: THEME.colors.primaryGlow,
+    letterSpacing: 0.4,
+  },
+  entryPreview: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  entryQuickActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  masteredStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  masteredDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.colors.primaryGlow,
-  },
-  masteredStatusText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
-    color: THEME.colors.primaryGlow,
-  },
-  cefrLabel: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10.5,
-    color: THEME.colors.textSecondary,
-    letterSpacing: 0.6,
-  },
-
-  /* EXECUTIVE WORD SHEET */
-  wordSheet: {
-    backgroundColor: '#151422',
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  sheetTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  posEyebrow: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10.5,
-    color: THEME.colors.primaryGlow,
-    textTransform: 'uppercase',
-    letterSpacing: 1.1,
-  },
-  audioBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(127, 67, 254, 0.14)',
+  iconActionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  audioBtnActive: {
+  iconActionBtnActive: {
     backgroundColor: THEME.colors.primary,
   },
-  wordTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 28,
-    color: '#FFFFFF',
-    marginTop: 8,
-    letterSpacing: -0.2,
-  },
-  wordPhonetic: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 13.5,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-  },
-  revealPrompt: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    marginTop: 26,
-    paddingTop: 14,
+
+  /* EXPANDED EXECUTIVE DETAILS */
+  expandedBody: {
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
-  revealText: {
-    fontFamily: THEME.fonts.medium,
+  phoneticText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12.5,
-    color: THEME.colors.textMuted,
-  },
-  detailsStack: {
-    marginTop: 16,
-  },
-  sheetDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    marginBottom: 14,
+    color: THEME.colors.textSecondary,
+    marginBottom: 10,
   },
   fieldEyebrow: {
     fontFamily: THEME.fonts.bold,
@@ -699,31 +682,31 @@ const styles = StyleSheet.create({
   },
   defBody: {
     fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 14.5,
+    fontSize: 14,
     color: '#FFFFFF',
-    lineHeight: 22,
-    marginBottom: 14,
+    lineHeight: 21,
+    marginBottom: 12,
   },
   tamilStrip: {
     borderLeftWidth: 2.5,
     borderLeftColor: THEME.colors.primary,
-    paddingLeft: 12,
-    marginBottom: 14,
+    paddingLeft: 11,
+    marginBottom: 12,
   },
   tamilBody: {
     fontFamily: THEME.fonts.tamilMedium,
     fontSize: 13.5,
     color: '#EFEBFD',
-    lineHeight: 23,
+    lineHeight: 22,
   },
   exampleBody: {
     fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: '#C9C5DE',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   synonymsWrap: {
-    marginTop: 14,
+    marginTop: 12,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -741,74 +724,5 @@ const styles = StyleSheet.create({
     fontFamily: THEME.fonts.medium,
     fontSize: 12,
     color: '#C4B5FD',
-  },
-
-  /* ACTION BAR */
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 10,
-  },
-  navCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#151422',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  masterBtnWrap: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  masteredGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    height: 42,
-    borderRadius: 12,
-  },
-  masteredText: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 13,
-  },
-  reviewAgainBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#1A172D',
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.35)',
-  },
-  reviewAgainText: {
-    fontFamily: THEME.fonts.bold,
-    color: '#C4B5FD',
-    fontSize: 13,
-  },
-
-  /* RELATED TERMS */
-  relatedSection: {
-    marginTop: 22,
-  },
-  relatedChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.045)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  relatedChipText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 12,
-    color: '#D5D0E6',
   },
 });
