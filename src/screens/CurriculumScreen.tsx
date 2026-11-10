@@ -18,7 +18,6 @@ import { UserStats } from '../types';
 import {
   SUPERNOVA_IMAGES,
   getLessonNodeEmblem,
-  getUnitBanner,
 } from '../constants/supernovaAssets';
 
 interface CurriculumScreenProps {
@@ -63,6 +62,10 @@ function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
 }
 
+function formatShortUnitTitle(fullName: string): string {
+  return fullName.replace(/^Unit\s+\d+:\s*/i, '').trim();
+}
+
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   stats,
@@ -104,13 +107,27 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         <Text style={styles.appNameText}>NovaBreaker</Text>
       </View>
 
-      {/* Clean Obsidian Architectural Course Timeline */}
-      <ScrollView
-        style={styles.courseScroll}
-        contentContainerStyle={styles.courseContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {SUPERNOVA_LEVELS.map((level) => {
+      {/* Single Unified Obsidian Topography Canvas */}
+      <View style={styles.mapStage}>
+        <Image
+          source={SUPERNOVA_IMAGES.mapTopographyBg}
+          style={styles.screenBgTexture}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(14,14,20,0.84)', 'rgba(14,14,20,0.62)', 'rgba(14,14,20,0.88)']}
+          locations={[0, 0.48, 1]}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+
+        {/* Clean Obsidian Architectural Course Timeline */}
+        <ScrollView
+          style={styles.courseScroll}
+          contentContainerStyle={styles.courseContent}
+          showsVerticalScrollIndicator={false}
+        >
+        {SUPERNOVA_LEVELS.map((level, levelIdx) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -121,71 +138,61 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           const isUnitCompleted = completedInLevel === level.classes.length;
 
           return (
-            <View key={level.levelNumber} style={styles.unitSection}>
-              {/* Full-Aspect 3D Diorama Unit Showcase Card */}
-              <View style={styles.unitCard}>
-                <View style={styles.unitMediaBox}>
-                  <Image
-                    source={getUnitBanner(level.levelNumber)}
-                    style={styles.unitBannerBg}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient
-                    colors={['rgba(14,14,20,0.35)', 'rgba(14,14,20,0)', 'rgba(24,23,36,0.92)']}
-                    locations={[0, 0.48, 1]}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  <View style={styles.unitCardTopRow}>
-                    <View style={[styles.cefrBadge, { backgroundColor: level.accentColor }]}>
-                      <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
-                    </View>
-                    <View style={styles.unitCountPill}>
-                      <Text style={styles.unitCountText}>
-                        UNIT {level.levelNumber} • {completedInLevel}/{level.classes.length}
-                      </Text>
-                    </View>
+            <View
+              key={level.levelNumber}
+              style={[styles.unitSection, levelIdx > 0 && styles.unitSectionSpaced]}
+            >
+              {/* Pure Editorial Typographic Chapter Break (Zero Boxes) */}
+              <View style={styles.unitEditorialHeader}>
+                <View style={styles.unitEditorialMetaRow}>
+                  <View style={styles.unitEyebrowGroup}>
+                    <View
+                      style={[
+                        styles.unitDot,
+                        isUnitCompleted && styles.unitDotCompleted,
+                      ]}
+                    />
+                    <Text style={styles.unitEyebrowText}>
+                      UNIT {String(level.levelNumber).padStart(2, '0')} · {level.cefrTag}
+                    </Text>
                   </View>
+                  <Text style={styles.unitProgressStatText}>
+                    {completedInLevel}/{level.classes.length} · {progressPercent}%
+                  </Text>
                 </View>
 
-                <View style={styles.unitCardFooter}>
-                  <Text style={styles.unitTitle}>{level.levelName}</Text>
-                  <Text style={styles.unitDesc} numberOfLines={2}>
-                    {level.description}
-                  </Text>
-                  <View style={styles.unitProgressRow}>
-                    <View style={styles.unitProgressTrack}>
-                      <LinearGradient
-                        colors={[level.accentColor, '#A78BFA']}
-                        style={[
-                          styles.unitProgressFill,
-                          { width: `${Math.max(6, progressPercent)}%` },
-                        ]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                      />
-                    </View>
-                    <Text style={styles.unitProgressPctText}>{progressPercent}%</Text>
-                  </View>
+                <Text style={styles.unitEditorialTitle}>
+                  {formatShortUnitTitle(level.levelName)}
+                </Text>
+                <Text style={styles.unitEditorialDesc} numberOfLines={2}>
+                  {level.description}
+                </Text>
+
+                <View style={styles.unitHairlineTrack}>
+                  {progressPercent > 0 && (
+                    <LinearGradient
+                      colors={['#7F43FE', '#A78BFA']}
+                      style={[
+                        styles.unitHairlineFill,
+                        { width: `${progressPercent}%` },
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    />
+                  )}
                 </View>
               </View>
 
-              {/* Premium Winding Obsidian SVG Zig-Zag Progression Map */}
+              {/* Open Winding Obsidian SVG Zig-Zag Progression Path */}
               <View
                 style={[
-                  styles.mapCanvas,
+                  styles.mapPathWrap,
                   {
                     width: mapWidth,
                     height: MAP_TOP_CY + level.classes.length * MAP_STEP_Y + 98,
                   },
                 ]}
               >
-                <Image
-                  source={SUPERNOVA_IMAGES.mapTopographyBg}
-                  style={styles.mapBgTexture}
-                  resizeMode="cover"
-                />
-                <View style={styles.mapBgVeil} />
-
                 {/* Smooth Cubic Bezier Winding Road */}
                 <Svg
                   width={mapWidth}
@@ -379,7 +386,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         })}
 
         <View style={{ height: 32 }} />
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Sleek Obsidian Lesson Sheet Modal */}
       <Modal
@@ -567,8 +575,21 @@ const styles = StyleSheet.create({
   },
 
   /* COURSE TIMELINE */
+  mapStage: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: THEME.colors.background,
+    overflow: 'hidden',
+  },
+  screenBgTexture: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    opacity: 0.22,
+  },
   courseScroll: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   courseContent: {
     paddingHorizontal: 18,
@@ -579,122 +600,77 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   unitSection: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
-  unitCard: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(127, 67, 254, 0.4)',
-    backgroundColor: THEME.colors.surface,
-    marginBottom: 16,
+  unitSectionSpaced: {
+    marginTop: 14,
   },
-  unitMediaBox: {
-    width: '100%',
-    aspectRatio: 1376 / 768,
-    justifyContent: 'flex-start',
-    backgroundColor: THEME.colors.surfaceDark,
+  unitEditorialHeader: {
+    paddingHorizontal: 4,
+    marginBottom: 6,
   },
-  unitBannerBg: {
-    width: '100%',
-    height: '100%',
-  },
-  unitCardTopRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
+  unitEditorialMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingTop: 11,
+    marginBottom: 4,
   },
-  cefrBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  cefrBadgeText: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 9.5,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  unitCountPill: {
-    backgroundColor: 'rgba(14, 14, 20, 0.82)',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
-  },
-  unitCountText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 9.5,
-    color: THEME.colors.text,
-    letterSpacing: 0.5,
-  },
-  unitCardFooter: {
-    paddingHorizontal: 16,
-    paddingTop: 13,
-    paddingBottom: 15,
-    backgroundColor: THEME.colors.surface,
-  },
-  unitTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 15.5,
-    color: '#FFFFFF',
-    marginBottom: 3,
-  },
-  unitDesc: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11.5,
-    color: THEME.colors.textSecondary,
-    lineHeight: 16,
-    marginBottom: 10,
-  },
-  unitProgressRow: {
+  unitEyebrowGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 7,
   },
-  unitProgressTrack: {
-    flex: 1,
+  unitDot: {
+    width: 6,
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 3,
-    overflow: 'hidden',
+    backgroundColor: THEME.colors.primary,
   },
-  unitProgressFill: {
-    height: '100%',
-    borderRadius: 3,
+  unitDotCompleted: {
+    backgroundColor: THEME.colors.gold,
   },
-  unitProgressPctText: {
+  unitEyebrowText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 10.5,
+    color: THEME.colors.primaryGlow,
+    letterSpacing: 1.1,
+  },
+  unitProgressStatText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10.5,
     color: '#C4B5FD',
+    letterSpacing: 0.4,
+  },
+  unitEditorialTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 20,
+    color: '#FFFFFF',
+    lineHeight: 26,
+  },
+  unitEditorialDesc: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    lineHeight: 17,
+    marginTop: 3,
+    marginBottom: 11,
+  },
+  unitHairlineTrack: {
+    width: '100%',
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#252238',
+    overflow: 'hidden',
+  },
+  unitHairlineFill: {
+    height: '100%',
+    borderRadius: 1,
   },
 
-  /* ZIG-ZAG COURSE MAP CANVAS */
-  mapCanvas: {
+  /* ZIG-ZAG COURSE PATH (OPEN ON UNIFIED BACKGROUND) */
+  mapPathWrap: {
     position: 'relative',
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#12111C',
-    borderWidth: 1,
-    borderColor: '#252238',
     alignSelf: 'center',
-  },
-  mapBgTexture: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-    opacity: 0.14,
-  },
-  mapBgVeil: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(14, 14, 20, 0.55)',
   },
   nextFloatTag: {
     position: 'absolute',
@@ -786,21 +762,18 @@ const styles = StyleSheet.create({
   mapLabelPill: {
     position: 'absolute',
     width: NODE_LABEL_WIDTH,
-    backgroundColor: 'rgba(20, 19, 32, 0.94)',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#29263F',
-    paddingHorizontal: 9,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(14, 14, 20, 0.68)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     alignItems: 'center',
     zIndex: 2,
   },
   mapLabelCompleted: {
-    borderColor: 'rgba(167, 139, 250, 0.3)',
+    backgroundColor: 'rgba(18, 16, 30, 0.72)',
   },
   mapLabelCurrent: {
-    borderColor: THEME.colors.primary,
-    backgroundColor: '#1E1933',
+    backgroundColor: 'rgba(127, 67, 254, 0.2)',
   },
   mapLabelIndex: {
     fontFamily: THEME.fonts.bold,
