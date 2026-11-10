@@ -4,30 +4,23 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
   Image,
-  ActivityIndicator,
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS } from '../constants/curriculum';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { UserStats } from '../types';
 import {
-  loadSavedApiKey,
-  saveApiKey,
   loadPreferredAccent,
   savePreferredAccent,
   savePreferredSpeechRate,
-  updateDailyGoal,
   updateSoundSetting,
   resetAllUserProgress,
 } from '../services/storageService';
-import { validateGeminiApiKey } from '../api/supernovaAi';
 import { EnglishAccent, getSpeechRate } from '../services/ttsService';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
 
@@ -42,12 +35,6 @@ const TOTAL_CURRICULUM_CLASSES = SUPERNOVA_LEVELS.reduce(
   0
 );
 
-const DAILY_GOALS = [
-  { xp: 50, label: 'Casual' },
-  { xp: 100, label: 'Regular' },
-  { xp: 200, label: 'Intensive' },
-];
-
 const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
   { id: 'en-US', shortLabel: 'US' },
   { id: 'en-GB', shortLabel: 'UK' },
@@ -55,43 +42,13 @@ const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
 ];
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpdate }) => {
-  const [apiKey, setApiKey] = useState('');
-  const [isSavedKey, setIsSavedKey] = useState(false);
-  const [isValidatingKey, setIsValidatingKey] = useState(false);
-  const [keyMessage, setKeyMessage] = useState<string | null>(null);
-  const [showApiConfig, setShowApiConfig] = useState(false);
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
 
   useEffect(() => {
-    loadSavedApiKey().then((key) => {
-      if (key) {
-        setApiKey(key);
-        setIsSavedKey(true);
-      }
-    });
     loadPreferredAccent().then(setSelectedAccent);
     setIsSlowSpeech(getSpeechRate() < 0.9);
   }, []);
-
-  const handleSaveApiKey = async () => {
-    const trimmed = apiKey.trim();
-    if (!trimmed) {
-      await saveApiKey('');
-      setIsSavedKey(false);
-      setKeyMessage('API key removed. Using built-in offline engine.');
-      return;
-    }
-
-    setIsValidatingKey(true);
-    setKeyMessage(null);
-    await saveApiKey(trimmed);
-    setIsSavedKey(true);
-
-    const check = await validateGeminiApiKey(trimmed);
-    setKeyMessage(check.message);
-    setIsValidatingKey(false);
-  };
 
   const handleAccentChange = async (acc: EnglishAccent) => {
     setSelectedAccent(acc);
@@ -105,11 +62,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
 
   const handleToggleSound = async (enabled: boolean) => {
     const updated = await updateSoundSetting(enabled);
-    onStatsUpdate(updated);
-  };
-
-  const handleSelectDailyGoal = async (goalXp: number) => {
-    const updated = await updateDailyGoal(goalXp);
     onStatsUpdate(updated);
   };
 
@@ -131,22 +83,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
     );
   };
 
-  const dailyGoalProgress = Math.min(
-    100,
-    Math.round((stats.todayXp / Math.max(1, stats.dailyGoalXp)) * 100)
-  );
-  const coursePct =
-    TOTAL_CURRICULUM_CLASSES > 0
-      ? Math.round((stats.completedClasses.length / TOTAL_CURRICULUM_CLASSES) * 100)
-      : 0;
-
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Clean Real-App Account Header */}
+      {/* Essential Account Header */}
       <View style={styles.accountHeader}>
         <View style={styles.accountLeft}>
           <View style={styles.avatarRing}>
@@ -157,24 +100,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
             />
           </View>
           <View style={styles.identityCol}>
-            <Text style={styles.userName}>NovaBreaker Learner</Text>
-            <View style={styles.rankSubRow}>
-              <View style={styles.rankDot} />
-              <Text style={styles.rankLabel}>{stats.cosmicRank}</Text>
-              <Text style={styles.metaSep}>·</Text>
-              <Text style={styles.coursePctText}>{coursePct}% Course</Text>
-            </View>
+            <Text style={styles.userName}>Learner</Text>
+            <Text style={styles.rankLabel}>{stats.cosmicRank}</Text>
           </View>
         </View>
 
         <LiveStreakBadge streakDays={stats.streakDays} />
       </View>
 
-      {/* Unified Horizontal KPI Metrics Bar */}
+      {/* Essential 3-Metric Summary */}
       <View style={styles.kpiStrip}>
         <View style={styles.kpiCell}>
-          <Text style={styles.kpiValue}>{stats.stardustXp}</Text>
-          <Text style={styles.kpiLabel}>Total XP</Text>
+          <Text style={styles.kpiValue}>
+            {stats.completedClasses.length}/{TOTAL_CURRICULUM_CLASSES}
+          </Text>
+          <Text style={styles.kpiLabel}>Classes</Text>
         </View>
         <View style={styles.kpiDivider} />
         <View style={styles.kpiCell}>
@@ -183,65 +123,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
         </View>
         <View style={styles.kpiDivider} />
         <View style={styles.kpiCell}>
-          <Text style={styles.kpiValue}>{stats.conversationsDone}</Text>
-          <Text style={styles.kpiLabel}>Talks</Text>
-        </View>
-        <View style={styles.kpiDivider} />
-        <View style={styles.kpiCell}>
-          <Text style={styles.kpiValue}>
-            {stats.completedClasses.length}/{TOTAL_CURRICULUM_CLASSES}
-          </Text>
-          <Text style={styles.kpiLabel}>Classes</Text>
+          <Text style={styles.kpiValue}>{stats.stardustXp}</Text>
+          <Text style={styles.kpiLabel}>Total XP</Text>
         </View>
       </View>
 
-      {/* Daily Target Progress & Intensity Switcher */}
-      <View style={styles.goalSection}>
-        <View style={styles.goalTopRow}>
-          <Text style={styles.sectionEyebrow}>DAILY XP TARGET</Text>
-          <Text style={styles.goalStatText}>
-            {stats.todayXp} / {stats.dailyGoalXp} XP · {dailyGoalProgress}%
-          </Text>
-        </View>
-
-        <View style={styles.goalTrack}>
-          {dailyGoalProgress > 0 && (
-            <LinearGradient
-              colors={['#7F43FE', '#A78BFA']}
-              style={[styles.goalFill, { width: `${dailyGoalProgress}%` }]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            />
-          )}
-        </View>
-
-        <View style={styles.goalSegmentTrack}>
-          {DAILY_GOALS.map((g) => {
-            const active = stats.dailyGoalXp === g.xp;
-            return (
-              <TouchableOpacity
-                key={g.xp}
-                style={[styles.goalSegmentBtn, active && styles.goalSegmentBtnActive]}
-                onPress={() => handleSelectDailyGoal(g.xp)}
-                activeOpacity={0.82}
-              >
-                <Text style={[styles.goalSegmentText, active && styles.goalSegmentTextActive]}>
-                  {g.label} · {g.xp}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Voice & Audio Settings Group */}
-      <Text style={styles.groupEyebrow}>VOICE &amp; AUDIO</Text>
+      {/* Single Clean Preferences Group */}
+      <Text style={styles.groupEyebrow}>PREFERENCES</Text>
       <View style={styles.settingsGroup}>
-        {/* Inline Accent Selector Row */}
         <View style={styles.settingRow}>
           <View style={styles.settingLead}>
             <Ionicons name="globe-outline" size={18} color={THEME.colors.primaryGlow} />
-            <Text style={styles.settingTitle}>Speech Accent</Text>
+            <Text style={styles.settingTitle}>Voice Accent</Text>
           </View>
           <View style={styles.inlineSegmented}>
             {ACCENT_OPTIONS.map((acc) => {
@@ -264,13 +157,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
 
         <View style={styles.rowDivider} />
 
-        {/* Slow Speech Toggle Row */}
         <View style={styles.settingRow}>
           <View style={styles.settingLead}>
             <Ionicons name="speedometer-outline" size={18} color={THEME.colors.primaryGlow} />
             <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Slow Speech Mode</Text>
-              <Text style={styles.settingSub}>0.75x clearer syllable pacing</Text>
+              <Text style={styles.settingTitle}>Slow Speech</Text>
+              <Text style={styles.settingSub}>0.75x clearer pronunciation</Text>
             </View>
           </View>
           <Switch
@@ -284,14 +176,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
 
         <View style={styles.rowDivider} />
 
-        {/* Sound Effects Toggle Row */}
         <View style={styles.settingRow}>
           <View style={styles.settingLead}>
             <Ionicons name="volume-medium-outline" size={18} color={THEME.colors.primaryGlow} />
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Sound Effects</Text>
-              <Text style={styles.settingSub}>Chimes on answers and completions</Text>
-            </View>
+            <Text style={styles.settingTitle}>Sound Effects</Text>
           </View>
           <Switch
             value={stats.soundEnabled}
@@ -303,93 +191,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
         </View>
       </View>
 
-      {/* AI & Account Settings Group */}
-      <Text style={styles.groupEyebrow}>COACHING ENGINE &amp; DATA</Text>
-      <View style={styles.settingsGroup}>
-        {/* Collapsible AI Key Configuration Row */}
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={() => setShowApiConfig((prev) => !prev)}
-          activeOpacity={0.82}
-        >
-          <View style={styles.settingLead}>
-            <Ionicons name="sparkles-outline" size={18} color={THEME.colors.primaryGlow} />
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>AI Coaching Engine</Text>
-              <Text style={styles.settingSub}>
-                {isSavedKey ? 'Gemini Live connected' : 'Built-in offline engine'}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.rowEndAction}>
-            <View style={[styles.statusDot, isSavedKey && styles.statusDotActive]} />
-            <Ionicons
-              name={showApiConfig ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={THEME.colors.textMuted}
-            />
-          </View>
-        </TouchableOpacity>
-
-        {showApiConfig && (
-          <View style={styles.expandedApiPane}>
-            <Text style={styles.apiHelperText}>
-              Optional free Gemini key from aistudio.google.com for cloud coaching.
-            </Text>
-            <View style={styles.apiKeyRow}>
-              <TextInput
-                style={styles.keyInput}
-                placeholder="Paste Gemini API key (AIza...)"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={apiKey}
-                onChangeText={setApiKey}
-                secureTextEntry
-              />
-              <TouchableOpacity
-                style={styles.saveKeyBtn}
-                onPress={handleSaveApiKey}
-                disabled={isValidatingKey}
-                activeOpacity={0.84}
-              >
-                {isValidatingKey ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveKeyBtnText}>{isSavedKey ? 'Verify' : 'Save'}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-            {keyMessage && <Text style={styles.keyFeedbackText}>{keyMessage}</Text>}
-          </View>
-        )}
-
-        <View style={styles.rowDivider} />
-
-        {/* Reset Progress Action Row */}
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={handleResetProgress}
-          activeOpacity={0.82}
-        >
-          <View style={styles.settingLead}>
-            <Ionicons name="refresh-outline" size={18} color={THEME.colors.textSecondary} />
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Reset Learning Progress</Text>
-              <Text style={styles.settingSub}>Clear XP, completed lessons, and streak</Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+      {/* Quiet Footer Action */}
+      <View style={styles.footerRow}>
+        <Text style={styles.versionText}>NovaBreaker · v1.0.0</Text>
+        <TouchableOpacity onPress={handleResetProgress} activeOpacity={0.75}>
+          <Text style={styles.resetText}>Reset Progress</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Subtle App Footer */}
-      <View style={styles.footerInfo}>
-        <Text style={styles.footerBrand}>NovaBreaker English · v1.0.0</Text>
-        <Text style={styles.footerTagline}>
-          Structured Tamil-to-English fluency training
-        </Text>
-      </View>
-
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 };
@@ -401,19 +209,19 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 24,
+    paddingTop: 22,
+    paddingBottom: 28,
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
 
-  /* ACCOUNT HEADER */
+  /* HEADER */
   accountHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 20,
   },
   accountLeft: {
     flexDirection: 'row',
@@ -422,9 +230,9 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   avatarRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 1.5,
     borderColor: 'rgba(167, 139, 250, 0.5)',
     backgroundColor: '#161423',
@@ -444,35 +252,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFFFFF',
   },
-  rankSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-    gap: 6,
-  },
-  rankDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.colors.primaryGlow,
-  },
   rankLabel: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
-    color: '#C4B5FD',
-  },
-  metaSep: {
     fontFamily: THEME.fonts.medium,
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-  },
-  coursePctText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
+    fontSize: 12.5,
+    color: '#A78BFA',
+    marginTop: 1,
   },
 
-  /* UNIFIED KPI BAR */
+  /* 3-METRIC SUMMARY */
   kpiStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,8 +267,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.07)',
-    paddingVertical: 14,
-    marginBottom: 20,
+    paddingVertical: 15,
+    marginBottom: 24,
   },
   kpiCell: {
     flex: 1,
@@ -489,12 +276,12 @@ const styles = StyleSheet.create({
   },
   kpiValue: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 16,
+    fontSize: 17,
     color: '#FFFFFF',
   },
   kpiLabel: {
     fontFamily: THEME.fonts.body,
-    fontSize: 10.5,
+    fontSize: 11,
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
@@ -504,73 +291,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.07)',
   },
 
-  /* DAILY GOAL SECTION */
-  goalSection: {
-    marginBottom: 22,
-  },
-  goalTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 7,
-  },
-  sectionEyebrow: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 10.5,
-    color: THEME.colors.textMuted,
-    letterSpacing: 0.9,
-  },
-  goalStatText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 11.5,
-    color: '#C4B5FD',
-  },
-  goalTrack: {
-    width: '100%',
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#221F33',
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  goalFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  goalSegmentTrack: {
-    flexDirection: 'row',
-    backgroundColor: '#14131E',
-    borderRadius: 11,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  goalSegmentBtn: {
-    flex: 1,
-    paddingVertical: 7,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  goalSegmentBtnActive: {
-    backgroundColor: '#231E3A',
-  },
-  goalSegmentText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11.5,
-    color: THEME.colors.textMuted,
-  },
-  goalSegmentTextActive: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
-  },
-
-  /* GROUPED SETTINGS LISTS */
+  /* PREFERENCES GROUP */
   groupEyebrow: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10.5,
     color: THEME.colors.textMuted,
     letterSpacing: 0.9,
-    marginBottom: 8,
+    marginBottom: 9,
     paddingHorizontal: 2,
   },
   settingsGroup: {
@@ -578,14 +305,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.07)',
-    paddingHorizontal: 14,
-    marginBottom: 20,
+    paddingHorizontal: 15,
+    marginBottom: 24,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 13,
+    paddingVertical: 14,
     gap: 10,
   },
   settingLead: {
@@ -599,7 +326,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   settingSub: {
@@ -620,7 +347,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   accentChip: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: 7,
   },
@@ -636,83 +363,22 @@ const styles = StyleSheet.create({
     fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
   },
-  rowEndAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#6E6A85',
-  },
-  statusDotActive: {
-    backgroundColor: THEME.colors.primaryGlow,
-  },
-
-  /* COLLAPSIBLE API KEY CONFIG */
-  expandedApiPane: {
-    paddingBottom: 14,
-    paddingTop: 2,
-  },
-  apiHelperText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11.5,
-    color: THEME.colors.textSecondary,
-    marginBottom: 8,
-    lineHeight: 17,
-  },
-  apiKeyRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  keyInput: {
-    flex: 1,
-    fontFamily: THEME.fonts.body,
-    backgroundColor: '#1D1B2D',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: '#FFFFFF',
-    fontSize: 12.5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  saveKeyBtn: {
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 66,
-  },
-  saveKeyBtnText: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 12,
-  },
-  keyFeedbackText: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11.5,
-    color: '#C4B5FD',
-    marginTop: 7,
-  },
 
   /* FOOTER */
-  footerInfo: {
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    paddingHorizontal: 4,
   },
-  footerBrand: {
-    fontFamily: THEME.fonts.semiBold,
+  versionText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 11.5,
     color: THEME.colors.textMuted,
   },
-  footerTagline: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
+  resetText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
   },
 });
