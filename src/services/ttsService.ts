@@ -1,8 +1,9 @@
 import * as Speech from 'expo-speech';
-import { Audio } from 'expo-av';
+import { Audio, AVPlaybackSource } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { getLastGeminiError, synthesizeGeminiSpeech } from '../api/supernovaAi';
+import { LECTURE_AUDIO_ASSETS } from '../constants/lectureAudioMap';
 
 let currentSound: Audio.Sound | null = null;
 let activeSequenceId = 0;
@@ -290,6 +291,63 @@ async function speakWithLanguage(
   }
 }
 
+async function playAudioSource(
+  sequenceToken: number,
+  source: AVPlaybackSource,
+  rate: number,
+  finishOnce: () => void
+): Promise<boolean> {
+  if (sequenceToken !== activeSequenceId) {
+    return true;
+  }
+
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+  }).catch(() => {});
+
+  const { sound } = await Audio.Sound.createAsync(source, {
+    shouldPlay: true,
+    rate,
+    shouldCorrectPitch: true,
+  });
+  if (sequenceToken !== activeSequenceId) {
+    await sound.unloadAsync().catch(() => {});
+    return true;
+  }
+
+  currentSound = sound;
+  sound.setOnPlaybackStatusUpdate((status) => {
+    if (status.isLoaded && status.didJustFinish) {
+      sound.unloadAsync().catch(() => {});
+      if (currentSound === sound) {
+        currentSound = null;
+      }
+      finishOnce();
+    }
+  });
+  return true;
+}
+
+async function tryPlayBundledLectureAsset(
+  sequenceToken: number,
+  assetKey: string | undefined,
+  rate: number,
+  finishOnce: () => void
+): Promise<boolean> {
+  if (!assetKey) return false;
+  const assetModule = LECTURE_AUDIO_ASSETS[assetKey];
+  if (!assetModule) return false;
+
+  try {
+    lastSpeechNotice = null;
+    return await playAudioSource(sequenceToken, assetModule, rate, finishOnce);
+  } catch (err) {
+    console.warn('Bundled lecture audio playback fallback triggered:', err);
+    return false;
+  }
+}
+
 async function playCachedOrSynthesizedAudio(
   sequenceToken: number,
   cacheKey: string,
@@ -335,35 +393,7 @@ async function playCachedOrSynthesizedAudio(
       lastSpeechNotice = null;
     }
 
-    if (sequenceToken !== activeSequenceId) {
-      return true;
-    }
-
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-    }).catch(() => {});
-
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: audioUri },
-      { shouldPlay: true, rate: 1.06, shouldCorrectPitch: true }
-    );
-    if (sequenceToken !== activeSequenceId) {
-      await sound.unloadAsync().catch(() => {});
-      return true;
-    }
-
-    currentSound = sound;
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync().catch(() => {});
-        if (currentSound === sound) {
-          currentSound = null;
-        }
-        finishOnce();
-      }
-    });
-    return true;
+    return await playAudioSource(sequenceToken, { uri: audioUri }, 1.06, finishOnce);
   } catch (err) {
     console.warn('Gemini TTS playback fallback triggered:', err);
     return false;
@@ -374,21 +404,27 @@ export async function speakText(
   text: string,
   onDone?: () => void,
   rateOverride?: number,
-  preferAiVoice = false
+  preferAiVoice = false,
+  assetKey?: string
 ) {
   const sequenceToken = ++activeSequenceId;
   await stopPlaybackOnly();
 
+  let finished = false;
+  const finishOnce = () => {
+    if (!finished) {
+      finished = true;
+      onDone?.();
+    }
+  };
+
+  if (await tryPlayBundledLectureAsset(sequenceToken, assetKey, rateOverride ?? 1.0, finishOnce)) {
+    return;
+  }
+
   const shouldUseAiVoice =
     preferAiVoice && (!rateOverride || Math.abs(rateOverride - currentSpeechRate) < 0.05);
   if (shouldUseAiVoice) {
-    let finished = false;
-    const finishOnce = () => {
-      if (!finished) {
-        finished = true;
-        onDone?.();
-      }
-    };
     const cacheKey = `en:${currentAccent}:${text.trim()}`;
     const played = await playCachedOrSynthesizedAudio(
       sequenceToken,
@@ -432,8 +468,8 @@ function runBilingualSequence(
   playNext();
 }
 
-/** Speaks Tamil coach commentary using natural Gemini Chennai-Tamil audio with bilingual fallback. */
-export async function speakTamil(text: string, onDone?: () => void) {
+/** Speaks Tamil coach commentary using bundled AI4Bharat audio if present, else Gemini TTS + fallback. */
+export async function speakTamil(text: string, onDone?: () => void, assetKey?: string) {
   const sequenceToken = ++activeSequenceId;
   await stopPlaybackOnly();
 
@@ -444,6 +480,10 @@ export async function speakTamil(text: string, onDone?: () => void) {
       onDone?.();
     }
   };
+
+  if (await tryPlayBundledLectureAsset(sequenceToken, assetKey, 1.0, finishOnce)) {
+    return;
+  }
 
   const clean = text.trim();
   if (!clean) {

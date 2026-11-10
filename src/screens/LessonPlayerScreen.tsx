@@ -177,15 +177,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     text: string,
     id: string,
     rateOverride?: number,
-    preferAiVoice = false
+    preferAiVoice = false,
+    assetKey?: string
   ) => {
     setPlayingAudioId(id);
-    speakText(text, () => setPlayingAudioId(null), rateOverride, preferAiVoice);
+    speakText(text, () => setPlayingAudioId(null), rateOverride, preferAiVoice, assetKey);
   };
 
-  const handlePlayTamilVoice = (text: string, id: string) => {
+  const handlePlayTamilVoice = (text: string, id: string, assetKey?: string) => {
     setPlayingAudioId(id);
-    speakTamil(text, () => setPlayingAudioId(null));
+    speakTamil(text, () => setPlayingAudioId(null), assetKey);
   };
 
   const handleStopVoice = () => {
@@ -198,9 +199,19 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     if (voiceMuted) return;
     if (currentSlide === 'rule') {
       if (lectureStep === 0) {
-        handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'lecture-tamil');
+        handlePlayTamilVoice(
+          lesson.rule.tamilMentalModel,
+          'lecture-tamil',
+          `${lesson.id}-tamil`
+        );
       } else if (lectureStep === 1) {
-        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right', undefined, true);
+        handlePlayVoice(
+          lesson.rule.doAndDont.right,
+          'lecture-right',
+          undefined,
+          true,
+          `${lesson.id}-right`
+        );
       }
     } else if (currentSlide === 'speaking') {
       const firstLine = lesson.speakingChallenge.missNovaQuestion;
@@ -643,7 +654,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     onPress={() =>
                       playingAudioId === 'lecture-tamil'
                         ? handleStopVoice()
-                        : handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'lecture-tamil')
+                        : handlePlayTamilVoice(
+                            lesson.rule.tamilMentalModel,
+                            'lecture-tamil',
+                            `${lesson.id}-tamil`
+                          )
                     }
                     activeOpacity={0.78}
                   >
@@ -687,7 +702,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         playingAudioId === 'lecture-right' && styles.minimalAudioBtnActive,
                       ]}
                       onPress={() =>
-                        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right', undefined, true)
+                        handlePlayVoice(
+                          lesson.rule.doAndDont.right,
+                          'lecture-right',
+                          undefined,
+                          true,
+                          `${lesson.id}-right`
+                        )
                       }
                       activeOpacity={0.8}
                     >
@@ -701,7 +722,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         playingAudioId === 'lecture-slow' && styles.minimalAudioBtnActive,
                       ]}
                       onPress={() =>
-                        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-slow', 0.72)
+                        handlePlayVoice(
+                          lesson.rule.doAndDont.right,
+                          'lecture-slow',
+                          0.72,
+                          false,
+                          `${lesson.id}-right`
+                        )
                       }
                       activeOpacity={0.8}
                     >
@@ -747,7 +774,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                           if (isRightChoice) {
                             playSoundEffect('success');
                             if (!voiceMuted) {
-                              handlePlayVoice(lesson.rule.doAndDont.right, 'spot-right', undefined, true);
+                              handlePlayVoice(
+                                lesson.rule.doAndDont.right,
+                                'spot-right',
+                                undefined,
+                                true,
+                                `${lesson.id}-right`
+                              );
                             }
                           } else {
                             playSoundEffect('error');
