@@ -347,42 +347,48 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             <View
               style={[
                 styles.modalCard,
-                { width: Math.min(windowWidth - 32, 420), maxHeight: windowHeight * 0.85 },
+                { width: Math.min(windowWidth - 32, 420), maxHeight: windowHeight * 0.82 },
               ]}
             >
-              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                <View style={styles.modalTopHeader}>
-                  <View style={styles.modalHeaderRow}>
-                    <View style={styles.modalEmblemWrap}>
-                      <Image
-                        source={getLessonNodeEmblem(selectedLesson.id)}
-                        style={styles.modalEmblemImg}
-                        resizeMode="cover"
-                      />
-                    </View>
-
-                    <View style={styles.modalTitleBlock}>
-                      <Text style={styles.modalEyebrow}>
-                        LESSON {selectedLesson.id.replace('sn-', '').replace('-', '.')}  ·{' '}
-                        {selectedLesson.duration.toUpperCase()}
-                      </Text>
-                      <Text style={styles.modalTitle}>
-                        {formatShortLessonTitle(selectedLesson.title)}
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity
-                      style={styles.closeBtn}
-                      onPress={() => setSelectedLesson(null)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="close" size={16} color="#9C98B8" />
-                    </TouchableOpacity>
+              {/* Fixed Editorial Header */}
+              <View style={styles.modalTopHeader}>
+                <View style={styles.modalHeaderRow}>
+                  <View style={styles.modalEmblemWrap}>
+                    <Image
+                      source={getLessonNodeEmblem(selectedLesson.id)}
+                      style={styles.modalEmblemImg}
+                      resizeMode="cover"
+                    />
                   </View>
 
-                  <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
+                  <View style={styles.modalTitleBlock}>
+                    <Text style={styles.modalEyebrow}>
+                      LESSON {selectedLesson.id.replace('sn-', '').replace('-', '.')}  ·{' '}
+                      {selectedLesson.duration.toUpperCase()}
+                    </Text>
+                    <Text style={styles.modalTitle}>
+                      {formatShortLessonTitle(selectedLesson.title)}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.closeBtn}
+                    onPress={() => setSelectedLesson(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={16} color="#9C98B8" />
+                  </TouchableOpacity>
                 </View>
 
+                <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
+              </View>
+
+              {/* Scrollable Middle Details (Shrinks cleanly on small screens) */}
+              <ScrollView
+                style={styles.modalScroll}
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+              >
                 <View style={styles.tamilConceptBox}>
                   <Text style={styles.tamilConceptLabel}>TAMIL KEY INSIGHT</Text>
                   <Text style={styles.tamilConceptText}>
@@ -448,36 +454,37 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.modalActionsWrap}>
-                  <TouchableOpacity
-                    style={styles.modalStartBtn}
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      const lesson = selectedLesson;
-                      setSelectedLesson(null);
-                      onStartLesson(lesson);
-                    }}
-                  >
-                    <LinearGradient
-                      colors={['#8B5CF6', '#6D28D9']}
-                      style={styles.modalStartBtnInner}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      <Text style={styles.modalStartBtnText}>
-                        {isSelectedCompleted ? 'Practice Again' : 'Start Lesson'}
-                      </Text>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={17}
-                        color="#FFFFFF"
-                        style={{ marginLeft: 8 }}
-                      />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
               </ScrollView>
+
+              {/* Pinned Primary Action Footer (Always visible on every screen height) */}
+              <View style={styles.modalActionsWrap}>
+                <TouchableOpacity
+                  style={styles.modalStartBtn}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    const lesson = selectedLesson;
+                    setSelectedLesson(null);
+                    onStartLesson(lesson);
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#8B5CF6', '#6D28D9']}
+                    style={styles.modalStartBtnInner}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.modalStartBtnText}>
+                      {isSelectedCompleted ? 'Practice Again' : 'Start Lesson'}
+                    </Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={17}
+                      color="#FFFFFF"
+                      style={{ marginLeft: 8 }}
+                    />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
@@ -850,7 +857,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(6, 6, 10, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 28,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -867,10 +875,15 @@ const styles = StyleSheet.create({
     shadowRadius: 28,
     elevation: 16,
   },
+  modalScroll: {
+    flexShrink: 1,
+    flexGrow: 0,
+  },
   modalTopHeader: {
+    flexShrink: 0,
     paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 16,
+    paddingTop: 20,
+    paddingBottom: 14,
   },
   modalHeaderRow: {
     flexDirection: 'row',
@@ -928,13 +941,13 @@ const styles = StyleSheet.create({
   },
   tamilConceptBox: {
     marginHorizontal: 22,
-    marginBottom: 18,
+    marginBottom: 14,
     backgroundColor: '#1A1829',
     borderRadius: 12,
     borderLeftWidth: 3,
     borderLeftColor: THEME.colors.primary,
     paddingHorizontal: 15,
-    paddingVertical: 13,
+    paddingVertical: 12,
   },
   tamilConceptLabel: {
     fontFamily: THEME.fonts.bold,
@@ -951,7 +964,7 @@ const styles = StyleSheet.create({
   },
   stagesSection: {
     paddingHorizontal: 22,
-    marginBottom: 18,
+    marginBottom: 14,
   },
   sectionEyebrow: {
     fontFamily: THEME.fonts.bold,
@@ -987,8 +1000,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     marginHorizontal: 22,
-    paddingVertical: 13,
-    marginBottom: 20,
+    paddingVertical: 12,
+    marginBottom: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.07)',
@@ -1009,14 +1022,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   modalActionsWrap: {
+    flexShrink: 0,
     paddingHorizontal: 22,
-    paddingBottom: 22,
+    paddingTop: 14,
+    paddingBottom: 20,
+    backgroundColor: '#141320',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   modalStartBtn: {
+    width: '100%',
     borderRadius: 14,
     overflow: 'hidden',
+    backgroundColor: THEME.colors.primary,
   },
   modalStartBtnInner: {
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
