@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserStats, WordDefinition } from '../types';
+import { AuthUser, UserStats, WordDefinition } from '../types';
 import { setGeminiApiKey } from '../api/supernovaAi';
 import {
   setPreferredAccent,
@@ -12,6 +12,7 @@ import { STARTER_VOCABULARY } from '../api/dictionary';
 
 const KEYS = {
   USER_STATS: 'nova_user_stats',
+  AUTH_USER: 'nova_auth_user',
   GEMINI_API_KEY: 'nova_gemini_key',
   SAVED_WORDS: 'nova_saved_words',
   PREFERRED_ACCENT: 'nova_preferred_accent',
@@ -359,4 +360,42 @@ export async function resetAllUserProgress(): Promise<UserStats> {
   ]);
   setSoundEffectsEnabled(fresh.soundEnabled);
   return fresh;
+}
+
+export async function loadAuthUser(): Promise<AuthUser | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.AUTH_USER);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AuthUser>;
+    if (parsed && typeof parsed.name === 'string' && parsed.name.trim()) {
+      return {
+        name: parsed.name.trim(),
+        email: typeof parsed.email === 'string' ? parsed.email : '',
+        provider:
+          parsed.provider === 'google' || parsed.provider === 'guest'
+            ? parsed.provider
+            : 'email',
+        createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : new Date().toISOString(),
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveAuthUser(user: AuthUser): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
+  } catch (e) {
+    console.warn('Failed to save auth user:', e);
+  }
+}
+
+export async function signOutAuthUser(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(KEYS.AUTH_USER);
+  } catch (e) {
+    console.warn('Failed to sign out user:', e);
+  }
 }

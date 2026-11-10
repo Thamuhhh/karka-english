@@ -38,15 +38,18 @@ import { LessonPlayerScreen } from './src/screens/LessonPlayerScreen';
 import { SpeakHubScreen } from './src/screens/SpeakHubScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { AuthScreen } from './src/screens/AuthScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SupernovaClass } from './src/constants/curriculum';
-import { UserStats } from './src/types';
+import { AuthUser, UserStats } from './src/types';
 import {
   createDefaultStats,
   hydrateAppPreferences,
   completeLessonSession,
   updateHearts,
   refillHeartsWithGems,
+  loadAuthUser,
+  signOutAuthUser,
 } from './src/services/storageService';
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 
@@ -86,14 +89,16 @@ function AppContent() {
   });
 
   const [stats, setStats] = useState<UserStats>(createDefaultStats);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('learn');
   const [currentLesson, setCurrentLesson] = useState<SupernovaClass | null>(null);
 
   useEffect(() => {
-    hydrateAppPreferences()
-      .then((loaded) => {
-        setStats(loaded);
+    Promise.all([hydrateAppPreferences(), loadAuthUser()])
+      .then(([loadedStats, loadedAuth]) => {
+        setStats(loadedStats);
+        setAuthUser(loadedAuth);
       })
       .finally(() => {
         setHydrated(true);
@@ -110,7 +115,19 @@ function AppContent() {
   }
 
   const topSurfaceColor =
-    !currentLesson && activeTab === 'profile' ? '#201639' : THEME.colors.background;
+    authUser && !currentLesson && activeTab === 'profile' ? '#201639' : THEME.colors.background;
+
+  const handleAuthenticated = (user: AuthUser) => {
+    setAuthUser(user);
+    setActiveTab('learn');
+  };
+
+  const handleSignOut = async () => {
+    await signOutAuthUser();
+    setCurrentLesson(null);
+    setActiveTab('learn');
+    setAuthUser(null);
+  };
 
   const userRank = getUserLeaderboardRank(stats);
 
@@ -172,8 +189,12 @@ function AppContent() {
       {/* Dynamic Top Status Bar Safe Area Strip */}
       <View style={{ height: insets.top, backgroundColor: topSurfaceColor }} />
 
-      {/* Dedicated Full-Screen Lesson Player (Hides tabs when in a class) */}
-      {currentLesson ? (
+      {/* Duolingo-Style Auth / Onboarding Gate */}
+      {!authUser ? (
+        <View style={[styles.screenContainer, { paddingBottom: insets.bottom }]}>
+          <AuthScreen onAuthenticated={handleAuthenticated} />
+        </View>
+      ) : currentLesson ? (
         <View style={[styles.screenContainer, { paddingBottom: insets.bottom }]}>
           <LessonPlayerScreen
             lesson={currentLesson}
@@ -203,7 +224,12 @@ function AppContent() {
               <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />
             )}
             {activeTab === 'profile' && (
-              <ProfileScreen stats={stats} onStatsUpdate={setStats} />
+              <ProfileScreen
+                stats={stats}
+                authUser={authUser}
+                onStatsUpdate={setStats}
+                onSignOut={handleSignOut}
+              />
             )}
           </View>
 

@@ -73,3 +73,10 @@ export interface LeaderboardEntry {
   streak: number;
   isCurrentUser?: boolean;
 }
+
+export interface AuthUser {
+  name: string;
+  email: string;
+  provider: 'email' | 'google' | 'guest';
+  createdAt: string;
+}

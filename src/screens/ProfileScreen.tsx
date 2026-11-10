@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS } from '../constants/curriculum';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
-import { UserStats } from '../types';
+import { AuthUser, UserStats } from '../types';
 import {
   loadPreferredAccent,
   savePreferredAccent,
@@ -29,7 +29,9 @@ import { LiveStreakBadge } from '../components/LiveStreakBadge';
 
 interface ProfileScreenProps {
   stats: UserStats;
+  authUser?: AuthUser | null;
   onStatsUpdate: (stats: UserStats) => void;
+  onSignOut?: () => void;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -125,7 +127,12 @@ function getLearnerTierLabel(completedCount: number): string {
   return 'A1 Foundation';
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpdate }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  stats,
+  authUser,
+  onStatsUpdate,
+  onSignOut,
+}) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
@@ -202,10 +209,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
               />
             </View>
             <View style={styles.identityText}>
-              <Text style={styles.userName}>NovaBreaker</Text>
+              <Text style={styles.userName}>{authUser?.name || 'NovaBreaker'}</Text>
               <Text style={styles.tierMeta}>
                 {tierLabel} · {stats.cosmicRank}
               </Text>
+              {!!authUser?.email && (
+                <Text style={styles.emailSubText} numberOfLines={1}>
+                  {authUser.email}
+                </Text>
+              )}
             </View>
           </View>
           <LiveStreakBadge streakDays={stats.streakDays} />
@@ -372,6 +384,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
             </View>
             <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
           </TouchableOpacity>
+
+          {onSignOut && (
+            <>
+              <View style={styles.rowDivider} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() =>
+                  Alert.alert('Sign Out?', 'Your learning progress stays saved on this device.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Sign Out', onPress: onSignOut },
+                  ])
+                }
+                activeOpacity={0.78}
+              >
+                <View style={styles.settingLead}>
+                  <Ionicons name="log-out-outline" size={18} color={THEME.colors.primaryGlow} />
+                  <Text style={styles.settingTitle}>Sign Out</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <View style={styles.sectionDivider} />
@@ -547,6 +581,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#C4B5FD',
     marginTop: 2,
+  },
+  emailSubText: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 1,
   },
 
   /* COURSE FLUENCY */
