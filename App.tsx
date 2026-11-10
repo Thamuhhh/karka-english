@@ -10,6 +10,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   useFonts,
   Poppins_400Regular,
@@ -59,12 +60,13 @@ interface NavTabItem {
   family: 'mci' | 'ion';
   activeIcon: string;
   inactiveIcon: string;
+  isCenter?: boolean;
 }
 
 const NAV_TABS: NavTabItem[] = [
   { id: 'learn', label: 'Course', family: 'mci', activeIcon: 'compass', inactiveIcon: 'compass-outline' },
   { id: 'grammar', label: 'Ask Nova', family: 'mci', activeIcon: 'chat-question', inactiveIcon: 'chat-question-outline' },
-  { id: 'call', label: 'Speak', family: 'ion', activeIcon: 'mic', inactiveIcon: 'mic-outline' },
+  { id: 'call', label: 'Speak', family: 'ion', activeIcon: 'mic', inactiveIcon: 'mic-outline', isCenter: true },
   { id: 'vocab', label: 'Vocab', family: 'ion', activeIcon: 'book', inactiveIcon: 'book-outline' },
   { id: 'profile', label: 'Profile', family: 'ion', activeIcon: 'person', inactiveIcon: 'person-outline' },
 ];
@@ -198,13 +200,36 @@ export default function App() {
               )}
             </View>
 
-            {/* Unified Bottom Navigation Bar */}
+            {/* Unified Bottom Navigation Bar with Floating Center Speak CTA */}
             <View style={styles.bottomNavWrapper}>
               <View style={styles.bottomNav}>
                 {NAV_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
                   const iconColor = isActive ? THEME.colors.primaryGlow : THEME.colors.textMuted;
                   const iconName = (isActive ? tab.activeIcon : tab.inactiveIcon) as any;
+
+                  if (tab.isCenter) {
+                    return (
+                      <TouchableOpacity
+                        key={tab.id}
+                        style={styles.centerCallWrapper}
+                        onPress={() => setActiveTab(tab.id)}
+                        activeOpacity={0.85}
+                      >
+                        <LinearGradient
+                          colors={THEME.gradients.primary}
+                          style={styles.callTabGradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Ionicons name="mic" size={20} color="#FFFFFF" />
+                        </LinearGradient>
+                        <Text style={[styles.navText, isActive && styles.navTextActive]}>
+                          {tab.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }
 
                   return (
                     <TouchableOpacity
@@ -256,11 +281,10 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surfaceDark,
-    paddingVertical: 7,
-    alignItems: 'center',
+    paddingVertical: 6,
+    alignItems: 'flex-end',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
-    gap: 4,
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
@@ -268,12 +292,35 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
+    justifyContent: 'flex-end',
+    paddingVertical: 4,
     borderRadius: 12,
   },
   navItemActive: {
     backgroundColor: 'rgba(127, 67, 254, 0.14)',
+  },
+  centerCallWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingVertical: 4,
+  },
+  callTabGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginTop: -16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#A78BFA',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: '#5B21B6',
   },
   navText: {
     fontFamily: THEME.fonts.medium,
