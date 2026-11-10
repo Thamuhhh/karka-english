@@ -196,7 +196,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
             {/* Miss Nova Coach Advice */}
             <View style={styles.novaCoachCard}>
-              <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaCoachAvatar} />
+              <View style={styles.novaCoachAvatarWrap}>
+                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaCoachAvatar} />
+              </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.novaCoachTitle}>Miss Nova</Text>
                 <Text style={styles.novaCoachText}>
@@ -1071,7 +1073,7 @@ const styles = StyleSheet.create({
   missNovaAvatarSmallImg: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    transform: [{ scale: 1.08 }],
   },
   missNovaTitle: {
     fontFamily: THEME.fonts.bold,
@@ -1175,10 +1177,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(127, 67, 254, 0.3)',
     marginBottom: 4,
   },
+  novaCoachAvatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: THEME.colors.primaryGlow,
+  },
   novaCoachAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.08 }],
   },
   novaCoachTitle: {
     fontFamily: THEME.fonts.bold,
@@ -1199,15 +1209,26 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
   },
   victoryTrophyCircle: {
-    width: 140,
-    height: 140,
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+    backgroundColor: '#181724',
+    borderWidth: 3,
+    borderColor: THEME.colors.gold,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
   },
   victoryTrophyImg: {
-    width: 130,
-    height: 130,
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.08 }],
   },
   victoryTitle: {
     fontFamily: THEME.fonts.bold,

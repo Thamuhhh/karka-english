@@ -99,9 +99,7 @@ export default function App() {
               {activeTab === 'call' && <LiveVoiceCallScreen />}
               {activeTab === 'grammar' && <GrammarNovaScreen />}
               {activeTab === 'vocab' && <VocabVaultScreen />}
-              {activeTab === 'league' && (
-                <LeaderboardScreen onBack={() => setActiveTab('learn')} />
-              )}
+              {activeTab === 'league' && <LeaderboardScreen />}
               {activeTab === 'profile' && <ProfileScreen />}
             </View>
 

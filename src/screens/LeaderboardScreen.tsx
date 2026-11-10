@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
-
-interface LeaderboardScreenProps {
-  onBack?: () => void;
-}
 
 interface LeaderboardUser {
   rank: number;
@@ -39,20 +35,11 @@ const LEADERBOARD_DATA: LeaderboardUser[] = [
   { rank: 10, name: 'Swetha K.', initials: 'SK', color: '#6366F1', xp: 720, streak: 2 },
 ];
 
-export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) => {
+export const LeaderboardScreen: React.FC = () => {
+  const [activeLeague, setActiveLeague] = useState<'bronze' | 'silver' | 'gold'>('gold');
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {onBack && (
-        <View style={styles.topBackRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
-            <Ionicons name="chevron-back" size={18} color={THEME.colors.text} />
-            <Text style={styles.backBtnText}>Course</Text>
-          </TouchableOpacity>
-          <Text style={styles.screenHeaderTitle}>Leaderboard</Text>
-          <View style={{ width: 72 }} />
-        </View>
-      )}
-
       {/* League Header Banner */}
       <LinearGradient
         colors={THEME.gradients.banner}
@@ -62,11 +49,11 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) 
       >
         <View style={styles.leagueTopRow}>
           <View style={styles.leagueIconCircle}>
-            <Image source={SUPERNOVA_IMAGES.trophyNova} style={{ width: 44, height: 44 }} resizeMode="contain" />
+            <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.leagueTrophyImg} resizeMode="cover" />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.leagueLabel}>CURRENT LEAGUE</Text>
-            <Text style={styles.leagueTitle}>Gold League</Text>
+            <Text style={styles.leagueTitle}>Gold Supernova League</Text>
             <Text style={styles.leagueSubtitle}>Top 5 advance to Diamond League</Text>
           </View>
         </View>
@@ -174,33 +161,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  topBackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  backBtnText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
-    color: THEME.colors.text,
-    marginLeft: 2,
-  },
-  screenHeaderTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 16,
-    color: THEME.colors.text,
-  },
   leagueBanner: {
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: THEME.radius.lg,
@@ -214,12 +174,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   leagueIconCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#181724',
+    borderWidth: 2,
+    borderColor: 'rgba(251, 191, 36, 0.5)',
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  leagueTrophyImg: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.08 }],
   },
   leagueLabel: {
     fontFamily: THEME.fonts.bold,

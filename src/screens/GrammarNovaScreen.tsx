@@ -7,12 +7,10 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { GrammarCorrection } from '../types';
 import { analyzeSentenceGrammar } from '../api/supernovaAi';
 import { speakText } from '../services/ttsService';
@@ -63,7 +61,7 @@ export const GrammarNovaScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          <Image source={SUPERNOVA_IMAGES.askDoubt} style={{ width: 28, height: 28 }} resizeMode="contain" />
+          <MaterialCommunityIcons name="chat-question-outline" size={24} color={THEME.colors.gold} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.title}>Ask Miss Nova</Text>

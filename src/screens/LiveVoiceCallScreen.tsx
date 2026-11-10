@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   missNovaAvatarImg: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    transform: [{ scale: 1.08 }],
   },
   endCallIcon: {
     width: 24,

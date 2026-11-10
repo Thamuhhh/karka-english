@@ -69,7 +69,7 @@ export const ProfileScreen: React.FC = () => {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.avatar}>
-          <Image source={SUPERNOVA_IMAGES.streakNova} style={styles.streakNovaAvatar} resizeMode="contain" />
+          <Image source={SUPERNOVA_IMAGES.streakNova} style={styles.streakNovaAvatar} resizeMode="cover" />
         </View>
         <Text style={styles.userName}>Learner Profile</Text>
         <Text style={styles.userRank}>{stats?.cosmicRank || 'Gold League'}</Text>
@@ -225,18 +225,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#181724',
+    borderWidth: 2.5,
+    borderColor: THEME.colors.primaryGlow,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
     overflow: 'hidden',
   },
   streakNovaAvatar: {
-    width: 68,
-    height: 68,
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.08 }],
   },
   userName: {
     fontFamily: THEME.fonts.bold,
