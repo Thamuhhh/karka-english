@@ -17,6 +17,7 @@ import { SupernovaClass } from '../constants/curriculum';
 import { speakText, stopAllAudio } from '../services/ttsService';
 import { addXp, incrementMetric } from '../services/storageService';
 import { analyzeSentenceGrammar } from '../api/supernovaAi';
+import { playSoundEffect } from '../services/soundEffectsService';
 
 interface LessonPlayerProps {
   lesson: SupernovaClass;
@@ -77,6 +78,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   // Jumble Handlers
   const handleTapBankWord = (word: string, index: number) => {
     if (jumbleChecked) return;
+    playSoundEffect('button');
     setAssembledWords([...assembledWords, word]);
     const updated = [...availableWords];
     updated.splice(index, 1);
@@ -85,6 +87,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
   const handleTapSlotWord = (word: string, index: number) => {
     if (jumbleChecked) return;
+    playSoundEffect('buttonV2');
     const updated = [...assembledWords];
     updated.splice(index, 1);
     setAssembledWords(updated);
@@ -97,7 +100,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     const isOk = userStr === correctStr;
     setIsJumbleCorrect(isOk);
     setJumbleChecked(true);
-    if (!isOk) {
+    if (isOk) {
+      playSoundEffect('success');
+    } else {
+      playSoundEffect('error');
       setHearts((prev) => Math.max(1, prev - 1));
     }
   };
@@ -105,7 +111,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const handleCheckTranslation = () => {
     if (selectedTransIdx === null) return;
     setTransChecked(true);
-    if (selectedTransIdx !== lesson.translation.correctOptionIndex) {
+    if (selectedTransIdx === lesson.translation.correctOptionIndex) {
+      playSoundEffect('chime');
+    } else {
+      playSoundEffect('error');
       setHearts((prev) => Math.max(1, prev - 1));
     }
   };
@@ -118,6 +127,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     try {
       const feedback = await analyzeSentenceGrammar(text);
       setSpeakingFeedback(feedback);
+      if (!feedback.hasErrors) {
+        playSoundEffect('success');
+      }
     } catch (e) {
       console.warn('Speech eval error:', e);
     } finally {
@@ -126,6 +138,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   };
 
   const handleFinishLesson = async () => {
+    playSoundEffect('finish');
     await addXp(lesson.xpReward);
     await incrementMetric('wordsMastered', 3);
     onComplete(lesson.id);

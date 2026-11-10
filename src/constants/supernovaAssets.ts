@@ -104,3 +104,4 @@ export const COURSE_NODE_IMAGES: { [key: number]: { colored: any; grayscale: any
     grayscale: require('../../assets/supernova/coursev5_grayscale_22.jpg'),
   },
 };
+

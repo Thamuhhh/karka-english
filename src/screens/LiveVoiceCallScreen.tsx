@@ -14,6 +14,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { playSoundEffect } from '../services/soundEffectsService';
 import { speakText, stopAllAudio } from '../services/ttsService';
 import { sendChatMessage } from '../api/supernovaAi';
 import { SCENARIOS } from '../constants/scenarios';
@@ -175,7 +176,10 @@ export const LiveVoiceCallScreen: React.FC = () => {
       setIsCalling(false);
     } else {
       setIsCalling(true);
-      speakAiMessage("Welcome back! What shall we talk about?");
+      playSoundEffect('callRing');
+      setTimeout(() => {
+        speakAiMessage("Welcome back! What shall we talk about today?");
+      }, 1500);
     }
   };
 
