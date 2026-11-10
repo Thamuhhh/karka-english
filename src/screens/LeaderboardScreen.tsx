@@ -5,9 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
+import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 
 interface LeaderboardUser {
   rank: number;
@@ -37,10 +40,15 @@ export const LeaderboardScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* League Header Banner */}
-      <View style={styles.leagueBanner}>
+      <LinearGradient
+        colors={THEME.gradients.banner}
+        style={styles.leagueBanner}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={styles.leagueTopRow}>
           <View style={styles.leagueIconCircle}>
-            <MaterialCommunityIcons name="trophy-award" size={32} color={THEME.colors.gold} />
+            <Image source={SUPERNOVA_IMAGES.trophyNova} style={{ width: 44, height: 44 }} resizeMode="contain" />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.leagueLabel}>CURRENT LEAGUE</Text>
@@ -54,7 +62,7 @@ export const LeaderboardScreen: React.FC = () => {
           <Ionicons name="time-outline" size={14} color={THEME.colors.primaryGlow} />
           <Text style={styles.timerText}>Resets in 2 days, 14 hours</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Top 3 Podium Cards */}
       <View style={styles.podiumContainer}>

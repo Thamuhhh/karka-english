@@ -5,11 +5,11 @@ import {
   Text,
   TouchableOpacity,
   Platform,
-  Image,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { THEME } from './src/constants/theme';
 import { CurriculumScreen } from './src/screens/CurriculumScreen';
@@ -43,7 +43,7 @@ export default function App() {
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar style="light" backgroundColor={THEME.colors.background} />
 
-        {/* Dedicated Full-Screen Lesson Player (Hides tabs when learning) */}
+        {/* Dedicated Full-Screen Lesson Player (Hides tabs when in a class) */}
         {currentLesson ? (
           <LessonPlayerScreen
             lesson={currentLesson}
@@ -67,95 +67,88 @@ export default function App() {
               {activeTab === 'profile' && <ProfileScreen />}
             </View>
 
-            {/* Official Supernova Bottom Navigation Bar */}
-            <View style={styles.bottomNav}>
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setActiveTab('learn')}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
-                  size={24}
-                  color={activeTab === 'learn' ? THEME.colors.primary : THEME.colors.textMuted}
-                />
-                <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
-                  Course
-                </Text>
-              </TouchableOpacity>
+            {/* Ultra-Premium Supernova Bottom Navigation Bar */}
+            <View style={styles.bottomNavWrapper}>
+              <View style={styles.bottomNav}>
+                <TouchableOpacity
+                  style={[styles.navItem, activeTab === 'learn' && styles.navItemActive]}
+                  onPress={() => setActiveTab('learn')}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
+                    size={24}
+                    color={activeTab === 'learn' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                  />
+                  <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
+                    Course
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setActiveTab('call')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.callTabCircle, activeTab === 'call' && styles.callTabCircleActive]}>
-                  <Ionicons name="mic" size={18} color="#FFFFFF" />
-                </View>
-                <Text style={[styles.navText, activeTab === 'call' && styles.navTextActivePurple]}>
-                  Nova Call
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.navItem, activeTab === 'grammar' && styles.navItemActive]}
+                  onPress={() => setActiveTab('grammar')}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name={activeTab === 'grammar' ? 'chat-question' : 'chat-question-outline'}
+                    size={22}
+                    color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
+                  />
+                  <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
+                    Doctor
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setActiveTab('grammar')}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name={activeTab === 'grammar' ? 'chat-question' : 'chat-question-outline'}
-                  size={24}
-                  color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
-                />
-                <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
-                  Doctor
-                </Text>
-              </TouchableOpacity>
+                {/* Center Floating Nova Call Tab with Glowing Gradient */}
+                <TouchableOpacity
+                  style={styles.centerCallWrapper}
+                  onPress={() => setActiveTab('call')}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={THEME.gradients.primary}
+                    style={styles.callTabGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="mic" size={24} color="#FFFFFF" />
+                  </LinearGradient>
+                  <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveCall]}>
+                    Nova Call
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setActiveTab('vocab')}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={activeTab === 'vocab' ? 'book' : 'book-outline'}
-                  size={22}
-                  color={activeTab === 'vocab' ? THEME.colors.accent : THEME.colors.textMuted}
-                />
-                <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveAccent]}>
-                  Vault
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.navItem, activeTab === 'vocab' && styles.navItemActive]}
+                  onPress={() => setActiveTab('vocab')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={activeTab === 'vocab' ? 'book' : 'book-outline'}
+                    size={22}
+                    color={activeTab === 'vocab' ? THEME.colors.accent : THEME.colors.textMuted}
+                  />
+                  <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveAccent]}>
+                    Vault
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setActiveTab('league')}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name={activeTab === 'league' ? 'trophy' : 'trophy-outline'}
-                  size={22}
-                  color={activeTab === 'league' ? THEME.colors.gold : THEME.colors.textMuted}
-                />
-                <Text style={[styles.navText, activeTab === 'league' && styles.navTextActiveGold]}>
-                  League
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setActiveTab('profile')}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={activeTab === 'profile' ? 'person' : 'person-outline'}
-                  size={22}
-                  color={activeTab === 'profile' ? THEME.colors.primary : THEME.colors.textMuted}
-                />
-                <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
-                  Profile
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.navItem, activeTab === 'profile' && styles.navItemActive]}
+                  onPress={() => setActiveTab('profile')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={activeTab === 'profile' ? 'person' : 'person-outline'}
+                    size={22}
+                    color={activeTab === 'profile' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                  />
+                  <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
+                    Profile
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </>
         )}
@@ -172,44 +165,63 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
   },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: THEME.colors.surface,
+  bottomNavWrapper: {
+    backgroundColor: THEME.colors.background,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: THEME.colors.surfaceDark,
     paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 18 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 10,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 4,
+    borderRadius: 14,
   },
-  callTabCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: THEME.colors.primary,
+  navItemActive: {
+    backgroundColor: 'rgba(127, 67, 254, 0.08)',
+  },
+  centerCallWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: -12,
+  },
+  callTabGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: THEME.colors.primaryBorder,
-  },
-  callTabCircleActive: {
-    transform: [{ scale: 1.08 }],
-    backgroundColor: THEME.colors.primaryHover,
+    borderWidth: 2,
+    borderColor: '#A78BFA',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
+    borderBottomWidth: 4,
+    borderBottomColor: '#5B21B6',
   },
   navText: {
     fontSize: 10,
     color: THEME.colors.textMuted,
-    marginTop: 3,
+    marginTop: 4,
     fontWeight: '600',
   },
   navTextActive: {
-    color: THEME.colors.primary,
+    color: THEME.colors.primaryGlow,
     fontWeight: '800',
   },
-  navTextActivePurple: {
+  navTextActiveCall: {
     color: THEME.colors.primaryGlow,
     fontWeight: '800',
   },

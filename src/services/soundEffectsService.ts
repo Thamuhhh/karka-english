@@ -31,3 +31,4 @@ export const playSoundEffect = async (soundType: SoundEffectType) => {
     console.warn('Sound effect error:', err);
   }
 };
+

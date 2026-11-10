@@ -17,6 +17,7 @@
     "expo-av": "~15.0.2",
     "expo-constants": "~17.0.5",
     "expo-font": "~13.0.3",
+    "expo-linear-gradient": "^58.0.3",
     "expo-speech": "~13.0.1",
     "expo-status-bar": "~2.0.1",
     "react": "18.3.1",

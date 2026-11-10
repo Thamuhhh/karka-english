@@ -12,6 +12,24 @@ export const SUPERNOVA_IMAGES = {
   levelOverview1: require('../../assets/supernova/gemstore_levels_1_overview.png'),
   levelTitle1: require('../../assets/supernova/gemstore_levels_1_title.png'),
   levelTitleWon1: require('../../assets/supernova/gemstore_levels_1_titlewon.png'),
+  superChallengeBanner: require('../../assets/supernova/gemstore_superchallengestartwidgetbanner.png'),
+  storeBanner: require('../../assets/supernova/gemstore_gemstorestorebanner.png'),
+  levelTitles: {
+    1: require('../../assets/supernova/gemstore_levels_1_title.png'),
+    2: require('../../assets/supernova/gemstore_levels_2_title.png'),
+    3: require('../../assets/supernova/gemstore_levels_3_title.png'),
+    4: require('../../assets/supernova/gemstore_levels_4_title.png'),
+    5: require('../../assets/supernova/gemstore_levels_5_title.png'),
+    6: require('../../assets/supernova/gemstore_levels_6_title.png'),
+  } as { [key: number]: any },
+  levelOverviews: {
+    1: require('../../assets/supernova/gemstore_levels_1_overview.png'),
+    2: require('../../assets/supernova/gemstore_levels_2_overview.png'),
+    3: require('../../assets/supernova/gemstore_levels_3_overview.png'),
+    4: require('../../assets/supernova/gemstore_levels_4_overview.png'),
+    5: require('../../assets/supernova/gemstore_levels_5_overview.png'),
+    6: require('../../assets/supernova/gemstore_levels_6_overview.png'),
+  } as { [key: number]: any },
 };
 
 export const COURSE_NODE_IMAGES: { [key: number]: { colored: any; grayscale: any } } = {

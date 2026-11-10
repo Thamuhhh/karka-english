@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { WordDefinition } from '../types';
 import { STARTER_VOCABULARY, fetchWordDetails } from '../api/dictionary';
@@ -184,16 +185,23 @@ export const VocabVaultScreen: React.FC = () => {
 
       {/* Flashcard Action Buttons */}
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.navBtn} onPress={handlePrevWord}>
+        <TouchableOpacity style={styles.navBtn} onPress={handlePrevWord} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={20} color={THEME.colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.masteredBtn} onPress={handleMastered}>
-          <Ionicons name="checkmark-done" size={18} color={THEME.colors.text} />
-          <Text style={styles.masteredBtnText}>Mastered (+15 XP)</Text>
+        <TouchableOpacity style={styles.masteredTouchable} onPress={handleMastered} activeOpacity={0.85}>
+          <LinearGradient
+            colors={THEME.gradients.accent}
+            style={styles.masteredBtnGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.masteredBtnText}>Mastered (+15 XP)</Text>
+          </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navBtn} onPress={handleNextWord}>
+        <TouchableOpacity style={styles.navBtn} onPress={handleNextWord} activeOpacity={0.8}>
           <Ionicons name="arrow-forward" size={20} color={THEME.colors.text} />
         </TouchableOpacity>
       </View>
@@ -455,19 +463,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
-  masteredBtn: {
+  masteredTouchable: {
+    borderRadius: 24,
+    borderBottomWidth: 3,
+    borderBottomColor: '#059669',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  masteredBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 24,
   },
   masteredBtnText: {
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
-    marginLeft: 6,
   },
   relatedSection: {
     marginTop: 24,

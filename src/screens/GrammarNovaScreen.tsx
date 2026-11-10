@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { GrammarCorrection } from '../types';
@@ -91,19 +92,28 @@ export const GrammarNovaScreen: React.FC = () => {
           >
             <Text style={styles.clearText}>Clear</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.analyzeBtn, (!inputText.trim() || isAnalyzing) && styles.analyzeBtnDisabled]}
+            style={[styles.analyzeTouchable, (!inputText.trim() || isAnalyzing) && styles.analyzeBtnDisabled]}
             onPress={() => handleAnalyze()}
             disabled={!inputText.trim() || isAnalyzing}
+            activeOpacity={0.85}
           >
-            {isAnalyzing ? (
-              <ActivityIndicator size="small" color={THEME.colors.text} />
-            ) : (
-              <>
-                <Text style={styles.analyzeBtnText}>Diagnose Sentence</Text>
-                <Ionicons name="sparkles" size={16} color={THEME.colors.text} style={{ marginLeft: 6 }} />
-              </>
-            )}
+            <LinearGradient
+              colors={inputText.trim() ? THEME.gradients.primary : ['#3D395C', '#28253E']}
+              style={styles.analyzeBtnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {isAnalyzing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.analyzeBtnText}>Diagnose Sentence</Text>
+                  <Ionicons name="sparkles" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </View>
@@ -310,19 +320,29 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     fontSize: 13,
   },
-  analyzeBtn: {
+  analyzeTouchable: {
+    borderRadius: 20,
+    borderBottomWidth: 3,
+    borderBottomColor: '#5B21B6',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  analyzeBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
   },
   analyzeBtnDisabled: {
     opacity: 0.5,
+    borderBottomColor: '#28253E',
   },
   analyzeBtnText: {
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
   },

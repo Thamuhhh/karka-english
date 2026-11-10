@@ -1,54 +1,67 @@
 export const THEME = {
   colors: {
-    // Exact Supernova Official Palette (Extracted from live.gosupernova.app)
-    background: '#1C1C22', // Official Supernova Charcoal Obsidian
-    backgroundDark: '#12151E',
-    surface: '#1F1F2A', // Official Supernova Card Surface
-    surfaceCard: '#23232A',
-    surfaceElevated: '#292D3E',
-    surfaceDark: '#16161A',
-    border: '#2C2C38',
-    borderDark: '#1E1E28',
-    borderLight: '#3A3A4A',
+    // Ultra-Premium Dark Obsidian & Cyber Violet Palette
+    background: '#0E0E14', // Deep Luxury Obsidian
+    backgroundSecondary: '#14131D',
+    backgroundTertiary: '#1A1826',
 
-    // Signature Supernova Purple (#7F43FE)
+    surface: '#181724', // Frosted Glass Card Surface
+    surfaceCard: '#1F1D30',
+    surfaceElevated: '#28253E',
+    surfaceDark: '#12111B',
+
+    border: '#2E2B45',
+    borderLight: '#3D395C',
+    borderGlow: '#7F43FE66',
+
+    // Supernova Signature Neon Purples
     primary: '#7F43FE',
-    primaryHover: '#6E32EE',
-    primaryBorder: '#5E22DE', // 3D bevel shadow
-    primaryGlow: '#9B6EFF',
+    primaryHover: '#6D28D9',
+    primaryBorder: '#5B21B6', // 3D bevel shadow
+    primaryGlow: '#A78BFA',
+    primaryLight: 'rgba(127, 67, 254, 0.15)',
     primaryText: '#FFFFFF',
 
-    // Solar Amber Gold (#F8D46A / #F5BD4A)
-    gold: '#F8D46A',
-    goldGlow: '#FDE08A',
-    goldBorder: '#D99B00',
-    goldLight: 'rgba(248, 212, 106, 0.15)',
+    // Solar Nova Amber & Gold
+    gold: '#FBBF24',
+    goldHover: '#F59E0B',
+    goldGlow: '#FDE68A',
+    goldBorder: '#D97706',
+    goldLight: 'rgba(251, 191, 36, 0.15)',
 
-    // Fluency Emerald Green (#0BB35A / #34C759)
-    accent: '#0BB35A',
-    accentBorder: '#089248',
-    accentLight: 'rgba(11, 179, 90, 0.15)',
-    success: '#0BB35A',
-    successBg: 'rgba(11, 179, 90, 0.15)',
+    // Fluency Emerald Green
+    accent: '#10B981',
+    accentBorder: '#059669',
+    accentLight: 'rgba(16, 185, 129, 0.15)',
+    success: '#10B981',
+    successBg: 'rgba(16, 185, 129, 0.15)',
 
-    // Secondary Cyan
-    secondary: '#12BBF2',
-    secondaryBorder: '#0EA5E9',
-    secondaryLight: 'rgba(18, 187, 242, 0.15)',
+    // Cyber Cyan
+    secondary: '#06B6D4',
+    secondaryBorder: '#0891B2',
+    secondaryLight: 'rgba(6, 182, 212, 0.15)',
 
-    // Hearts & Errors
+    // Hearts & Crimson Red
     error: '#EF4444',
     errorBorder: '#DC2626',
     errorLight: 'rgba(239, 68, 68, 0.15)',
     errorBg: 'rgba(239, 68, 68, 0.15)',
-    warning: '#F5BD4A',
-    warningBg: 'rgba(245, 189, 74, 0.15)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.15)',
 
     // Typography
     text: '#FFFFFF',
-    textSecondary: '#A0A0B2',
-    textMuted: '#6B6B80',
+    textSecondary: '#A5A1B8',
+    textMuted: '#6E6A85',
     textWhite: '#FFFFFF',
+  },
+  gradients: {
+    card: ['#1F1D30', '#181724'] as const,
+    primary: ['#8B5CF6', '#7F43FE'] as const,
+    gold: ['#FDE047', '#EAB308'] as const,
+    accent: ['#34D399', '#059669'] as const,
+    banner: ['#281C54', '#151324'] as const,
+    surface: ['#232038', '#161522'] as const,
   },
   fonts: {
     regular: 'System',
@@ -72,13 +85,24 @@ export const THEME = {
   shadow: {
     card: {
       shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.4,
+      shadowRadius: 12,
+      elevation: 6,
     },
-    button3D: {
-      borderBottomWidth: 4,
+    glowPurple: {
+      shadowColor: '#7F43FE',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    glowGold: {
+      shadowColor: '#FBBF24',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 8,
     },
   },
 };

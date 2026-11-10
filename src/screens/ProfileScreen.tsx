@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { UserStats } from '../types';
@@ -61,7 +62,12 @@ export const ProfileScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Profile Header Card */}
-      <View style={styles.profileCard}>
+      <LinearGradient
+        colors={THEME.gradients.banner}
+        style={styles.profileCard}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={styles.avatar}>
           <Image source={SUPERNOVA_IMAGES.streakNova} style={styles.streakNovaAvatar} resizeMode="contain" />
         </View>
@@ -86,7 +92,7 @@ export const ProfileScreen: React.FC = () => {
             <Text style={styles.statLabel}>Sentences Fixed ⚡</Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Free Gemini API Key Settings */}
       <View style={styles.sectionCard}>

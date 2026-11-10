@@ -11,6 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { SupernovaClass } from '../constants/curriculum';
@@ -191,6 +192,17 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.slideHeaderPill}>
               <MaterialCommunityIcons name="lightbulb-on" size={18} color={THEME.colors.gold} />
               <Text style={styles.slideHeaderPillText}>PATTERN 1 OF 4 • CORE RULE</Text>
+            </View>
+
+            {/* Miss Nova Coach Greeting Pill */}
+            <View style={styles.novaCoachCard}>
+              <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaCoachAvatar} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.novaCoachTitle}>Miss Nova's Advice</Text>
+                <Text style={styles.novaCoachText}>
+                  Listen closely to the sentence structure! Don't translate Tamil literally.
+                </Text>
+              </View>
             </View>
 
             <Text style={styles.lessonBigTitle}>{lesson.rule.heading}</Text>
@@ -439,7 +451,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         {currentSlide === 'victory' && (
           <View style={styles.victoryContainer}>
             <View style={styles.victoryTrophyCircle}>
-              <MaterialCommunityIcons name="trophy-award" size={64} color={THEME.colors.gold} />
+              <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.victoryTrophyImg} resizeMode="contain" />
             </View>
 
             <Text style={styles.victoryTitle}>Lesson Complete!</Text>
@@ -466,14 +478,22 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             </View>
 
             <TouchableOpacity
-              style={styles.finishContinueBtn}
+              style={styles.finishContinueTouchable}
+              activeOpacity={0.85}
               onPress={() => {
                 stopAllAudio();
                 onClose();
               }}
             >
-              <Text style={styles.finishContinueBtnText}>CONTINUE TO ROADMAP</Text>
-              <Ionicons name="arrow-forward" size={18} color={THEME.colors.text} style={{ marginLeft: 8 }} />
+              <LinearGradient
+                colors={THEME.gradients.primary}
+                style={styles.finishContinueBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.finishContinueBtnText}>CONTINUE TO ROADMAP</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
@@ -487,10 +507,18 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           {/* Slide 1 Continue */}
           {currentSlide === 'rule' && (
             <TouchableOpacity
-              style={styles.actionButtonPrimary}
+              style={styles.actionBtnTouchable}
+              activeOpacity={0.85}
               onPress={() => setCurrentSlide('jumble')}
             >
-              <Text style={styles.actionBtnText}>CONTINUE ➡️</Text>
+              <LinearGradient
+                colors={THEME.gradients.primary}
+                style={styles.actionButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.actionBtnText}>CONTINUE ➡️</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
 
@@ -518,7 +546,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     <Text style={styles.jumbleCorrectionNote}>💡 Correct: {lesson.jumble.correctWords.join(' ')}</Text>
                   )}
                   <TouchableOpacity
-                    style={[styles.actionButtonPrimary, { marginTop: 10 }]}
+                    style={[styles.actionBtnTouchable, { marginTop: 10 }]}
+                    activeOpacity={0.85}
                     onPress={() => {
                       if (isJumbleCorrect) {
                         setCurrentSlide('translation');
@@ -530,18 +559,33 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       }
                     }}
                   >
-                    <Text style={styles.actionBtnText}>
-                      {isJumbleCorrect ? 'CONTINUE ➡️' : 'TRY AGAIN 🔄'}
-                    </Text>
+                    <LinearGradient
+                      colors={isJumbleCorrect ? THEME.gradients.primary : ['#EF4444', '#DC2626']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.actionBtnText}>
+                        {isJumbleCorrect ? 'CONTINUE ➡️' : 'TRY AGAIN 🔄'}
+                      </Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={[styles.actionButtonPrimary, assembledWords.length === 0 && styles.btnDisabled]}
+                  style={[styles.actionBtnTouchable, assembledWords.length === 0 && styles.btnDisabled]}
+                  activeOpacity={0.85}
                   onPress={handleCheckJumble}
                   disabled={assembledWords.length === 0}
                 >
-                  <Text style={styles.actionBtnText}>CHECK SENTENCE</Text>
+                  <LinearGradient
+                    colors={assembledWords.length > 0 ? THEME.gradients.primary : ['#3D395C', '#28253E']}
+                    style={styles.actionButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.actionBtnText}>CHECK SENTENCE</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               )}
             </>
@@ -585,19 +629,35 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   <Text style={styles.jumbleCorrectionNote}>{lesson.translation.explanation}</Text>
                   <Text style={styles.jumbleTamilNote}>💡 {lesson.translation.tamilExplanation}</Text>
                   <TouchableOpacity
-                    style={[styles.actionButtonPrimary, { marginTop: 10 }]}
+                    style={[styles.actionBtnTouchable, { marginTop: 10 }]}
+                    activeOpacity={0.85}
                     onPress={() => setCurrentSlide('speaking')}
                   >
-                    <Text style={styles.actionBtnText}>CONTINUE TO SPEAKING 🎙️</Text>
+                    <LinearGradient
+                      colors={THEME.gradients.primary}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.actionBtnText}>CONTINUE TO SPEAKING 🎙️</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={[styles.actionButtonPrimary, selectedTransIdx === null && styles.btnDisabled]}
+                  style={[styles.actionBtnTouchable, selectedTransIdx === null && styles.btnDisabled]}
+                  activeOpacity={0.85}
                   onPress={handleCheckTranslation}
                   disabled={selectedTransIdx === null}
                 >
-                  <Text style={styles.actionBtnText}>CHECK TRANSLATION</Text>
+                  <LinearGradient
+                    colors={selectedTransIdx !== null ? THEME.gradients.primary : ['#3D395C', '#28253E']}
+                    style={styles.actionButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.actionBtnText}>CHECK TRANSLATION</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               )}
             </>
@@ -608,26 +668,42 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <>
               {speakingFeedback ? (
                 <TouchableOpacity
-                  style={[styles.actionButtonPrimary, { backgroundColor: THEME.colors.success }]}
+                  style={styles.actionBtnTouchable}
+                  activeOpacity={0.85}
                   onPress={handleFinishLesson}
                 >
-                  <Ionicons name="trophy" size={20} color={THEME.colors.text} style={{ marginRight: 6 }} />
-                  <Text style={styles.actionBtnText}>FINISH & CLAIM +{lesson.xpReward} XP</Text>
+                  <LinearGradient
+                    colors={THEME.gradients.accent}
+                    style={styles.actionButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Ionicons name="trophy" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.actionBtnText}>FINISH & CLAIM +{lesson.xpReward} XP</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={[styles.actionButtonPrimary, !spokenText.trim() && styles.btnDisabled]}
+                  style={[styles.actionBtnTouchable, !spokenText.trim() && styles.btnDisabled]}
+                  activeOpacity={0.85}
                   onPress={handleSubmitSpeaking}
                   disabled={!spokenText.trim() || isEvaluating}
                 >
-                  {isEvaluating ? (
-                    <ActivityIndicator size="small" color={THEME.colors.text} />
-                  ) : (
-                    <>
-                      <Ionicons name="sparkles" size={18} color={THEME.colors.text} style={{ marginRight: 6 }} />
-                      <Text style={styles.actionBtnText}>EVALUATE WITH MISS NOVA</Text>
-                    </>
-                  )}
+                  <LinearGradient
+                    colors={spokenText.trim() ? THEME.gradients.primary : ['#3D395C', '#28253E']}
+                    style={styles.actionButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {isEvaluating ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="sparkles" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.actionBtnText}>EVALUATE WITH MISS NOVA</Text>
+                      </View>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
               )}
             </>
@@ -853,42 +929,42 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     borderBottomWidth: 3,
     borderBottomColor: THEME.colors.primaryBorder,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
   slotTileText: {
-    color: '#1E1B4B',
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
   },
   wordBankWrap: {
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   bankTile: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#221F36',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+    borderColor: '#3D395C',
     borderBottomWidth: 4,
-    borderBottomColor: '#94A3B8',
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderBottomColor: '#12111E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
     elevation: 3,
   },
   bankTileText: {
-    color: THEME.colors.text,
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // Translation Styles
@@ -1053,19 +1129,48 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  novaCoachCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(127, 67, 254, 0.12)',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 67, 254, 0.3)',
+    marginBottom: 4,
+  },
+  novaCoachAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
+  novaCoachTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.colors.primaryGlow,
+  },
+  novaCoachText: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+
   // Victory Styles
   victoryContainer: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 30,
   },
   victoryTrophyCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    width: 140,
+    height: 140,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  victoryTrophyImg: {
+    width: 130,
+    height: 130,
   },
   victoryTitle: {
     fontSize: 28,
@@ -1106,38 +1211,57 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
-  finishContinueBtn: {
+  finishContinueTouchable: {
+    width: '100%',
+    marginTop: 10,
+    borderRadius: 28,
+    borderBottomWidth: 4,
+    borderBottomColor: '#5B21B6',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  finishContinueBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 28,
-    width: '100%',
   },
   finishContinueBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: THEME.colors.text,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 
   // Bottom Action Drawer
   bottomActionDrawer: {
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.surfaceDark,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
   },
-  actionButtonPrimary: {
-    backgroundColor: THEME.colors.accent,
-    paddingVertical: 14,
+  actionBtnTouchable: {
+    width: '100%',
+    borderRadius: 16,
+    borderBottomWidth: 4,
+    borderBottomColor: '#5B21B6',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  actionButtonGradient: {
+    paddingVertical: 15,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomWidth: 4,
-    borderBottomColor: THEME.colors.accentBorder,
   },
   actionBtnText: {
     fontSize: 16,
@@ -1147,6 +1271,7 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.5,
+    borderBottomColor: '#201D33',
   },
   feedbackDrawerContent: {
     gap: 6,

@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS, SupernovaClass } from '../constants/curriculum';
 import { SUPERNOVA_IMAGES, COURSE_NODE_IMAGES } from '../constants/supernovaAssets';
@@ -31,26 +32,27 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Supernova Top Stats Bar */}
+      {/* Ultra-Premium Supernova Top HUD */}
       <View style={styles.topStatsBar}>
-        <View style={styles.statPill}>
+        <View style={styles.statPillStreak}>
           <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statPillText}>3 Days</Text>
+          <Text style={styles.statPillTextStreak}>3 Days</Text>
         </View>
 
-        <View style={styles.statPill}>
+        <View style={styles.statPillGems}>
           <Text style={styles.statEmoji}>💎</Text>
-          <Text style={styles.statPillText}>450</Text>
+          <Text style={styles.statPillTextGems}>450</Text>
         </View>
 
-        <View style={styles.statPill}>
+        <View style={styles.statPillHearts}>
           <Text style={styles.statEmoji}>❤️</Text>
-          <Text style={styles.statPillText}>5 / 5</Text>
+          <Text style={styles.statPillTextHearts}>5 / 5</Text>
         </View>
 
-        {/* Real Miss Nova Avatar Card */}
+        {/* Real Miss Nova Live Status Pill */}
         <View style={styles.missNovaHeaderPill}>
           <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatar} />
+          <View style={styles.onlineDot} />
           <Text style={styles.missNovaText}>Miss Nova</Text>
         </View>
       </View>
@@ -61,7 +63,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         contentContainerStyle={styles.roadmapContent}
         showsVerticalScrollIndicator={false}
       >
-        {SUPERNOVA_LEVELS.map((level, lIdx) => {
+        {SUPERNOVA_LEVELS.map((level) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -71,16 +73,16 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
           return (
             <View key={level.levelNumber} style={styles.levelSection}>
-              {/* Supernova Unit Banner */}
-              <View style={[styles.unitBanner, { borderLeftColor: level.accentColor }]}>
+              {/* Ultra-Premium Radiant Unit Banner */}
+              <LinearGradient
+                colors={THEME.gradients.banner}
+                style={styles.unitBanner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
                 <View style={styles.unitBannerLeft}>
                   <View style={styles.unitBadgeRow}>
-                    <View
-                      style={[
-                        styles.cefrBadge,
-                        { backgroundColor: level.accentColor },
-                      ]}
-                    >
+                    <View style={styles.cefrBadge}>
                       <Text style={styles.cefrBadgeText}>{level.cefrTag}</Text>
                     </View>
                     <Text style={styles.unitNumberText}>UNIT {level.levelNumber}</Text>
@@ -88,17 +90,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   <Text style={styles.unitTitleText}>{level.levelName}</Text>
                   <Text style={styles.unitDescText}>{level.description}</Text>
 
-                  {/* Progress Bar */}
+                  {/* Sleek Neon Progress Bar */}
                   <View style={styles.unitProgressContainer}>
                     <View style={styles.unitProgressBarBg}>
-                      <View
-                        style={[
-                          styles.unitProgressBarFill,
-                          {
-                            width: `${progressPercent}%`,
-                            backgroundColor: level.accentColor,
-                          },
-                        ]}
+                      <LinearGradient
+                        colors={THEME.gradients.accent}
+                        style={[styles.unitProgressBarFill, { width: `${Math.max(8, progressPercent)}%` }]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
                       />
                     </View>
                     <Text style={styles.unitProgressText}>
@@ -108,11 +107,15 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </View>
 
                 <View style={styles.unitLevelArtBox}>
-                  <Image source={SUPERNOVA_IMAGES.levelTitle1} style={styles.levelTitleArt} resizeMode="contain" />
+                  <Image
+                    source={SUPERNOVA_IMAGES.levelTitles[level.levelNumber] || SUPERNOVA_IMAGES.levelTitle1}
+                    style={styles.levelTitleArt}
+                    resizeMode="contain"
+                  />
                 </View>
-              </View>
+              </LinearGradient>
 
-              {/* Serpentine Connected Stepping Stone Nodes */}
+              {/* Serpentine Stepping Stone Path */}
               <View style={styles.nodesContainer}>
                 {level.classes.map((cls, cIdx) => {
                   globalLessonIndex++;
@@ -138,12 +141,19 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                       {/* Current Node Bouncing Callout Indicator */}
                       {isCurrent && (
                         <View style={styles.startBadgeBubble}>
-                          <Text style={styles.startBadgeText}>START HERE</Text>
+                          <LinearGradient
+                            colors={THEME.gradients.primary}
+                            style={styles.startBadgeGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                          >
+                            <Text style={styles.startBadgeText}>START HERE</Text>
+                          </LinearGradient>
                           <View style={styles.startBadgeArrow} />
                         </View>
                       )}
 
-                      {/* 3D Stepping Stone with Real Course V5 Artwork */}
+                      {/* Stepping Stone Node with Glowing Depth */}
                       <TouchableOpacity
                         style={[
                           styles.steppingStoneBtn,
@@ -151,9 +161,11 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           isCurrent && styles.steppingStoneCurrent,
                           !isCompleted && !isCurrent && styles.steppingStoneLocked,
                         ]}
-                        activeOpacity={0.8}
+                        activeOpacity={0.82}
                         onPress={() => setSelectedLesson(cls)}
                       >
+                        {isCurrent && <View style={styles.currentPulseRing} />}
+
                         {nodeArt ? (
                           <Image
                             source={isCompleted || isCurrent ? nodeArt.colored : nodeArt.grayscale}
@@ -168,7 +180,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           />
                         )}
 
-                        {/* Status Overlay Icon */}
+                        {/* Completed Checkmark Emblem */}
                         {isCompleted && (
                           <View style={styles.completedBadgeCheck}>
                             <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
@@ -176,7 +188,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                         )}
                       </TouchableOpacity>
 
-                      {/* Lesson Label */}
+                      {/* Lesson Label Chip */}
                       <View style={styles.nodeLabelCard}>
                         <Text style={styles.nodeLabelTitle} numberOfLines={1}>
                           {cls.title}
@@ -187,11 +199,11 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   );
                 })}
 
-                {/* Milestone Treasure Chest */}
+                {/* Milestone Trophy Chest */}
                 <View style={styles.milestoneChestWrapper}>
                   <TouchableOpacity
                     style={styles.chestBtn}
-                    activeOpacity={0.8}
+                    activeOpacity={0.85}
                     onPress={() => setSelectedLesson(level.classes[0])}
                   >
                     <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.chestImage} resizeMode="contain" />
@@ -202,10 +214,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             </View>
           );
         })}
-        <View style={{ height: 80 }} />
+        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* SUPERNOVA AUTHENTIC LESSON MODAL (OnStartChallengePopup) */}
+      {/* ULTRA-PREMIUM LESSON MODAL (OnStartChallengePopup) */}
       <Modal
         visible={!!selectedLesson}
         transparent
@@ -220,7 +232,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           />
 
           {selectedLesson && (
-            <View style={styles.modalCard}>
+            <LinearGradient
+              colors={['#241B42', '#151424']}
+              style={styles.modalCard}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
               {/* Header with Close */}
               <View style={styles.modalHeader}>
                 <View style={styles.modalBadgeRow}>
@@ -245,8 +262,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
               {/* Title & Concept with Miss Nova portrait */}
               <View style={styles.modalNovaRow}>
-                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.modalNovaAvatar} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={styles.modalAvatarRing}>
+                  <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.modalNovaAvatar} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 14 }}>
                   <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
                   <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
                 </View>
@@ -293,9 +312,13 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   <Text style={{ fontSize: 16 }}>❤️</Text>
                   <Text style={styles.rewardText}>5 Hearts Full</Text>
                 </View>
+                <View style={styles.rewardItem}>
+                  <Text style={{ fontSize: 16 }}>💎</Text>
+                  <Text style={styles.rewardText}>+5 Gems</Text>
+                </View>
               </View>
 
-              {/* Big 3D Start Button */}
+              {/* Radiant 3D Start Button */}
               <TouchableOpacity
                 style={styles.modalStartBtn}
                 activeOpacity={0.85}
@@ -305,16 +328,21 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   onStartLesson(lesson);
                 }}
               >
-                <View style={styles.modalStartBtnInner}>
+                <LinearGradient
+                  colors={THEME.gradients.primary}
+                  style={styles.modalStartBtnInner}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
                   <Text style={styles.modalStartBtnText}>
                     {completedClasses.includes(selectedLesson.id)
                       ? 'PRACTICE AGAIN (+50 XP)'
                       : 'START LESSON (+100 XP)'}
                   </Text>
                   <Image source={SUPERNOVA_IMAGES.continueArrow} style={styles.continueArrowIcon} />
-                </View>
+                </LinearGradient>
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
           )}
         </View>
       </Modal>
@@ -333,50 +361,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.surfaceDark,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
   },
-  statPill: {
+  statPillStreak: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: THEME.colors.goldLight,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+  },
+  statPillTextStreak: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.colors.gold,
+  },
+  statPillGems: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.secondaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.4)',
+  },
+  statPillTextGems: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.colors.secondary,
+  },
+  statPillHearts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.errorLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  statPillTextHearts: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#F87171',
   },
   statEmoji: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  statPillText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    marginRight: 4,
   },
   missNovaHeaderPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
+    backgroundColor: THEME.colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: THEME.colors.primary,
+    borderColor: THEME.colors.primaryGlow,
   },
   missNovaAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.accent,
+    marginLeft: 4,
   },
   missNovaText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.primary,
-    marginLeft: 6,
-    marginRight: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.colors.primaryGlow,
+    marginLeft: 4,
+    marginRight: 2,
   },
   roadmapScroll: {
     flex: 1,
@@ -385,22 +450,20 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   levelSection: {
-    marginBottom: 36,
+    marginBottom: 40,
   },
   unitBanner: {
     flexDirection: 'row',
-    backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    borderLeftWidth: 6,
-    marginBottom: 24,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(127, 67, 254, 0.4)',
+    marginBottom: 28,
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
   unitBannerLeft: {
     flex: 1,
@@ -409,36 +472,39 @@ const styles = StyleSheet.create({
   unitBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   cefrBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: THEME.colors.primary,
     marginRight: 8,
   },
   cefrBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '900',
     color: '#FFFFFF',
-  },
-  unitNumberText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: THEME.colors.textSecondary,
     letterSpacing: 0.5,
   },
-  unitTitleText: {
-    fontSize: 17,
+  unitNumberText: {
+    fontSize: 11,
     fontWeight: '800',
-    color: THEME.colors.text,
+    color: THEME.colors.primaryGlow,
+    letterSpacing: 0.8,
+  },
+  unitTitleText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FFFFFF',
     marginBottom: 4,
+    letterSpacing: 0.2,
   },
   unitDescText: {
     fontSize: 13,
     color: THEME.colors.textSecondary,
     lineHeight: 18,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   unitProgressContainer: {
     flexDirection: 'row',
@@ -447,7 +513,7 @@ const styles = StyleSheet.create({
   unitProgressBarBg: {
     flex: 1,
     height: 8,
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 4,
     overflow: 'hidden',
     marginRight: 8,
@@ -458,26 +524,26 @@ const styles = StyleSheet.create({
   },
   unitProgressText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
+    fontWeight: '800',
+    color: THEME.colors.accent,
   },
   unitLevelArtBox: {
-    width: 60,
-    height: 60,
+    width: 64,
+    height: 64,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
   },
   levelTitleArt: {
-    width: 60,
-    height: 60,
+    width: 64,
+    height: 64,
   },
   nodesContainer: {
     alignItems: 'center',
   },
   nodeWrapper: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
     position: 'relative',
     width: 200,
   },
@@ -493,20 +559,26 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   startBadgeBubble: {
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: THEME.colors.primaryBorder,
-    marginBottom: 6,
+    marginBottom: 8,
     alignItems: 'center',
   },
+  startBadgeGradient: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#C4B5FD',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   startBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   startBadgeArrow: {
     width: 0,
@@ -518,81 +590,92 @@ const styles = StyleSheet.create({
     borderTopWidth: 5,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: THEME.colors.primaryBorder,
-    position: 'absolute',
-    bottom: -6,
+    borderTopColor: '#7F43FE',
+    alignSelf: 'center',
   },
   steppingStoneBtn: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
     backgroundColor: THEME.colors.surfaceCard,
-    borderBottomWidth: 6,
-    borderBottomColor: '#12151E',
+    borderBottomWidth: 5,
+    borderBottomColor: '#0E0E14',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
+  currentPulseRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 41,
+    borderWidth: 3,
+    borderColor: THEME.colors.primaryGlow,
+  },
   steppingStoneCompleted: {
     borderColor: THEME.colors.accent,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderBottomColor: THEME.colors.accentBorder,
   },
   steppingStoneCurrent: {
     borderColor: THEME.colors.primary,
-    borderWidth: 3,
+    borderWidth: 3.5,
     borderBottomColor: THEME.colors.primaryBorder,
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
   },
   steppingStoneLocked: {
     borderColor: THEME.colors.border,
-    borderWidth: 1,
-    opacity: 0.6,
+    borderWidth: 1.5,
+    opacity: 0.55,
   },
   nodeArtworkImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
   },
   completedBadgeCheck: {
     position: 'absolute',
     right: 4,
     bottom: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: THEME.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   nodeLabelCard: {
     marginTop: 8,
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: THEME.colors.surfaceDark,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
   nodeLabelTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   nodeLabelSub: {
     fontSize: 10,
     color: THEME.colors.textSecondary,
+    fontWeight: '600',
   },
   milestoneChestWrapper: {
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 14,
   },
   chestBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: THEME.colors.surfaceCard,
     borderWidth: 2,
     borderColor: THEME.colors.gold,
@@ -600,22 +683,28 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.goldBorder,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
   chestImage: {
-    width: 56,
-    height: 56,
+    width: 58,
+    height: 58,
   },
   chestLabel: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
     color: THEME.colors.gold,
     marginTop: 8,
+    letterSpacing: 0.5,
   },
 
-  /* MODAL POPUP STYLES */
+  /* ULTRA-PREMIUM MODAL POPUP */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -624,23 +713,22 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    width: width - 40,
-    backgroundColor: THEME.colors.surface,
+    width: width - 36,
     borderRadius: THEME.radius.xl,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 10,
+    padding: 22,
     borderWidth: 1.5,
-    borderColor: THEME.colors.border,
+    borderColor: 'rgba(127, 67, 254, 0.5)',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 12,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   modalBadgeRow: {
     flexDirection: 'row',
@@ -655,20 +743,21 @@ const styles = StyleSheet.create({
   },
   modalLevelText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   modalDurationPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
   },
   modalDurationText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: THEME.colors.textSecondary,
     marginLeft: 4,
   },
@@ -676,26 +765,34 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalNovaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  modalAvatarRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: THEME.colors.primaryGlow,
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalNovaAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: THEME.colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: THEME.colors.text,
+    fontWeight: '900',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   modalSubtitle: {
@@ -704,11 +801,11 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   tamilConceptBox: {
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
     borderRadius: THEME.radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: THEME.colors.goldBorder,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
     marginBottom: 14,
   },
   tamilConceptLabel: {
@@ -716,7 +813,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: THEME.colors.gold,
     marginBottom: 4,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   tamilConceptText: {
     fontSize: 13,
@@ -725,7 +822,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   methodologyBox: {
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: THEME.radius.md,
     padding: 12,
     marginBottom: 14,
@@ -735,9 +832,9 @@ const styles = StyleSheet.create({
   methodologyTitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textMuted,
     marginBottom: 8,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   stepGrid: {
     flexDirection: 'row',
@@ -760,10 +857,12 @@ const styles = StyleSheet.create({
   rewardsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: THEME.radius.md,
     paddingVertical: 10,
-    marginBottom: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
   },
   rewardItem: {
     flexDirection: 'row',
@@ -771,16 +870,20 @@ const styles = StyleSheet.create({
   },
   rewardText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    fontWeight: '800',
+    color: '#FFFFFF',
     marginLeft: 6,
   },
   modalStartBtn: {
-    backgroundColor: THEME.colors.primary,
     borderRadius: THEME.radius.lg,
+    overflow: 'hidden',
     borderBottomWidth: 4,
     borderBottomColor: THEME.colors.primaryBorder,
-    overflow: 'hidden',
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalStartBtnInner: {
     flexDirection: 'row',
@@ -792,7 +895,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   continueArrowIcon: {
     width: 14,
