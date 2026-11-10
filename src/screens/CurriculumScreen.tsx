@@ -18,6 +18,7 @@ import { SUPERNOVA_IMAGES, COURSE_NODE_IMAGES } from '../constants/supernovaAsse
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
   completedClasses: string[];
+  onOpenLeague?: () => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -25,6 +26,7 @@ const { width } = Dimensions.get('window');
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   completedClasses,
+  onOpenLeague,
 }) => {
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
 
@@ -32,28 +34,35 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Ultra-Premium Supernova Top HUD */}
+      {/* Supernova Top HUD */}
       <View style={styles.topStatsBar}>
         <View style={styles.statPillStreak}>
-          <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statPillTextStreak}>3 Days</Text>
+          <MaterialCommunityIcons name="fire" size={16} color={THEME.colors.gold} style={styles.statIcon} />
+          <Text style={styles.statPillTextStreak}>3</Text>
         </View>
 
         <View style={styles.statPillGems}>
-          <Text style={styles.statEmoji}>💎</Text>
+          <Ionicons name="diamond" size={14} color={THEME.colors.secondary} style={styles.statIcon} />
           <Text style={styles.statPillTextGems}>450</Text>
         </View>
 
         <View style={styles.statPillHearts}>
-          <Text style={styles.statEmoji}>❤️</Text>
-          <Text style={styles.statPillTextHearts}>5 / 5</Text>
+          <Ionicons name="heart" size={14} color="#EF4444" style={styles.statIcon} />
+          <Text style={styles.statPillTextHearts}>5</Text>
         </View>
 
-        {/* Real Miss Nova Live Status Pill */}
+        {onOpenLeague && (
+          <TouchableOpacity style={styles.statPillLeague} onPress={onOpenLeague} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="trophy-award" size={16} color={THEME.colors.gold} style={styles.statIcon} />
+            <Text style={styles.statPillTextLeague}>#4</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Miss Nova Live Status */}
         <View style={styles.missNovaHeaderPill}>
           <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatar} />
           <View style={styles.onlineDot} />
-          <Text style={styles.missNovaText}>Miss Nova</Text>
+          <Text style={styles.missNovaText}>Nova</Text>
         </View>
       </View>
 
@@ -279,25 +288,33 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </Text>
               </View>
 
-              {/* Supernova 4-Step Methodology Breakdown */}
+              {/* Lesson Methodology Breakdown */}
               <View style={styles.methodologyBox}>
-                <Text style={styles.methodologyTitle}>SUPERFLUENCY 4-STEP DRILL:</Text>
+                <Text style={styles.methodologyTitle}>LESSON BREAKDOWN</Text>
                 <View style={styles.stepGrid}>
                   <View style={styles.stepItem}>
-                    <Text style={styles.stepIcon}>🧠</Text>
-                    <Text style={styles.stepText}>Pattern Rule</Text>
+                    <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(251, 191, 36, 0.14)' }]}>
+                      <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={THEME.colors.gold} />
+                    </View>
+                    <Text style={styles.stepText}>Pattern</Text>
                   </View>
                   <View style={styles.stepItem}>
-                    <Text style={styles.stepIcon}>🧩</Text>
-                    <Text style={styles.stepText}>Word Scramble</Text>
+                    <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(6, 182, 212, 0.14)' }]}>
+                      <MaterialCommunityIcons name="puzzle-outline" size={18} color={THEME.colors.secondary} />
+                    </View>
+                    <Text style={styles.stepText}>Scramble</Text>
                   </View>
                   <View style={styles.stepItem}>
-                    <Text style={styles.stepIcon}>🗣️</Text>
-                    <Text style={styles.stepText}>Translation</Text>
+                    <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
+                      <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.accent} />
+                    </View>
+                    <Text style={styles.stepText}>Translate</Text>
                   </View>
                   <View style={styles.stepItem}>
-                    <Text style={styles.stepIcon}>🎙️</Text>
-                    <Text style={styles.stepText}>AI Speaking</Text>
+                    <View style={[styles.stepIconWrap, { backgroundColor: 'rgba(127, 67, 254, 0.16)' }]}>
+                      <Ionicons name="mic-outline" size={18} color={THEME.colors.primaryGlow} />
+                    </View>
+                    <Text style={styles.stepText}>Speaking</Text>
                   </View>
                 </View>
               </View>
@@ -305,15 +322,15 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
               {/* Rewards Row */}
               <View style={styles.rewardsRow}>
                 <View style={styles.rewardItem}>
-                  <Text style={{ fontSize: 16 }}>🏆</Text>
-                  <Text style={styles.rewardText}>+100 XP Bounty</Text>
+                  <MaterialCommunityIcons name="trophy-award" size={17} color={THEME.colors.gold} />
+                  <Text style={styles.rewardText}>+{selectedLesson.xpReward} XP</Text>
                 </View>
                 <View style={styles.rewardItem}>
-                  <Text style={{ fontSize: 16 }}>❤️</Text>
-                  <Text style={styles.rewardText}>5 Hearts Full</Text>
+                  <Ionicons name="heart" size={16} color="#EF4444" />
+                  <Text style={styles.rewardText}>5 Lives</Text>
                 </View>
                 <View style={styles.rewardItem}>
-                  <Text style={{ fontSize: 16 }}>💎</Text>
+                  <Ionicons name="diamond" size={16} color={THEME.colors.secondary} />
                   <Text style={styles.rewardText}>+5 Gems</Text>
                 </View>
               </View>
@@ -359,60 +376,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: THEME.colors.surfaceDark,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
+  },
+  statIcon: {
+    marginRight: 4,
   },
   statPillStreak: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.goldLight,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   statPillTextStreak: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
     color: THEME.colors.gold,
   },
   statPillGems: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.secondaryLight,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(6, 182, 212, 0.4)',
   },
   statPillTextGems: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
     color: THEME.colors.secondary,
   },
   statPillHearts: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.errorLight,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.4)',
   },
   statPillTextHearts: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
     color: '#F87171',
   },
-  statEmoji: {
-    fontSize: 13,
-    marginRight: 4,
+  statPillLeague: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+  },
+  statPillTextLeague: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: THEME.colors.gold,
   },
   missNovaHeaderPill: {
     flexDirection: 'row',
@@ -425,9 +456,9 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.primaryGlow,
   },
   missNovaAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   onlineDot: {
     width: 6,
@@ -437,11 +468,10 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   missNovaText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
     color: THEME.colors.primaryGlow,
     marginLeft: 4,
-    marginRight: 2,
   },
   roadmapScroll: {
     flex: 1,
@@ -482,25 +512,26 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   cefrBadgeText: {
+    fontFamily: THEME.fonts.extraBold,
     fontSize: 10,
-    fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   unitNumberText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    fontWeight: '800',
     color: THEME.colors.primaryGlow,
     letterSpacing: 0.8,
   },
   unitTitleText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 18,
-    fontWeight: '900',
     color: '#FFFFFF',
     marginBottom: 4,
     letterSpacing: 0.2,
   },
   unitDescText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.textSecondary,
     lineHeight: 18,
@@ -523,8 +554,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   unitProgressText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    fontWeight: '800',
     color: THEME.colors.accent,
   },
   unitLevelArtBox: {
@@ -575,8 +606,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   startBadgeText: {
+    fontFamily: THEME.fonts.extraBold,
     fontSize: 10,
-    fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.8,
   },
@@ -659,14 +690,14 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   nodeLabelTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: '800',
     color: '#FFFFFF',
   },
   nodeLabelSub: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 10,
     color: THEME.colors.textSecondary,
-    fontWeight: '600',
   },
   milestoneChestWrapper: {
     alignItems: 'center',
@@ -694,14 +725,14 @@ const styles = StyleSheet.create({
     height: 58,
   },
   chestLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: '900',
     color: THEME.colors.gold,
     marginTop: 8,
     letterSpacing: 0.5,
   },
 
-  /* ULTRA-PREMIUM MODAL POPUP */
+  /* MODAL POPUP */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -742,8 +773,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   modalLevelText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
@@ -756,8 +787,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   modalDurationText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 11,
-    fontWeight: '700',
     color: THEME.colors.textSecondary,
     marginLeft: 4,
   },
@@ -790,12 +821,13 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   modalTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 18,
-    fontWeight: '900',
     color: '#FFFFFF',
     marginBottom: 2,
   },
   modalSubtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     lineHeight: 16,
@@ -809,15 +841,15 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   tamilConceptLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.gold,
     marginBottom: 4,
     letterSpacing: 0.8,
   },
   tamilConceptText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 13,
-    fontWeight: '600',
     color: THEME.colors.gold,
     lineHeight: 18,
   },
@@ -830,10 +862,10 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   methodologyTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.textMuted,
-    marginBottom: 8,
+    marginBottom: 10,
     letterSpacing: 0.8,
   },
   stepGrid: {
@@ -844,13 +876,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  stepIcon: {
-    fontSize: 20,
-    marginBottom: 4,
+  stepIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   stepText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
   },
@@ -869,8 +905,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rewardText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: '800',
     color: '#FFFFFF',
     marginLeft: 6,
   },
@@ -892,8 +928,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   modalStartBtnText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 15,
-    fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.8,
   },

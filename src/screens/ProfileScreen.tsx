@@ -71,25 +71,37 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.avatar}>
           <Image source={SUPERNOVA_IMAGES.streakNova} style={styles.streakNovaAvatar} resizeMode="contain" />
         </View>
-        <Text style={styles.userName}>Supernova Learner</Text>
-        <Text style={styles.userRank}>{stats?.cosmicRank || 'SuperFluency Champion'}</Text>
+        <Text style={styles.userName}>Learner Profile</Text>
+        <Text style={styles.userRank}>{stats?.cosmicRank || 'Gold League'}</Text>
 
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
-            <Text style={styles.statVal}>{stats?.streakDays || 1}</Text>
-            <Text style={styles.statLabel}>Day Streak 🔥</Text>
+            <View style={styles.statRowTop}>
+              <MaterialCommunityIcons name="fire" size={18} color={THEME.colors.gold} />
+              <Text style={styles.statVal}>{stats?.streakDays || 1}</Text>
+            </View>
+            <Text style={styles.statLabel}>Day Streak</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statVal}>{stats?.stardustXp || 120}</Text>
-            <Text style={styles.statLabel}>Stardust XP ✨</Text>
+            <View style={styles.statRowTop}>
+              <Ionicons name="flash" size={16} color={THEME.colors.secondary} />
+              <Text style={styles.statVal}>{stats?.stardustXp || 120}</Text>
+            </View>
+            <Text style={styles.statLabel}>Total XP</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statVal}>{stats?.wordsMastered || 6}</Text>
-            <Text style={styles.statLabel}>Words Mastered 📚</Text>
+            <View style={styles.statRowTop}>
+              <Ionicons name="book" size={16} color={THEME.colors.accent} />
+              <Text style={styles.statVal}>{stats?.wordsMastered || 6}</Text>
+            </View>
+            <Text style={styles.statLabel}>Words Learned</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statVal}>{stats?.sentencesChecked || 0}</Text>
-            <Text style={styles.statLabel}>Sentences Fixed ⚡</Text>
+            <View style={styles.statRowTop}>
+              <Ionicons name="checkmark-circle" size={16} color={THEME.colors.primaryGlow} />
+              <Text style={styles.statVal}>{stats?.sentencesChecked || 0}</Text>
+            </View>
+            <Text style={styles.statLabel}>Grammar Checks</Text>
           </View>
         </View>
       </LinearGradient>
@@ -98,11 +110,11 @@ export const ProfileScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <View style={styles.sectionTitleRow}>
           <Ionicons name="key-outline" size={20} color={THEME.colors.primaryGlow} />
-          <Text style={styles.sectionTitle}>Free Google Gemini AI Key</Text>
+          <Text style={styles.sectionTitle}>Google Gemini AI Key</Text>
         </View>
         <Text style={styles.sectionDesc}>
-          Get unlimited, high-speed AI responses with your personal free API key from{' '}
-          <Text style={{ color: THEME.colors.secondary }}>aistudio.google.com</Text>.
+          Add your free API key from{' '}
+          <Text style={{ color: THEME.colors.secondary }}>aistudio.google.com</Text> for faster live AI replies.
         </Text>
 
         <View style={styles.apiKeyInputRow}>
@@ -127,8 +139,8 @@ export const ProfileScreen: React.FC = () => {
           />
           <Text style={styles.keyStatusText}>
             {isSavedKey
-              ? 'Active: Powered by live Gemini 1.5 Flash'
-              : 'Using built-in Supernova Local Engine (No key needed!)'}
+              ? 'Active: Powered by Gemini 1.5 Flash'
+              : 'Using offline Supernova engine (No key needed)'}
           </Text>
         </View>
       </View>
@@ -137,15 +149,15 @@ export const ProfileScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <View style={styles.sectionTitleRow}>
           <Ionicons name="volume-high-outline" size={20} color={THEME.colors.secondary} />
-          <Text style={styles.sectionTitle}>Native Accent & Speed</Text>
+          <Text style={styles.sectionTitle}>Voice Accent & Speed</Text>
         </View>
 
-        <Text style={styles.subHeading}>PREFERRED ENGLISH ACCENT:</Text>
+        <Text style={styles.subHeading}>ENGLISH ACCENT</Text>
         <View style={styles.accentRow}>
           {[
-            { id: 'en-US' as EnglishAccent, label: 'American 🇺🇸' },
-            { id: 'en-GB' as EnglishAccent, label: 'British 🇬🇧' },
-            { id: 'en-AU' as EnglishAccent, label: 'Australian 🇦🇺' },
+            { id: 'en-US' as EnglishAccent, label: 'US English' },
+            { id: 'en-GB' as EnglishAccent, label: 'UK English' },
+            { id: 'en-AU' as EnglishAccent, label: 'AU English' },
           ].map((acc) => {
             const isSelected = selectedAccent === acc.id;
             return (
@@ -162,11 +174,11 @@ export const ProfileScreen: React.FC = () => {
           })}
         </View>
 
-        <Text style={[styles.subHeading, { marginTop: 16 }]}>PRONUNCIATION SPEED:</Text>
+        <Text style={[styles.subHeading, { marginTop: 16 }]}>PLAYBACK SPEED</Text>
         <TouchableOpacity style={styles.speedToggleRow} onPress={toggleSpeechSpeed}>
           <View>
-            <Text style={styles.speedLabel}>Slow Speed (0.75x)</Text>
-            <Text style={styles.speedDesc}>Easier to hear individual phonemes and syllable stress</Text>
+            <Text style={styles.speedLabel}>Slow Mode (0.75x)</Text>
+            <Text style={styles.speedDesc}>Clearer syllable pronunciation for beginners</Text>
           </View>
           <View style={[styles.toggleCircle, isSlowSpeech && styles.toggleCircleActive]}>
             <Ionicons
@@ -178,17 +190,16 @@ export const ProfileScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* About Supernova AI Engine */}
+      {/* About */}
       <View style={styles.sectionCard}>
         <View style={styles.sectionTitleRow}>
-          <MaterialCommunityIcons name="rocket-launch-outline" size={20} color={THEME.colors.gold} />
-          <Text style={styles.sectionTitle}>NovaBreaker: Supernova AI</Text>
+          <Ionicons name="school-outline" size={20} color={THEME.colors.gold} />
+          <Text style={styles.sectionTitle}>Supernova English</Text>
         </View>
         <Text style={styles.aboutText}>
-          Designed specifically for learners looking to speak confident, natural English without hesitation.
-          Features intelligent grammar diagnostics, spaced repetition vocabulary, and bilingual Tamil mental-model explanations.
+          Built for learners aiming to speak fluent English naturally. Combines grammar diagnostics, vocabulary practice, and Tamil mental-model guides.
         </Text>
-        <Text style={styles.versionText}>Version 1.0.0 (Supernova Core)</Text>
+        <Text style={styles.versionText}>Version 1.0.0</Text>
       </View>
 
       <View style={{ height: 40 }} />
@@ -228,14 +239,14 @@ const styles = StyleSheet.create({
     height: 68,
   },
   userName: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 20,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   userRank: {
-    fontSize: 13,
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
     color: THEME.colors.gold,
-    fontWeight: '700',
     marginTop: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -258,12 +269,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
+  statRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   statVal: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 18,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   statLabel: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -282,12 +299,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 15,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginLeft: 8,
   },
   sectionDesc: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     lineHeight: 18,
@@ -298,6 +316,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   keyInput: {
+    fontFamily: THEME.fonts.body,
     flex: 1,
     backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: 8,
@@ -315,8 +334,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveKeyBtnText: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.text,
-    fontWeight: 'bold',
     fontSize: 13,
   },
   keyStatusBox: {
@@ -328,14 +347,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   keyStatusText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
     color: THEME.colors.textSecondary,
     marginLeft: 6,
   },
   subHeading: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textSecondary,
-    fontWeight: '700',
     letterSpacing: 0.8,
     marginBottom: 8,
   },
@@ -353,17 +373,17 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   accentPillSelected: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'rgba(127, 67, 254, 0.2)',
     borderColor: THEME.colors.primary,
   },
   accentPillText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    fontWeight: '500',
   },
   accentPillTextSelected: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
-    fontWeight: '700',
   },
   speedToggleRow: {
     flexDirection: 'row',
@@ -374,11 +394,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   speedLabel: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 13,
-    fontWeight: '600',
     color: THEME.colors.text,
   },
   speedDesc: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -395,12 +416,14 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
   aboutText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.textSecondary,
     lineHeight: 20,
     marginTop: 4,
   },
   versionText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 11,
     color: THEME.colors.textMuted,
     marginTop: 10,

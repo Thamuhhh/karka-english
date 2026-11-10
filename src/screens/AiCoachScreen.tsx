@@ -117,7 +117,12 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
                 style={[styles.scenarioPill, isActive && styles.scenarioPillActive]}
                 onPress={() => setActiveScenario(sc)}
               >
-                <Text style={styles.pillAvatar}>{sc.avatar}</Text>
+                <Ionicons
+                  name={sc.avatar as any}
+                  size={15}
+                  color={isActive ? THEME.colors.primaryGlow : THEME.colors.textSecondary}
+                  style={styles.pillIcon}
+                />
                 <Text style={[styles.pillTitle, isActive && styles.pillTitleActive]}>{sc.title}</Text>
               </TouchableOpacity>
             );
@@ -128,7 +133,7 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
       {/* Persona Header Info */}
       <View style={styles.personaBanner}>
         <View style={styles.avatarCircle}>
-          <Text style={{ fontSize: 22 }}>{activeScenario.avatar}</Text>
+          <Ionicons name={activeScenario.avatar as any} size={20} color={THEME.colors.primaryGlow} />
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.personaName}>{activeScenario.persona}</Text>
@@ -198,7 +203,7 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
                     >
                       {msg.feedback.hasErrors
                         ? `AI Suggestion (${msg.feedback.fluencyScore}% fluency)`
-                        : 'Perfect sentence! 🌟'}
+                        : 'Excellent sentence'}
                     </Text>
                     <Ionicons
                       name={isFeedbackOpen ? 'chevron-up' : 'chevron-down'}
@@ -334,18 +339,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(99, 102, 241, 0.2)',
     borderColor: THEME.colors.primary,
   },
-  pillAvatar: {
-    fontSize: 16,
+  pillIcon: {
     marginRight: 6,
   },
   pillTitle: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 13,
     color: THEME.colors.textSecondary,
-    fontWeight: '500',
   },
   pillTitleActive: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
-    fontWeight: '700',
   },
   personaBanner: {
     flexDirection: 'row',
@@ -365,11 +369,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   personaName: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   personaDesc: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
     color: THEME.colors.textSecondary,
   },
@@ -389,9 +394,9 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   liveText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 10,
     color: THEME.colors.success,
-    fontWeight: '600',
   },
   chatList: {
     flex: 1,
@@ -432,11 +437,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
+    fontFamily: THEME.fonts.body,
     color: THEME.colors.textSecondary,
     fontSize: 13,
     marginLeft: 8,
   },
   msgText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 15,
     color: THEME.colors.text,
     lineHeight: 22,
@@ -450,9 +457,9 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   speakerBtnText: {
+    fontFamily: THEME.fonts.semiBold,
     color: THEME.colors.primaryGlow,
     fontSize: 12,
-    fontWeight: '600',
     marginLeft: 4,
   },
   feedbackContainer: {
@@ -476,8 +483,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   chipText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
-    fontWeight: '600',
     marginHorizontal: 4,
   },
   feedbackDetails: {
@@ -493,18 +500,19 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   detailLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textSecondary,
     textTransform: 'uppercase',
-    fontWeight: '700',
   },
   detailCorrected: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 13,
-    fontWeight: 'bold',
     color: THEME.colors.success,
     marginTop: 1,
   },
   detailExplain: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.text,
     marginTop: 1,
@@ -515,16 +523,18 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   detailLabelTamil: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.gold,
-    fontWeight: '700',
   },
   detailTamilText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 12,
     color: THEME.colors.text,
     marginTop: 1,
   },
   detailNative: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     fontStyle: 'italic',
     color: THEME.colors.secondary,
@@ -546,6 +556,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   quickPillText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 12,
     color: THEME.colors.primaryGlow,
   },
@@ -559,6 +570,7 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.border,
   },
   textInput: {
+    fontFamily: THEME.fonts.body,
     flex: 1,
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: 20,

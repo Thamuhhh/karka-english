@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -12,33 +12,47 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 
+interface LeaderboardScreenProps {
+  onBack?: () => void;
+}
+
 interface LeaderboardUser {
   rank: number;
   name: string;
-  avatar: string;
+  initials: string;
+  color: string;
   xp: number;
   streak: number;
   isCurrentUser?: boolean;
 }
 
 const LEADERBOARD_DATA: LeaderboardUser[] = [
-  { rank: 1, name: 'Kavitha R.', avatar: '👩‍🔬', xp: 2450, streak: 18 },
-  { rank: 2, name: 'Siddharth M.', avatar: '🧑‍💼', xp: 2180, streak: 14 },
-  { rank: 3, name: 'Ananya S.', avatar: '👩‍🎓', xp: 1950, streak: 12 },
-  { rank: 4, name: 'Alex (You)', avatar: '🧑‍💻', xp: 1650, streak: 7, isCurrentUser: true },
-  { rank: 5, name: 'Dinesh Kumar', avatar: '👨‍🏫', xp: 1420, streak: 9 },
-  { rank: 6, name: 'Pooja V.', avatar: '👩‍💻', xp: 1280, streak: 5 },
-  { rank: 7, name: 'Vijay Anand', avatar: '👨‍🎨', xp: 1150, streak: 6 },
-  { rank: 8, name: 'Meera N.', avatar: '👩‍⚕️', xp: 980, streak: 4 },
-  { rank: 9, name: 'Rahul Dev', avatar: '🧑‍🚀', xp: 840, streak: 3 },
-  { rank: 10, name: 'Swetha K.', avatar: '👩‍💼', xp: 720, streak: 2 },
+  { rank: 1, name: 'Kavitha R.', initials: 'KR', color: '#F59E0B', xp: 2450, streak: 18 },
+  { rank: 2, name: 'Siddharth M.', initials: 'SM', color: '#06B6D4', xp: 2180, streak: 14 },
+  { rank: 3, name: 'Ananya S.', initials: 'AS', color: '#EC4899', xp: 1950, streak: 12 },
+  { rank: 4, name: 'You', initials: 'ME', color: '#7F43FE', xp: 1650, streak: 7, isCurrentUser: true },
+  { rank: 5, name: 'Dinesh Kumar', initials: 'DK', color: '#10B981', xp: 1420, streak: 9 },
+  { rank: 6, name: 'Pooja V.', initials: 'PV', color: '#8B5CF6', xp: 1280, streak: 5 },
+  { rank: 7, name: 'Vijay Anand', initials: 'VA', color: '#3B82F6', xp: 1150, streak: 6 },
+  { rank: 8, name: 'Meera N.', initials: 'MN', color: '#F43F5E', xp: 980, streak: 4 },
+  { rank: 9, name: 'Rahul Dev', initials: 'RD', color: '#14B8A6', xp: 840, streak: 3 },
+  { rank: 10, name: 'Swetha K.', initials: 'SK', color: '#6366F1', xp: 720, streak: 2 },
 ];
 
-export const LeaderboardScreen: React.FC = () => {
-  const [activeLeague, setActiveLeague] = useState<'bronze' | 'silver' | 'gold'>('gold');
-
+export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {onBack && (
+        <View style={styles.topBackRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+            <Ionicons name="chevron-back" size={18} color={THEME.colors.text} />
+            <Text style={styles.backBtnText}>Course</Text>
+          </TouchableOpacity>
+          <Text style={styles.screenHeaderTitle}>Leaderboard</Text>
+          <View style={{ width: 72 }} />
+        </View>
+      )}
+
       {/* League Header Banner */}
       <LinearGradient
         colors={THEME.gradients.banner}
@@ -52,7 +66,7 @@ export const LeaderboardScreen: React.FC = () => {
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.leagueLabel}>CURRENT LEAGUE</Text>
-            <Text style={styles.leagueTitle}>Gold Supernova League</Text>
+            <Text style={styles.leagueTitle}>Gold League</Text>
             <Text style={styles.leagueSubtitle}>Top 5 advance to Diamond League</Text>
           </View>
         </View>
@@ -68,8 +82,8 @@ export const LeaderboardScreen: React.FC = () => {
       <View style={styles.podiumContainer}>
         {/* Rank 2 */}
         <View style={[styles.podiumCol, { marginTop: 24 }]}>
-          <View style={styles.podiumAvatar}>
-            <Text style={{ fontSize: 26 }}>{LEADERBOARD_DATA[1].avatar}</Text>
+          <View style={[styles.podiumAvatar, { backgroundColor: LEADERBOARD_DATA[1].color + '28', borderColor: '#94A3B8' }]}>
+            <Text style={styles.podiumInitials}>{LEADERBOARD_DATA[1].initials}</Text>
             <View style={[styles.podiumBadge, { backgroundColor: '#94A3B8' }]}>
               <Text style={styles.podiumRankText}>2</Text>
             </View>
@@ -81,8 +95,8 @@ export const LeaderboardScreen: React.FC = () => {
         {/* Rank 1 (Champion) */}
         <View style={styles.podiumCol}>
           <MaterialCommunityIcons name="crown" size={24} color={THEME.colors.gold} style={{ marginBottom: 2 }} />
-          <View style={[styles.podiumAvatar, styles.podiumAvatarGold]}>
-            <Text style={{ fontSize: 32 }}>{LEADERBOARD_DATA[0].avatar}</Text>
+          <View style={[styles.podiumAvatar, styles.podiumAvatarGold, { backgroundColor: LEADERBOARD_DATA[0].color + '28' }]}>
+            <Text style={styles.podiumInitialsGold}>{LEADERBOARD_DATA[0].initials}</Text>
             <View style={[styles.podiumBadge, { backgroundColor: THEME.colors.gold }]}>
               <Text style={styles.podiumRankText}>1</Text>
             </View>
@@ -93,8 +107,8 @@ export const LeaderboardScreen: React.FC = () => {
 
         {/* Rank 3 */}
         <View style={[styles.podiumCol, { marginTop: 32 }]}>
-          <View style={styles.podiumAvatar}>
-            <Text style={{ fontSize: 26 }}>{LEADERBOARD_DATA[2].avatar}</Text>
+          <View style={[styles.podiumAvatar, { backgroundColor: LEADERBOARD_DATA[2].color + '28', borderColor: '#B45309' }]}>
+            <Text style={styles.podiumInitials}>{LEADERBOARD_DATA[2].initials}</Text>
             <View style={[styles.podiumBadge, { backgroundColor: '#B45309' }]}>
               <Text style={styles.podiumRankText}>3</Text>
             </View>
@@ -124,9 +138,11 @@ export const LeaderboardScreen: React.FC = () => {
               <Text style={[styles.rankNumber, user.isCurrentUser && styles.rankNumberCurrent]}>
                 {user.rank}
               </Text>
-              <Text style={styles.rankAvatar}>{user.avatar}</Text>
+              <View style={[styles.rankAvatarCircle, { backgroundColor: user.color + '28', borderColor: user.color }]}>
+                <Text style={[styles.rankInitials, { color: user.color }]}>{user.initials}</Text>
+              </View>
 
-              <View style={{ flex: 1, marginLeft: 10 }}>
+              <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.rankName, user.isCurrentUser && styles.rankNameCurrent]}>
                   {user.name}
                 </Text>
@@ -137,7 +153,7 @@ export const LeaderboardScreen: React.FC = () => {
               </View>
 
               <View style={styles.xpPill}>
-                <Ionicons name="sparkles" size={12} color={THEME.colors.secondary} />
+                <Ionicons name="flash" size={12} color={THEME.colors.secondary} />
                 <Text style={styles.xpPillText}>{user.xp} XP</Text>
               </View>
             </View>
@@ -157,6 +173,33 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+  },
+  topBackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceCard,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  backBtnText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 12,
+    color: THEME.colors.text,
+    marginLeft: 2,
+  },
+  screenHeaderTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 16,
+    color: THEME.colors.text,
   },
   leagueBanner: {
     backgroundColor: THEME.colors.surfaceCard,
@@ -179,18 +222,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   leagueLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.gold,
     letterSpacing: 0.8,
   },
   leagueTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 18,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 2,
   },
   leagueSubtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -204,9 +248,9 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.border,
   },
   timerText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 12,
     color: THEME.colors.primaryGlow,
-    fontWeight: '600',
     marginLeft: 6,
   },
   podiumContainer: {
@@ -243,6 +287,16 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.gold,
     borderWidth: 3,
   },
+  podiumInitials: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  podiumInitialsGold: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 22,
+    color: THEME.colors.gold,
+  },
   podiumBadge: {
     position: 'absolute',
     bottom: -6,
@@ -253,34 +307,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   podiumRankText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    fontWeight: 'bold',
     color: '#000',
   },
   podiumName: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 12,
-    fontWeight: '600',
     color: THEME.colors.text,
     marginTop: 10,
     textAlign: 'center',
   },
   podiumNameGold: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
-    fontWeight: 'bold',
     color: THEME.colors.gold,
     marginTop: 10,
     textAlign: 'center',
   },
   podiumXp: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
     color: THEME.colors.textSecondary,
-    fontWeight: 'bold',
     marginTop: 2,
   },
   podiumXpGold: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
     color: THEME.colors.secondary,
-    fontWeight: 'bold',
     marginTop: 2,
   },
   zoneDivider: {
@@ -290,8 +344,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   zoneDividerText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.success,
     marginLeft: 6,
     letterSpacing: 0.6,
@@ -310,29 +364,38 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   rankItemCurrent: {
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: 'rgba(127, 67, 254, 0.14)',
     borderColor: THEME.colors.primary,
   },
   rankNumber: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
-    fontWeight: 'bold',
     color: THEME.colors.textMuted,
     width: 24,
   },
   rankNumberCurrent: {
     color: THEME.colors.primaryGlow,
   },
-  rankAvatar: {
-    fontSize: 22,
+  rankAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  rankInitials: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
   },
   rankName: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 14,
-    fontWeight: '600',
     color: THEME.colors.text,
   },
   rankNameCurrent: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.text,
-    fontWeight: 'bold',
   },
   streakRow: {
     flexDirection: 'row',
@@ -340,6 +403,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   streakText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
     color: THEME.colors.textSecondary,
     marginLeft: 4,
@@ -353,8 +417,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   xpPillText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: 'bold',
     color: THEME.colors.secondary,
     marginLeft: 4,
   },

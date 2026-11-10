@@ -14,11 +14,18 @@ const DEFAULT_STATS: UserStats = {
   streakDays: 1,
   lastActiveDate: new Date().toISOString().split('T')[0],
   stardustXp: 120,
-  cosmicRank: 'Star Cadet',
+  cosmicRank: 'Bronze League',
   wordsMastered: 6,
   conversationsDone: 0,
   sentencesChecked: 0,
 };
+
+function computeLeagueRank(xp: number): string {
+  if (xp >= 1500) return 'Diamond League';
+  if (xp >= 800) return 'Gold League';
+  if (xp >= 350) return 'Silver League';
+  return 'Bronze League';
+}
 
 export async function loadUserStats(): Promise<UserStats> {
   try {
@@ -28,14 +35,15 @@ export async function loadUserStats(): Promise<UserStats> {
       return DEFAULT_STATS;
     }
     const stats: UserStats = JSON.parse(raw);
-    
+    stats.cosmicRank = computeLeagueRank(stats.stardustXp);
+
     // Check streak continuation
     const today = new Date().toISOString().split('T')[0];
     if (stats.lastActiveDate !== today) {
       const lastDate = new Date(stats.lastActiveDate);
       const currDate = new Date(today);
       const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-      
+
       if (diffDays === 1) {
         stats.streakDays += 1;
       } else if (diffDays > 1) {
@@ -52,16 +60,7 @@ export async function loadUserStats(): Promise<UserStats> {
 
 export async function saveUserStats(stats: UserStats): Promise<void> {
   try {
-    // Calculate cosmic rank based on XP
-    if (stats.stardustXp >= 1500) {
-      stats.cosmicRank = 'Supernova Legend';
-    } else if (stats.stardustXp >= 800) {
-      stats.cosmicRank = 'Nebula Master';
-    } else if (stats.stardustXp >= 350) {
-      stats.cosmicRank = 'Solar Voyager';
-    } else {
-      stats.cosmicRank = 'Star Cadet';
-    }
+    stats.cosmicRank = computeLeagueRank(stats.stardustXp);
     await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(stats));
   } catch (e) {
     console.warn('Failed to save stats:', e);

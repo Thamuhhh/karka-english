@@ -5,11 +5,26 @@ import {
   Text,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+  Poppins_800ExtraBold,
+} from '@expo-google-fonts/poppins';
+import {
+  Montserrat_400Regular,
+  Montserrat_500Medium,
+  Montserrat_600SemiBold,
+  Montserrat_700Bold,
+} from '@expo-google-fonts/montserrat';
 
 import { THEME } from './src/constants/theme';
 import { CurriculumScreen } from './src/screens/CurriculumScreen';
@@ -24,9 +39,29 @@ import { SupernovaClass } from './src/constants/curriculum';
 type TabType = 'learn' | 'call' | 'grammar' | 'vocab' | 'league' | 'profile';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Poppins_800ExtraBold,
+    Montserrat_400Regular,
+    Montserrat_500Medium,
+    Montserrat_600SemiBold,
+    Montserrat_700Bold,
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>('learn');
   const [currentLesson, setCurrentLesson] = useState<SupernovaClass | null>(null);
   const [completedClasses, setCompletedClasses] = useState<string[]>(['sn-1-1']);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.fontLoaderContainer}>
+        <ActivityIndicator size="large" color={THEME.colors.primary} />
+      </View>
+    );
+  }
 
   const handleStartLesson = (lesson: SupernovaClass) => {
     setCurrentLesson(lesson);
@@ -58,12 +93,15 @@ export default function App() {
                 <CurriculumScreen
                   onStartLesson={handleStartLesson}
                   completedClasses={completedClasses}
+                  onOpenLeague={() => setActiveTab('league')}
                 />
               )}
               {activeTab === 'call' && <LiveVoiceCallScreen />}
               {activeTab === 'grammar' && <GrammarNovaScreen />}
               {activeTab === 'vocab' && <VocabVaultScreen />}
-              {activeTab === 'league' && <LeaderboardScreen />}
+              {activeTab === 'league' && (
+                <LeaderboardScreen onBack={() => setActiveTab('learn')} />
+              )}
               {activeTab === 'profile' && <ProfileScreen />}
             </View>
 
@@ -96,11 +134,11 @@ export default function App() {
                     color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
                   />
                   <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
-                    Doctor
+                    Ask Nova
                   </Text>
                 </TouchableOpacity>
 
-                {/* Center Floating Nova Call Tab with Glowing Gradient */}
+                {/* Center Floating Nova Call Tab */}
                 <TouchableOpacity
                   style={styles.centerCallWrapper}
                   onPress={() => setActiveTab('call')}
@@ -115,7 +153,7 @@ export default function App() {
                     <Ionicons name="mic" size={24} color="#FFFFFF" />
                   </LinearGradient>
                   <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveCall]}>
-                    Nova Call
+                    Speak
                   </Text>
                 </TouchableOpacity>
 
@@ -130,7 +168,7 @@ export default function App() {
                     color={activeTab === 'vocab' ? THEME.colors.accent : THEME.colors.textMuted}
                   />
                   <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveAccent]}>
-                    Vault
+                    Vocab
                   </Text>
                 </TouchableOpacity>
 
@@ -158,6 +196,12 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  fontLoaderContainer: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,
@@ -212,25 +256,25 @@ const styles = StyleSheet.create({
     borderBottomColor: '#5B21B6',
   },
   navText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 10,
     color: THEME.colors.textMuted,
     marginTop: 4,
-    fontWeight: '600',
   },
   navTextActive: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
-    fontWeight: '800',
   },
   navTextActiveCall: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
-    fontWeight: '800',
   },
   navTextActiveGold: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.gold,
-    fontWeight: '800',
   },
   navTextActiveAccent: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.accent,
-    fontWeight: '800',
   },
 });

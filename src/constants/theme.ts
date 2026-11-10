@@ -64,9 +64,15 @@ export const THEME = {
     surface: ['#232038', '#161522'] as const,
   },
   fonts: {
-    regular: 'System',
-    medium: 'System',
-    bold: 'System',
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semiBold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
+    extraBold: 'Poppins_800ExtraBold',
+    body: 'Montserrat_400Regular',
+    bodyMedium: 'Montserrat_500Medium',
+    bodySemiBold: 'Montserrat_600SemiBold',
+    bodyBold: 'Montserrat_700Bold',
   },
   spacing: {
     xs: 4,

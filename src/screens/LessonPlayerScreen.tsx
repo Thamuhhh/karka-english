@@ -190,17 +190,17 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         {currentSlide === 'rule' && (
           <View style={styles.slideCard}>
             <View style={styles.slideHeaderPill}>
-              <MaterialCommunityIcons name="lightbulb-on" size={18} color={THEME.colors.gold} />
-              <Text style={styles.slideHeaderPillText}>PATTERN 1 OF 4 • CORE RULE</Text>
+              <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color={THEME.colors.gold} />
+              <Text style={styles.slideHeaderPillText}>RULE 1 OF 4</Text>
             </View>
 
-            {/* Miss Nova Coach Greeting Pill */}
+            {/* Miss Nova Coach Advice */}
             <View style={styles.novaCoachCard}>
               <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.novaCoachAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.novaCoachTitle}>Miss Nova's Advice</Text>
+                <Text style={styles.novaCoachTitle}>Miss Nova</Text>
                 <Text style={styles.novaCoachText}>
-                  Listen closely to the sentence structure! Don't translate Tamil literally.
+                  Focus on how native speakers build this sentence. Do not translate word-by-word.
                 </Text>
               </View>
             </View>
@@ -211,8 +211,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             {/* Tamil Mental Model Box */}
             <View style={styles.tamilModelCard}>
               <View style={styles.tamilModelHeader}>
-                <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.gold} />
-                <Text style={styles.tamilModelTitle}>தமிழ் சிந்தனை முறை (Mental Model):</Text>
+                <MaterialCommunityIcons name="translate" size={16} color={THEME.colors.gold} />
+                <Text style={styles.tamilModelTitle}>Tamil Mental Model:</Text>
               </View>
               <Text style={styles.tamilModelBody}>{lesson.rule.tamilMentalModel}</Text>
             </View>
@@ -221,16 +221,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.comparisonBox}>
               <View style={styles.wrongBox}>
                 <View style={styles.statusRow}>
-                  <Ionicons name="close-circle" size={18} color={THEME.colors.error} />
-                  <Text style={styles.wrongLabel}>AVOID THIS (தவறு):</Text>
+                  <Ionicons name="close-circle" size={16} color={THEME.colors.error} />
+                  <Text style={styles.wrongLabel}>AVOID (தவறு):</Text>
                 </View>
                 <Text style={styles.wrongSentence}>"{lesson.rule.doAndDont.wrong}"</Text>
               </View>
 
               <View style={styles.rightBox}>
                 <View style={styles.statusRow}>
-                  <Ionicons name="checkmark-circle" size={18} color={THEME.colors.success} />
-                  <Text style={styles.rightLabel}>SAY THIS INSTEAD (சரி):</Text>
+                  <Ionicons name="checkmark-circle" size={16} color={THEME.colors.success} />
+                  <Text style={styles.rightLabel}>SAY THIS (சரி):</Text>
                   <TouchableOpacity
                     style={styles.speakerBtn}
                     onPress={() => handlePlayVoice(lesson.rule.doAndDont.right, 'right-audio')}
@@ -245,38 +245,41 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 <Text style={styles.rightSentence}>"{lesson.rule.doAndDont.right}"</Text>
               </View>
 
-              <Text style={styles.whyNote}>💡 {lesson.rule.doAndDont.whyTamil}</Text>
+              <View style={styles.whyNoteRow}>
+                <Ionicons name="information-circle-outline" size={14} color={THEME.colors.textSecondary} style={{ marginRight: 6, marginTop: 1 }} />
+                <Text style={styles.whyNote}>{lesson.rule.doAndDont.whyTamil}</Text>
+              </View>
             </View>
           </View>
         )}
 
         {/* ========================================================== */}
-        {/* SLIDE 2: SUPERNOVA SENTENCE SCRAMBLE (WORD JUMBLE) */}
+        {/* SLIDE 2: SENTENCE SCRAMBLE */}
         {/* ========================================================== */}
         {currentSlide === 'jumble' && (
           <View style={styles.slideCard}>
             <View style={[styles.slideHeaderPill, { borderColor: THEME.colors.secondary }]}>
-              <MaterialCommunityIcons name="puzzle" size={18} color={THEME.colors.secondary} />
+              <MaterialCommunityIcons name="puzzle-outline" size={16} color={THEME.colors.secondary} />
               <Text style={[styles.slideHeaderPillText, { color: THEME.colors.secondary }]}>
-                PATTERN 2 OF 4 • SENTENCE SCRAMBLE
+                STEP 2 OF 4 • SENTENCE BUILDER
               </Text>
             </View>
 
-            <Text style={styles.lessonBigTitle}>Assemble the English Sentence</Text>
-            <Text style={styles.promptSubtitle}>Tap the word tiles below in the natural English order:</Text>
+            <Text style={styles.lessonBigTitle}>Arrange in Natural English</Text>
+            <Text style={styles.promptSubtitle}>Tap the word tiles in correct order</Text>
 
             {/* Tamil Prompt Card */}
             <View style={styles.tamilThoughtBanner}>
-              <Text style={styles.tamilThoughtLabel}>TAMIL THOUGHT:</Text>
+              <Text style={styles.tamilThoughtLabel}>TAMIL THOUGHT</Text>
               <Text style={styles.tamilThoughtText}>{lesson.jumble.tamilSentence}</Text>
             </View>
 
             {/* Assembled Sentence Slot Line */}
             <View style={styles.slotLineArea}>
-              <Text style={styles.slotHint}>ASSEMBLED SENTENCE:</Text>
+              <Text style={styles.slotHint}>YOUR SENTENCE</Text>
               <View style={styles.wordsWrapRow}>
                 {assembledWords.length === 0 ? (
-                  <Text style={styles.emptySlotPlaceholder}>Tap words below to place them here...</Text>
+                  <Text style={styles.emptySlotPlaceholder}>Tap words below to build...</Text>
                 ) : (
                   assembledWords.map((word, wIdx) => (
                     <TouchableOpacity
@@ -285,7 +288,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       onPress={() => handleTapSlotWord(word, wIdx)}
                     >
                       <Text style={styles.slotTileText}>{word}</Text>
-                      <Ionicons name="close" size={12} color={THEME.colors.textSecondary} style={{ marginLeft: 4 }} />
+                      <Ionicons name="close" size={12} color="#E2E8F0" style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
                   ))
                 )}
@@ -315,17 +318,17 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         {currentSlide === 'translation' && (
           <View style={styles.slideCard}>
             <View style={[styles.slideHeaderPill, { borderColor: THEME.colors.gold }]}>
-              <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.gold} />
+              <MaterialCommunityIcons name="translate" size={16} color={THEME.colors.gold} />
               <Text style={[styles.slideHeaderPillText, { color: THEME.colors.gold }]}>
-                PATTERN 3 OF 4 • GUIDED TRANSLATION
+                STEP 3 OF 4 • TRANSLATION
               </Text>
             </View>
 
-            <Text style={styles.lessonBigTitle}>Choose Natural English</Text>
-            <Text style={styles.promptSubtitle}>How would a native speaker translate this?</Text>
+            <Text style={styles.lessonBigTitle}>Pick Natural English</Text>
+            <Text style={styles.promptSubtitle}>Select how a native speaker would say this</Text>
 
             <View style={styles.tamilThoughtBanner}>
-              <Text style={styles.tamilThoughtLabel}>TAMIL SENTENCE:</Text>
+              <Text style={styles.tamilThoughtLabel}>TAMIL SENTENCE</Text>
               <Text style={styles.tamilThoughtText}>{lesson.translation.tamilPrompt}</Text>
             </View>
 
@@ -367,9 +370,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         {currentSlide === 'speaking' && (
           <View style={styles.slideCard}>
             <View style={[styles.slideHeaderPill, { borderColor: THEME.colors.primaryGlow }]}>
-              <MaterialCommunityIcons name="microphone" size={18} color={THEME.colors.primaryGlow} />
+              <MaterialCommunityIcons name="microphone-outline" size={16} color={THEME.colors.primaryGlow} />
               <Text style={[styles.slideHeaderPillText, { color: THEME.colors.primaryGlow }]}>
-                PATTERN 4 OF 4 • FREE SPEAKING
+                STEP 4 OF 4 • SPEAKING
               </Text>
             </View>
 
@@ -383,8 +386,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatarSmallImg} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={styles.missNovaTitle}>Miss Nova (AI Tutor)</Text>
-                  <Text style={styles.missNovaSub}>Listening & assessing your tone</Text>
+                  <Text style={styles.missNovaTitle}>Miss Nova</Text>
+                  <Text style={styles.missNovaSub}>AI English Coach</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.speakerBtn}
@@ -401,7 +404,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             </View>
 
             {/* Suggested Answer Chips */}
-            <Text style={styles.suggestLabel}>SUGGESTED RESPONSES (TAP TO USE):</Text>
+            <Text style={styles.suggestLabel}>SAMPLE RESPONSES</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
               {lesson.speakingChallenge.suggestedAnswers.map((ans, aIdx) => (
                 <TouchableOpacity
@@ -429,15 +432,18 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             {speakingFeedback && (
               <View style={styles.aiResultCard}>
                 <View style={styles.aiScoreRow}>
-                  <Ionicons name="sparkles" size={18} color={THEME.colors.secondary} />
+                  <Ionicons name="analytics-outline" size={18} color={THEME.colors.secondary} />
                   <Text style={styles.aiScoreText}>
                     Fluency Score: {speakingFeedback.fluencyScore}/100
                   </Text>
                 </View>
                 <Text style={styles.aiExplainText}>{speakingFeedback.explanation}</Text>
-                <Text style={styles.aiTamilExplainText}>💡 {speakingFeedback.tamilExplanation}</Text>
+                <View style={styles.whyNoteRow}>
+                  <Ionicons name="information-circle-outline" size={14} color={THEME.colors.gold} style={{ marginRight: 6, marginTop: 2 }} />
+                  <Text style={styles.aiTamilExplainText}>{speakingFeedback.tamilExplanation}</Text>
+                </View>
                 <View style={styles.nativeRephraseBox}>
-                  <Text style={styles.nativeLabel}>NATIVE REPHRASING:</Text>
+                  <Text style={styles.nativeLabel}>NATURAL REPHRASING</Text>
                   <Text style={styles.nativeText}>"{speakingFeedback.nativeIdiomaticVersion}"</Text>
                 </View>
               </View>
@@ -456,22 +462,22 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
             <Text style={styles.victoryTitle}>Lesson Complete!</Text>
             <Text style={styles.victorySubtitle}>
-              You crushed "{lesson.title}" using the SuperFluency method!
+              You completed "{lesson.title}". Keep building your daily fluency streak.
             </Text>
 
             <View style={styles.statsCardGrid}>
               <View style={styles.victoryStatCard}>
-                <Ionicons name="sparkles" size={24} color={THEME.colors.secondary} />
+                <Ionicons name="flash" size={22} color={THEME.colors.secondary} />
                 <Text style={styles.victoryStatVal}>+{lesson.xpReward} XP</Text>
-                <Text style={styles.victoryStatLabel}>Stardust Earned</Text>
+                <Text style={styles.victoryStatLabel}>XP Earned</Text>
               </View>
               <View style={styles.victoryStatCard}>
                 <MaterialCommunityIcons name="fire" size={24} color={THEME.colors.gold} />
-                <Text style={styles.victoryStatVal}>Active 🔥</Text>
-                <Text style={styles.victoryStatLabel}>Streak Kept</Text>
+                <Text style={styles.victoryStatVal}>3 Days</Text>
+                <Text style={styles.victoryStatLabel}>Day Streak</Text>
               </View>
               <View style={styles.victoryStatCard}>
-                <Ionicons name="checkmark-done-circle" size={24} color={THEME.colors.success} />
+                <Ionicons name="checkmark-done-circle" size={22} color={THEME.colors.success} />
                 <Text style={styles.victoryStatVal}>100%</Text>
                 <Text style={styles.victoryStatLabel}>Accuracy</Text>
               </View>
@@ -517,7 +523,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.actionBtnText}>CONTINUE ➡️</Text>
+                <View style={styles.btnRowContent}>
+                  <Text style={styles.actionBtnText}>CONTINUE</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                </View>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -530,7 +539,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                   <View style={styles.feedbackHeadlineRow}>
                     <Ionicons
                       name={isJumbleCorrect ? 'checkmark-circle' : 'close-circle'}
-                      size={24}
+                      size={22}
                       color={isJumbleCorrect ? THEME.colors.success : THEME.colors.error}
                     />
                     <Text
@@ -539,11 +548,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         { color: isJumbleCorrect ? THEME.colors.success : THEME.colors.error },
                       ]}
                     >
-                      {isJumbleCorrect ? 'Semma! You got it right! 🎉' : 'Incorrect sentence order!'}
+                      {isJumbleCorrect ? 'Spot on! Correct sentence.' : 'Incorrect word order'}
                     </Text>
                   </View>
                   {!isJumbleCorrect && (
-                    <Text style={styles.jumbleCorrectionNote}>💡 Correct: {lesson.jumble.correctWords.join(' ')}</Text>
+                    <Text style={styles.jumbleCorrectionNote}>Correct order: {lesson.jumble.correctWords.join(' ')}</Text>
                   )}
                   <TouchableOpacity
                     style={[styles.actionBtnTouchable, { marginTop: 10 }]}
@@ -552,7 +561,6 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       if (isJumbleCorrect) {
                         setCurrentSlide('translation');
                       } else {
-                        // Reset jumble
                         setAvailableWords([...lesson.jumble.scrambledWords]);
                         setAssembledWords([]);
                         setJumbleChecked(false);
@@ -565,9 +573,17 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.actionBtnText}>
-                        {isJumbleCorrect ? 'CONTINUE ➡️' : 'TRY AGAIN 🔄'}
-                      </Text>
+                      <View style={styles.btnRowContent}>
+                        <Text style={styles.actionBtnText}>
+                          {isJumbleCorrect ? 'CONTINUE' : 'TRY AGAIN'}
+                        </Text>
+                        <Ionicons
+                          name={isJumbleCorrect ? 'arrow-forward' : 'refresh'}
+                          size={18}
+                          color="#FFFFFF"
+                          style={{ marginLeft: 8 }}
+                        />
+                      </View>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -584,7 +600,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.actionBtnText}>CHECK SENTENCE</Text>
+                    <Text style={styles.actionBtnText}>CHECK ANSWER</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -603,7 +619,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                           ? 'checkmark-circle'
                           : 'close-circle'
                       }
-                      size={24}
+                      size={22}
                       color={
                         selectedTransIdx === lesson.translation.correctOptionIndex
                           ? THEME.colors.success
@@ -622,12 +638,12 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       ]}
                     >
                       {selectedTransIdx === lesson.translation.correctOptionIndex
-                        ? 'Great Job! Exactly right! 🌟'
-                        : 'Review the explanation:'}
+                        ? 'Great job! Exactly right.'
+                        : 'Review this rule:'}
                     </Text>
                   </View>
                   <Text style={styles.jumbleCorrectionNote}>{lesson.translation.explanation}</Text>
-                  <Text style={styles.jumbleTamilNote}>💡 {lesson.translation.tamilExplanation}</Text>
+                  <Text style={styles.jumbleTamilNote}>{lesson.translation.tamilExplanation}</Text>
                   <TouchableOpacity
                     style={[styles.actionBtnTouchable, { marginTop: 10 }]}
                     activeOpacity={0.85}
@@ -639,7 +655,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.actionBtnText}>CONTINUE TO SPEAKING 🎙️</Text>
+                      <View style={styles.btnRowContent}>
+                        <Text style={styles.actionBtnText}>PRACTICE SPEAKING</Text>
+                        <Ionicons name="mic" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                      </View>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -656,7 +675,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.actionBtnText}>CHECK TRANSLATION</Text>
+                    <Text style={styles.actionBtnText}>CHECK ANSWER</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -678,8 +697,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Ionicons name="trophy" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.actionBtnText}>FINISH & CLAIM +{lesson.xpReward} XP</Text>
+                    <View style={styles.btnRowContent}>
+                      <Ionicons name="trophy" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.actionBtnText}>COMPLETE LESSON (+{lesson.xpReward} XP)</Text>
+                    </View>
                   </LinearGradient>
                 </TouchableOpacity>
               ) : (
@@ -698,9 +719,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                     {isEvaluating ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="sparkles" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                        <Text style={styles.actionBtnText}>EVALUATE WITH MISS NOVA</Text>
+                      <View style={styles.btnRowContent}>
+                        <Ionicons name="mic" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.actionBtnText}>CHECK RESPONSE</Text>
                       </View>
                     )}
                   </LinearGradient>
@@ -748,8 +769,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heartCount: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
-    fontWeight: 'bold',
     color: '#EF4444',
     marginLeft: 4,
   },
@@ -775,23 +796,25 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.gold,
   },
   slideHeaderPillText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.gold,
     letterSpacing: 0.8,
     marginLeft: 6,
   },
   lessonBigTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 22,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   ruleExplainText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 15,
     color: THEME.colors.text,
     lineHeight: 22,
   },
   promptSubtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.textSecondary,
   },
@@ -809,12 +832,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   tamilModelTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 13,
-    fontWeight: 'bold',
     color: THEME.colors.gold,
     marginLeft: 6,
   },
   tamilModelBody: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 13,
     color: THEME.colors.text,
     lineHeight: 20,
@@ -846,37 +870,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wrongLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.error,
     marginLeft: 6,
   },
   rightLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: THEME.colors.success,
     marginLeft: 6,
     flex: 1,
   },
   wrongSentence: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 14,
     color: THEME.colors.text,
-    fontWeight: '600',
     marginTop: 4,
   },
   rightSentence: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
     color: THEME.colors.text,
-    fontWeight: 'bold',
     marginTop: 4,
   },
   speakerBtn: {
     padding: 2,
   },
+  whyNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   whyNote: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     lineHeight: 18,
+    flex: 1,
   },
 
   // Jumble Styles
@@ -888,13 +918,13 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   tamilThoughtLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: 'bold',
     color: THEME.colors.gold,
   },
   tamilThoughtText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 16,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 4,
   },
@@ -908,15 +938,15 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.borderLight,
   },
   slotHint: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: 'bold',
     color: THEME.colors.textMuted,
     marginBottom: 8,
   },
   emptySlotPlaceholder: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.textMuted,
-    fontStyle: 'italic',
   },
   wordsWrapRow: {
     flexDirection: 'row',
@@ -939,9 +969,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   slotTileText: {
+    fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
   },
   wordBankWrap: {
     paddingVertical: 12,
@@ -962,9 +992,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   bankTileText: {
+    fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
   },
 
   // Translation Styles
@@ -983,7 +1013,7 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: THEME.colors.primary,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'rgba(127, 67, 254, 0.12)',
   },
   cardCorrect: {
     borderColor: THEME.colors.success,
@@ -1010,9 +1040,9 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
   transOptionCardText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 14,
     color: THEME.colors.text,
-    fontWeight: '600',
     flex: 1,
   },
 
@@ -1044,23 +1074,24 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   missNovaTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   missNovaSub: {
+    fontFamily: THEME.fonts.body,
     fontSize: 11,
     color: THEME.colors.textSecondary,
   },
   missNovaSpeechText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 15,
-    fontStyle: 'italic',
     color: THEME.colors.primaryGlow,
     lineHeight: 22,
   },
   suggestLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: 'bold',
     color: THEME.colors.textMuted,
     marginTop: 6,
   },
@@ -1074,10 +1105,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   suggestPillText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
   },
   speakingInput: {
+    fontFamily: THEME.fonts.bodyMedium,
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: 12,
     padding: 14,
@@ -1098,18 +1131,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aiScoreText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 14,
-    fontWeight: 'bold',
     color: THEME.colors.secondary,
     marginLeft: 6,
   },
   aiExplainText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.text,
   },
   aiTamilExplainText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 12,
     color: THEME.colors.gold,
+    flex: 1,
   },
   nativeRephraseBox: {
     backgroundColor: 'rgba(6, 182, 212, 0.1)',
@@ -1118,14 +1154,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   nativeLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    fontWeight: 'bold',
     color: THEME.colors.secondary,
   },
   nativeText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 13,
     color: THEME.colors.text,
-    fontStyle: 'italic',
     marginTop: 2,
   },
 
@@ -1145,11 +1181,12 @@ const styles = StyleSheet.create({
     borderRadius: 19,
   },
   novaCoachTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: '800',
     color: THEME.colors.primaryGlow,
   },
   novaCoachText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -1173,16 +1210,18 @@ const styles = StyleSheet.create({
     height: 130,
   },
   victoryTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 28,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   victorySubtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 14,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     paddingHorizontal: 20,
+    lineHeight: 20,
   },
   statsCardGrid: {
     flexDirection: 'row',
@@ -1201,12 +1240,13 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   victoryStatVal: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 15,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 4,
   },
   victoryStatLabel: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 10,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -1232,8 +1272,8 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
   finishContinueBtnText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 16,
-    fontWeight: 'bold',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
@@ -1263,11 +1303,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  btnRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   actionBtnText: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontFamily: THEME.fonts.bold,
+    fontSize: 15,
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   btnDisabled: {
     opacity: 0.5,
@@ -1281,16 +1326,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   feedbackHeadline: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 15,
-    fontWeight: 'bold',
     marginLeft: 8,
   },
   jumbleCorrectionNote: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.text,
     marginTop: 2,
   },
   jumbleTamilNote: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 12,
     color: THEME.colors.gold,
     marginTop: 2,

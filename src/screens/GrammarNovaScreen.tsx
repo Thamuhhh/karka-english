@@ -66,8 +66,8 @@ export const GrammarNovaScreen: React.FC = () => {
           <Image source={SUPERNOVA_IMAGES.askDoubt} style={{ width: 28, height: 28 }} resizeMode="contain" />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.title}>Ask Miss Nova (Doctor)</Text>
-          <Text style={styles.subtitle}>Instant sentence diagnosis & Tamil mental-model explanation</Text>
+          <Text style={styles.title}>Ask Miss Nova</Text>
+          <Text style={styles.subtitle}>Instant grammar diagnosis & Tamil explanation</Text>
         </View>
       </View>
 
@@ -75,7 +75,7 @@ export const GrammarNovaScreen: React.FC = () => {
       <View style={styles.inputCard}>
         <TextInput
           style={styles.textInput}
-          placeholder="Paste or type any English sentence here..."
+          placeholder="Type any English sentence to check..."
           placeholderTextColor={THEME.colors.textMuted}
           value={inputText}
           onChangeText={setInputText}
@@ -109,8 +109,8 @@ export const GrammarNovaScreen: React.FC = () => {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Text style={styles.analyzeBtnText}>Diagnose Sentence</Text>
-                  <Ionicons name="sparkles" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                  <Text style={styles.analyzeBtnText}>Check Grammar</Text>
+                  <Ionicons name="checkmark-done" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
                 </>
               )}
             </LinearGradient>
@@ -120,7 +120,7 @@ export const GrammarNovaScreen: React.FC = () => {
 
       {/* Quick Test Samples */}
       <View style={styles.sampleSection}>
-        <Text style={styles.sampleHeading}>TRY COMMON INDIAN-ENGLISH MISTAKES:</Text>
+        <Text style={styles.sampleHeading}>COMMON MISTAKES TO TRY</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sampleScroll}>
           {SAMPLE_SENTENCES.map((sample, idx) => (
             <TouchableOpacity
@@ -168,7 +168,7 @@ export const GrammarNovaScreen: React.FC = () => {
 
             {/* Corrected Box */}
             <View style={styles.correctedBox}>
-              <Text style={styles.correctedLabel}>SUPERNOVA CORRECTION:</Text>
+              <Text style={styles.correctedLabel}>CORRECTED SENTENCE</Text>
               <Text style={styles.correctedText}>{result.correctedSentence}</Text>
               <TouchableOpacity
                 style={styles.audioIconBtn}
@@ -185,27 +185,30 @@ export const GrammarNovaScreen: React.FC = () => {
 
           {/* Grammar Explanation */}
           <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>📖 Grammar Rule & Why:</Text>
-            <Text style={styles.infoText}>{result.explanation}</Text>
+            <View style={styles.tamilHeaderRow}>
+              <Ionicons name="book-outline" size={16} color={THEME.colors.primaryGlow} />
+              <Text style={[styles.infoTitle, { marginLeft: 6, marginBottom: 0 }]}>Grammar Explanation</Text>
+            </View>
+            <Text style={[styles.infoText, { marginTop: 6 }]}>{result.explanation}</Text>
           </View>
 
           {/* Tamil Cultural/Mental-Model Clarity */}
           <View style={styles.tamilCard}>
             <View style={styles.tamilHeaderRow}>
               <MaterialCommunityIcons name="translate" size={18} color={THEME.colors.gold} />
-              <Text style={styles.tamilCardTitle}>தமிழ் சிந்தனை முறை விளக்கம்:</Text>
+              <Text style={styles.tamilCardTitle}>Tamil Explanation</Text>
             </View>
             <Text style={styles.tamilCardText}>{result.tamilExplanation}</Text>
           </View>
 
-          {/* 3 Variations (Professional, Casual, Native) */}
-          <Text style={styles.variationsHeader}>🎯 3 Ways to Express This:</Text>
+          {/* 3 Variations */}
+          <Text style={styles.variationsHeader}>Natural Alternatives</Text>
 
           <View style={styles.variantCard}>
             <View style={styles.variantTop}>
               <View style={styles.variantTag}>
-                <Ionicons name="briefcase-outline" size={12} color={THEME.colors.secondary} />
-                <Text style={styles.variantTagText}>Professional / Email</Text>
+                <Ionicons name="briefcase-outline" size={13} color={THEME.colors.secondary} />
+                <Text style={styles.variantTagText}>Professional</Text>
               </View>
               <TouchableOpacity onPress={() => playVoice(result.formalVersion, 'formal')}>
                 <Ionicons
@@ -221,8 +224,8 @@ export const GrammarNovaScreen: React.FC = () => {
           <View style={styles.variantCard}>
             <View style={styles.variantTop}>
               <View style={styles.variantTag}>
-                <Ionicons name="cafe-outline" size={12} color={THEME.colors.gold} />
-                <Text style={styles.variantTagText}>Casual / Friendly</Text>
+                <Ionicons name="cafe-outline" size={13} color={THEME.colors.gold} />
+                <Text style={styles.variantTagText}>Casual</Text>
               </View>
               <TouchableOpacity onPress={() => playVoice(result.casualVersion, 'casual')}>
                 <Ionicons
@@ -238,8 +241,8 @@ export const GrammarNovaScreen: React.FC = () => {
           <View style={styles.variantCard}>
             <View style={styles.variantTop}>
               <View style={styles.variantTag}>
-                <Ionicons name="sparkles-outline" size={12} color={THEME.colors.primaryGlow} />
-                <Text style={styles.variantTagText}>Native Idiomatic</Text>
+                <Ionicons name="chatbubble-ellipses-outline" size={13} color={THEME.colors.primaryGlow} />
+                <Text style={styles.variantTagText}>Native Speaker</Text>
               </View>
               <TouchableOpacity onPress={() => playVoice(result.nativeIdiomaticVersion, 'native')}>
                 <Ionicons
@@ -281,11 +284,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 20,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   subtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -298,6 +302,7 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   textInput: {
+    fontFamily: THEME.fonts.bodyMedium,
     color: THEME.colors.text,
     fontSize: 15,
     minHeight: 70,
@@ -317,6 +322,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   clearText: {
+    fontFamily: THEME.fonts.medium,
     color: THEME.colors.textMuted,
     fontSize: 13,
   },
@@ -342,19 +348,20 @@ const styles = StyleSheet.create({
     borderBottomColor: '#28253E',
   },
   analyzeBtnText: {
+    fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: 'bold',
   },
   sampleSection: {
     marginTop: 16,
     marginBottom: 8,
   },
   sampleHeading: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
     color: THEME.colors.textMuted,
-    fontWeight: '700',
     marginBottom: 8,
+    letterSpacing: 0.6,
   },
   sampleScroll: {
     gap: 8,
@@ -368,6 +375,7 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   sampleChipText: {
+    fontFamily: THEME.fonts.body,
     color: THEME.colors.textSecondary,
     fontSize: 12,
   },
@@ -389,14 +397,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   verdictLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textSecondary,
-    fontWeight: '700',
     letterSpacing: 0.8,
   },
   verdictScore: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 26,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   verdictBadge: {
@@ -413,8 +421,8 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.warningBg,
   },
   verdictBadgeText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: '700',
     marginLeft: 6,
   },
   correctedBox: {
@@ -424,14 +432,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   correctedLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.success,
-    fontWeight: '700',
     letterSpacing: 0.6,
   },
   correctedText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 16,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 4,
     paddingRight: 32,
@@ -449,12 +457,13 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   infoTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 13,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginBottom: 6,
   },
   infoText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
     color: THEME.colors.textSecondary,
     lineHeight: 20,
@@ -472,19 +481,20 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   tamilCardTitle: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 13,
-    fontWeight: 'bold',
     color: THEME.colors.gold,
     marginLeft: 6,
   },
   tamilCardText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 13,
     color: THEME.colors.text,
     lineHeight: 20,
   },
   variationsHeader: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 15,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 8,
   },
@@ -506,12 +516,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   variantTagText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
-    fontWeight: '600',
     color: THEME.colors.textSecondary,
-    marginLeft: 4,
+    marginLeft: 5,
   },
   variantText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 14,
     color: THEME.colors.text,
     lineHeight: 20,

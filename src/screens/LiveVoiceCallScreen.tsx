@@ -202,7 +202,8 @@ export const LiveVoiceCallScreen: React.FC = () => {
           style={styles.scenarioPillBtn}
           onPress={() => setActiveScenarioIdx((prev) => (prev + 1) % SCENARIOS.length)}
         >
-          <Text style={styles.scenarioPillText}>Switch Topic 🔄</Text>
+          <Ionicons name="swap-horizontal" size={14} color={THEME.colors.primaryGlow} style={{ marginRight: 4 }} />
+          <Text style={styles.scenarioPillText}>Switch Topic</Text>
         </TouchableOpacity>
       </View>
 
@@ -269,7 +270,7 @@ export const LiveVoiceCallScreen: React.FC = () => {
           {lastFeedback.hasErrors && (
             <Text style={styles.correctedSentenceText}>"{lastFeedback.correctedSentence}"</Text>
           )}
-          <Text style={styles.tamilFeedbackText}>💡 {lastFeedback.tamilExplanation}</Text>
+          <Text style={styles.tamilFeedbackText}>{lastFeedback.tamilExplanation}</Text>
         </View>
       )}
 
@@ -384,17 +385,19 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   liveTimerText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: '700',
     color: THEME.colors.text,
   },
   scenarioTitleTag: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginLeft: 10,
-    fontWeight: '600',
   },
   scenarioPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: THEME.colors.surfaceCard,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -403,9 +406,9 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   scenarioPillText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 11,
     color: THEME.colors.primaryGlow,
-    fontWeight: '600',
   },
   avatarStage: {
     alignItems: 'center',
@@ -443,16 +446,16 @@ const styles = StyleSheet.create({
     height: 34,
   },
   missNovaName: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 22,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 14,
   },
   statusLabel: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 13,
     color: THEME.colors.primaryGlow,
     marginTop: 4,
-    fontWeight: '600',
   },
   subtitleBox: {
     backgroundColor: THEME.colors.surfaceCard,
@@ -463,9 +466,9 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   subtitleText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 15,
     color: THEME.colors.text,
-    fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -483,17 +486,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   feedbackScoreText: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
-    fontWeight: 'bold',
     marginLeft: 6,
   },
   correctedSentenceText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 13,
-    fontWeight: 'bold',
     color: THEME.colors.success,
     marginTop: 4,
   },
   tamilFeedbackText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.gold,
     marginTop: 2,
@@ -510,6 +514,7 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   promptPillText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
   },
@@ -528,6 +533,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   voiceTextInput: {
+    fontFamily: THEME.fonts.body,
     flex: 1,
     backgroundColor: THEME.colors.surfaceCard,
     borderRadius: 20,
@@ -588,8 +594,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.goldGlow,
   },
   micLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 9,
-    fontWeight: '800',
     color: THEME.colors.text,
     marginTop: 2,
     textTransform: 'uppercase',

@@ -6,7 +6,7 @@ export const SCENARIOS: RoleplayScenario[] = [
     title: 'Tech Job Interview',
     category: 'interview',
     description: 'Practice answering common behavioral and technical interview questions confidently.',
-    avatar: '💼',
+    avatar: 'briefcase-outline',
     persona: 'Mr. David (Senior Tech Lead at Google)',
     systemPrompt:
       'You are David, an encouraging but sharp Senior Tech Lead conducting a job interview. Greet the candidate, ask relevant software engineering questions one by one, listen closely, and provide constructive suggestions.',
@@ -18,7 +18,7 @@ export const SCENARIOS: RoleplayScenario[] = [
     title: 'London Coffee Shop',
     category: 'daily',
     description: 'Order your favorite coffee, customize your snack, and ask for directions.',
-    avatar: '☕',
+    avatar: 'cafe-outline',
     persona: 'Emma (Barista at Covent Garden, London)',
     systemPrompt:
       'You are Emma, a lively and polite British barista at a busy London cafe. Speak with natural British conversational warmth (e.g., "cheers", "brilliant", "would you like that to go?").',
@@ -30,7 +30,7 @@ export const SCENARIOS: RoleplayScenario[] = [
     title: 'Airport Check-in & Customs',
     category: 'travel',
     description: 'Navigate check-in counter, baggage drop, and immigration officer questions.',
-    avatar: '✈️',
+    avatar: 'airplane-outline',
     persona: 'Officer John (Immigration Officer at JFK Airport, NY)',
     systemPrompt:
       'You are Officer John, an immigration and border control officer at JFK Airport in New York. You speak clearly and professionally, checking passport, purpose of trip, and length of stay.',
@@ -42,7 +42,7 @@ export const SCENARIOS: RoleplayScenario[] = [
     title: 'Agile Team Daily Standup',
     category: 'work',
     description: 'Give your daily status update, discuss blockers, and communicate with teammates.',
-    avatar: '🚀',
+    avatar: 'rocket-outline',
     persona: 'Sarah (Engineering Scrum Master)',
     systemPrompt:
       'You are Sarah, an energetic Scrum Master facilitating daily standup. Guide the user through: what did you do yesterday, what are you doing today, and any blockers.',
@@ -54,7 +54,7 @@ export const SCENARIOS: RoleplayScenario[] = [
     title: 'Casual Chat with Roommate',
     category: 'social',
     description: 'Practice natural everyday slang, sharing stories, and casual conversational rhythms.',
-    avatar: '🍕',
+    avatar: 'chatbubbles-outline',
     persona: 'Leo (Friendly American College Student)',
     systemPrompt:
       'You are Leo, a chill and fun roommate in California. You use casual American English expressions naturally (e.g. "totally", "no way", "sounds like a plan", "catch up").',

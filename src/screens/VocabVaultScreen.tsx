@@ -85,8 +85,8 @@ export const VocabVaultScreen: React.FC = () => {
           <Ionicons name="book" size={22} color={THEME.colors.secondary} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.title}>Cosmic Vocab Vault</Text>
-          <Text style={styles.subtitle}>Spaced Repetition & Free Dictionary Audio</Text>
+          <Text style={styles.title}>Vocabulary Vault</Text>
+          <Text style={styles.subtitle}>Master new words with native pronunciation</Text>
         </View>
       </View>
 
@@ -206,10 +206,10 @@ export const VocabVaultScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Related Synonyms Web (from Datamuse API) */}
+      {/* Related Synonyms */}
       {relatedSynonyms.length > 0 && (
         <View style={styles.relatedSection}>
-          <Text style={styles.relatedHeading}>🌐 Semantic Word Web (Datamuse API):</Text>
+          <Text style={styles.relatedHeading}>Related Synonyms</Text>
           <View style={styles.relatedRow}>
             {relatedSynonyms.map((w, idx) => (
               <TouchableOpacity
@@ -254,11 +254,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 20,
-    fontWeight: 'bold',
     color: THEME.colors.text,
   },
   subtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -275,6 +276,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   searchInput: {
+    fontFamily: THEME.fonts.bodyMedium,
     flex: 1,
     color: THEME.colors.text,
     fontSize: 14,
@@ -287,9 +289,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   searchBtnText: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.text,
     fontSize: 12,
-    fontWeight: 'bold',
   },
   cardIndicatorRow: {
     flexDirection: 'row',
@@ -298,9 +300,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardCounter: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 11,
     color: THEME.colors.textSecondary,
-    fontWeight: '700',
     letterSpacing: 0.8,
   },
   cefrTag: {
@@ -310,9 +312,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cefrTagText: {
+    fontFamily: THEME.fonts.bold,
     color: THEME.colors.primaryGlow,
     fontSize: 11,
-    fontWeight: 'bold',
   },
   flashcard: {
     backgroundColor: THEME.colors.surfaceCard,
@@ -331,10 +333,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   partOfSpeech: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 12,
     color: THEME.colors.secondary,
     textTransform: 'uppercase',
-    fontWeight: '700',
     letterSpacing: 0.8,
   },
   audioBtn: {
@@ -349,12 +351,13 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
   cardWord: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 30,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginTop: 10,
   },
   cardPhonetic: {
+    fontFamily: THEME.fonts.body,
     fontSize: 15,
     color: THEME.colors.textSecondary,
     marginTop: 4,
@@ -369,10 +372,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tapText: {
+    fontFamily: THEME.fonts.semiBold,
     fontSize: 13,
     color: THEME.colors.primaryGlow,
     marginLeft: 6,
-    fontWeight: '600',
   },
   revealedSection: {
     marginTop: 14,
@@ -383,11 +386,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   defLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textSecondary,
-    fontWeight: '700',
   },
   defText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 15,
     color: THEME.colors.text,
     lineHeight: 22,
@@ -400,25 +404,26 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tamilLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.gold,
-    fontWeight: '700',
   },
   tamilText: {
+    fontFamily: THEME.fonts.bodyMedium,
     fontSize: 13,
     color: THEME.colors.text,
     marginTop: 2,
     lineHeight: 18,
   },
   exampleLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textSecondary,
-    fontWeight: '700',
     marginTop: 12,
   },
   exampleText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 13,
-    fontStyle: 'italic',
     color: THEME.colors.text,
     marginTop: 2,
     lineHeight: 18,
@@ -427,9 +432,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   synonymsLabel: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 10,
     color: THEME.colors.textSecondary,
-    fontWeight: '700',
     marginBottom: 6,
   },
   synonymsRow: {
@@ -444,6 +449,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   synonymText: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
   },
@@ -481,16 +487,16 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   masteredBtnText: {
+    fontFamily: THEME.fonts.bold,
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: 'bold',
   },
   relatedSection: {
     marginTop: 24,
   },
   relatedHeading: {
+    fontFamily: THEME.fonts.bold,
     fontSize: 13,
-    fontWeight: 'bold',
     color: THEME.colors.text,
     marginBottom: 10,
   },
@@ -508,6 +514,7 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   relatedChipText: {
+    fontFamily: THEME.fonts.medium,
     fontSize: 12,
     color: THEME.colors.secondary,
   },
