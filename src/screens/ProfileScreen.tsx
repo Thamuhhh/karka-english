@@ -109,7 +109,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ stats, onStatsUpda
     <View style={styles.container}>
       {/* Subtle Top Ambient Glow */}
       <LinearGradient
-        colors={['rgba(127, 67, 254, 0.16)', 'rgba(14, 14, 20, 0)']}
+        colors={['#201639', 'rgba(14, 14, 20, 0)']}
         style={styles.topAmbientWash}
         pointerEvents="none"
       />

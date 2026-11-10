@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -67,7 +67,8 @@ const NAV_TABS: NavTabItem[] = [
   { id: 'profile', label: 'Profile', family: 'ion', activeIcon: 'person', inactiveIcon: 'person-outline' },
 ];
 
-export default function App() {
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -102,10 +103,14 @@ export default function App() {
   if (!fontsLoaded || !hydrated) {
     return (
       <View style={styles.fontLoaderContainer}>
+        <StatusBar style="light" backgroundColor={THEME.colors.background} translucent animated />
         <ActivityIndicator size="large" color={THEME.colors.primary} />
       </View>
     );
   }
+
+  const topSurfaceColor =
+    !currentLesson && activeTab === 'profile' ? '#201639' : THEME.colors.background;
 
   const userRank = getUserLeaderboardRank(stats);
 
@@ -156,13 +161,20 @@ export default function App() {
   };
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="light" backgroundColor={THEME.colors.background} />
+    <View
+      style={[
+        styles.container,
+        { paddingLeft: insets.left, paddingRight: insets.right },
+      ]}
+    >
+      <StatusBar style="light" backgroundColor={topSurfaceColor} translucent animated />
 
-        {/* Dedicated Full-Screen Lesson Player (Hides tabs when in a class) */}
-        {currentLesson ? (
+      {/* Dynamic Top Status Bar Safe Area Strip */}
+      <View style={{ height: insets.top, backgroundColor: topSurfaceColor }} />
+
+      {/* Dedicated Full-Screen Lesson Player (Hides tabs when in a class) */}
+      {currentLesson ? (
+        <View style={[styles.screenContainer, { paddingBottom: insets.bottom }]}>
           <LessonPlayerScreen
             lesson={currentLesson}
             initialHearts={stats.hearts}
@@ -170,32 +182,33 @@ export default function App() {
             onClose={() => setCurrentLesson(null)}
             onComplete={handleLessonComplete}
           />
-        ) : (
-          <>
-            {/* Screen Container */}
-            <View style={styles.screenContainer}>
-              {activeTab === 'learn' && (
-                <CurriculumScreen
-                  onStartLesson={handleStartLesson}
-                  stats={stats}
-                  userRank={userRank}
-                  onRefillHearts={handleRefillHearts}
-                  onOpenLeague={() => setActiveTab('league')}
-                />
-              )}
-              {activeTab === 'call' && (
-                <SpeakHubScreen stats={stats} onStatsUpdate={setStats} />
-              )}
-              {activeTab === 'league' && (
-                <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />
-              )}
-              {activeTab === 'profile' && (
-                <ProfileScreen stats={stats} onStatsUpdate={setStats} />
-              )}
-            </View>
+        </View>
+      ) : (
+        <>
+          {/* Screen Container */}
+          <View style={styles.screenContainer}>
+            {activeTab === 'learn' && (
+              <CurriculumScreen
+                onStartLesson={handleStartLesson}
+                stats={stats}
+                userRank={userRank}
+                onRefillHearts={handleRefillHearts}
+                onOpenLeague={() => setActiveTab('league')}
+              />
+            )}
+            {activeTab === 'call' && (
+              <SpeakHubScreen stats={stats} onStatsUpdate={setStats} />
+            )}
+            {activeTab === 'league' && (
+              <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />
+            )}
+            {activeTab === 'profile' && (
+              <ProfileScreen stats={stats} onStatsUpdate={setStats} />
+            )}
+          </View>
 
-            {/* Unified Bottom Navigation Bar with Floating Center Speak CTA */}
-            <View style={styles.bottomNavWrapper}>
+          {/* Unified Bottom Navigation Bar (Extends smoothly under gesture inset) */}
+          <View style={[styles.bottomNavWrapper, { paddingBottom: insets.bottom }]}>
               <View style={styles.bottomNav}>
                 {NAV_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -249,8 +262,16 @@ export default function App() {
             </View>
           </>
         )}
-      </SafeAreaView>
-    </SafeAreaProvider>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

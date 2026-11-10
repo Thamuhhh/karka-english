@@ -541,6 +541,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       <Modal
         visible={!!selectedLesson}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setSelectedLesson(null)}
       >
