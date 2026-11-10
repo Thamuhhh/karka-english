@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS, SupernovaClass } from '../constants/curriculum';
 import { UserStats } from '../types';
@@ -29,6 +30,27 @@ interface CurriculumScreenProps {
 }
 
 const MAX_CONTENT_WIDTH = 480;
+const MAP_STEP_Y = 138;
+const MAP_TOP_CY = 72;
+const NODE_LABEL_WIDTH = 152;
+const NODE_DIAMETER = 66;
+
+function getZigZagCenterX(
+  index: number,
+  totalClassCount: number,
+  mapWidth: number,
+  isTrophy = false
+): number {
+  const halfLabel = NODE_LABEL_WIDTH / 2;
+  const leftX = Math.max(halfLabel + 8, mapWidth * 0.25);
+  const rightX = Math.min(mapWidth - halfLabel - 8, mapWidth * 0.75);
+  const centerX = mapWidth / 2;
+
+  if (isTrophy || index === 0 || index >= totalClassCount) {
+    return centerX;
+  }
+  return index % 2 === 1 ? leftX : rightX;
+}
 
 const LESSON_STAGES = [
   { key: 'pattern', label: 'Pattern', family: 'mci' as const, icon: 'lightbulb-on-outline' },
@@ -49,6 +71,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
 
   const completedClasses = stats.completedClasses;
+  const mapWidth = Math.min(windowWidth - 36, MAX_CONTENT_WIDTH - 36);
   const isSelectedCompleted = selectedLesson
     ? completedClasses.includes(selectedLesson.id)
     : false;
@@ -146,181 +169,210 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </View>
               </View>
 
-              {/* Straight Left-Spine Lesson Timeline */}
-              <View style={styles.timelineList}>
+              {/* Premium Winding Obsidian SVG Zig-Zag Progression Map */}
+              <View
+                style={[
+                  styles.mapCanvas,
+                  {
+                    width: mapWidth,
+                    height: MAP_TOP_CY + level.classes.length * MAP_STEP_Y + 98,
+                  },
+                ]}
+              >
+                <Image
+                  source={SUPERNOVA_IMAGES.mapTopographyBg}
+                  style={styles.mapBgTexture}
+                  resizeMode="cover"
+                />
+                <View style={styles.mapBgVeil} />
+
+                {/* Smooth Cubic Bezier Winding Road */}
+                <Svg
+                  width={mapWidth}
+                  height={MAP_TOP_CY + level.classes.length * MAP_STEP_Y + 98}
+                  style={StyleSheet.absoluteFillObject}
+                >
+                  {level.classes.map((cls, cIdx) => {
+                    const nextIsTrophy = cIdx === level.classes.length - 1;
+                    const x1 = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
+                    const y1 = MAP_TOP_CY + cIdx * MAP_STEP_Y;
+                    const x2 = getZigZagCenterX(
+                      cIdx + 1,
+                      level.classes.length,
+                      mapWidth,
+                      nextIsTrophy
+                    );
+                    const y2 = MAP_TOP_CY + (cIdx + 1) * MAP_STEP_Y;
+                    const midY = (y1 + y2) / 2;
+                    const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+
+                    const isSegmentDone = completedClasses.includes(cls.id);
+                    const isNextClass =
+                      level.classes[cIdx + 1]?.id === nextActiveClassId ||
+                      cls.id === nextActiveClassId;
+
+                    return (
+                      <React.Fragment key={`seg-${cls.id}`}>
+                        {(isSegmentDone || isNextClass) && (
+                          <Path
+                            d={d}
+                            stroke="rgba(127, 67, 254, 0.26)"
+                            strokeWidth={11}
+                            strokeLinecap="round"
+                            fill="none"
+                          />
+                        )}
+                        <Path
+                          d={d}
+                          stroke={
+                            isSegmentDone
+                              ? '#A78BFA'
+                              : isNextClass
+                              ? THEME.colors.primary
+                              : '#2E2B45'
+                          }
+                          strokeWidth={isSegmentDone || isNextClass ? 3.5 : 2.5}
+                          strokeDasharray={isSegmentDone || isNextClass ? undefined : '6 7'}
+                          strokeLinecap="round"
+                          fill="none"
+                        />
+                      </React.Fragment>
+                    );
+                  })}
+                </Svg>
+
+                {/* Zig-Zag Lesson Stop Nodes */}
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
                   const isCurrent = cls.id === nextActiveClassId;
-                  const prevClass = cIdx > 0 ? level.classes[cIdx - 1] : null;
-                  const prevCompleted = prevClass ? completedClasses.includes(prevClass.id) : false;
                   const emblemSource = getLessonNodeEmblem(cls.id);
                   const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
+                  const cx = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
+                  const cy = MAP_TOP_CY + cIdx * MAP_STEP_Y;
+                  const halfNode = NODE_DIAMETER / 2;
 
                   return (
-                    <View key={cls.id} style={styles.timelineRow}>
-                      {/* Left Aligned Vertical Spine + Node Medallion */}
-                      <View style={styles.railColumn}>
+                    <React.Fragment key={cls.id}>
+                      {isCurrent && (
                         <View
                           style={[
-                            styles.railSegment,
-                            cIdx === 0 && styles.railSegmentHidden,
-                            prevCompleted && styles.railSegmentCompleted,
-                            prevClass?.id === nextActiveClassId && styles.railSegmentActive,
+                            styles.nextFloatTag,
+                            { left: cx - 32, top: cy - halfNode - 24 },
                           ]}
-                        />
-
-                        <TouchableOpacity
-                          style={[
-                            styles.nodeCircle,
-                            isCompleted && styles.nodeCircleCompleted,
-                            isCurrent && styles.nodeCircleCurrent,
-                            !isCompleted && !isCurrent && styles.nodeCircleLocked,
-                          ]}
-                          activeOpacity={0.85}
-                          onPress={() => setSelectedLesson(cls)}
                         >
-                          <View style={styles.nodeImageClip}>
-                            <Image
-                              source={emblemSource}
-                              style={[
-                                styles.nodeImg,
-                                !isCompleted && !isCurrent && { opacity: 0.45 },
-                              ]}
-                              resizeMode="cover"
-                            />
-                          </View>
+                          <Text style={styles.nextFloatTagText}>NEXT UP</Text>
+                        </View>
+                      )}
 
-                          {isCompleted && (
-                            <View style={styles.nodeCheckBadge}>
-                              <MaterialCommunityIcons name="check-bold" size={10} color="#FFFFFF" />
-                            </View>
-                          )}
-                          {!isCompleted && !isCurrent && (
-                            <View style={styles.nodeLockBadge}>
-                              <Ionicons
-                                name="lock-closed"
-                                size={9}
-                                color={THEME.colors.textSecondary}
-                              />
-                            </View>
-                          )}
-                        </TouchableOpacity>
-
-                        <View
-                          style={[
-                            styles.railSegment,
-                            isCompleted && styles.railSegmentCompleted,
-                            isCurrent && styles.railSegmentActive,
-                          ]}
-                        />
-                      </View>
-
-                      {/* Right Clean Lesson Card */}
                       <TouchableOpacity
                         style={[
-                          styles.lessonCard,
-                          isCompleted && styles.lessonCardCompleted,
-                          isCurrent && styles.lessonCardCurrent,
+                          styles.mapNodeCircle,
+                          isCompleted && styles.mapNodeCompleted,
+                          isCurrent && styles.mapNodeCurrent,
+                          !isCompleted && !isCurrent && styles.mapNodeLocked,
+                          { left: cx - halfNode, top: cy - halfNode },
                         ]}
-                        activeOpacity={0.84}
+                        activeOpacity={0.86}
                         onPress={() => setSelectedLesson(cls)}
                       >
-                        <View style={styles.lessonCardBody}>
-                          <View style={styles.lessonMetaRow}>
-                            <Text style={styles.lessonIndexTag}>
-                              CLASS {String(lessonNum).padStart(2, '0')}
-                            </Text>
-
-                            {isCurrent ? (
-                              <View style={styles.badgeNext}>
-                                <Text style={styles.badgeNextText}>NEXT UP</Text>
-                              </View>
-                            ) : isCompleted ? (
-                              <View style={styles.badgeDone}>
-                                <Text style={styles.badgeDoneText}>COMPLETED</Text>
-                              </View>
-                            ) : (
-                              <Text style={styles.lessonDurationText}>{cls.duration}</Text>
-                            )}
-                          </View>
-
-                          <Text style={styles.lessonTitle} numberOfLines={1}>
-                            {formatShortLessonTitle(cls.title)}
-                          </Text>
-                          <Text style={styles.lessonSub} numberOfLines={1}>
-                            {cls.grammarTopic}
-                          </Text>
-                        </View>
-
-                        <View style={styles.lessonActionCol}>
-                          <Ionicons
-                            name={isCurrent ? 'play-circle' : 'chevron-forward'}
-                            size={isCurrent ? 22 : 17}
-                            color={
-                              isCurrent
-                                ? THEME.colors.primaryGlow
-                                : isCompleted
-                                ? '#A78BFA'
-                                : THEME.colors.textMuted
-                            }
+                        <View style={styles.mapNodeImgClip}>
+                          <Image
+                            source={emblemSource}
+                            style={[
+                              styles.nodeImg,
+                              !isCompleted && !isCurrent && { opacity: 0.42 },
+                            ]}
+                            resizeMode="cover"
                           />
                         </View>
+
+                        {isCompleted && (
+                          <View style={styles.nodeCheckBadge}>
+                            <MaterialCommunityIcons name="check-bold" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
+                        {!isCompleted && !isCurrent && (
+                          <View style={styles.nodeLockBadge}>
+                            <Ionicons
+                              name="lock-closed"
+                              size={9}
+                              color={THEME.colors.textSecondary}
+                            />
+                          </View>
+                        )}
                       </TouchableOpacity>
-                    </View>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.mapLabelPill,
+                          isCompleted && styles.mapLabelCompleted,
+                          isCurrent && styles.mapLabelCurrent,
+                          { left: cx - NODE_LABEL_WIDTH / 2, top: cy + halfNode + 7 },
+                        ]}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedLesson(cls)}
+                      >
+                        <Text
+                          style={[
+                            styles.mapLabelIndex,
+                            isCurrent && styles.mapLabelIndexCurrent,
+                          ]}
+                        >
+                          {String(lessonNum).padStart(2, '0')} ·{' '}
+                          {isCompleted ? 'DONE' : cls.duration.toUpperCase()}
+                        </Text>
+                        <Text style={styles.mapLabelTitle} numberOfLines={2}>
+                          {formatShortLessonTitle(cls.title)}
+                        </Text>
+                      </TouchableOpacity>
+                    </React.Fragment>
                   );
                 })}
 
-                {/* Unit Milestone Trophy Row */}
-                <View style={styles.timelineRow}>
-                  <View style={styles.railColumn}>
-                    <View
-                      style={[
-                        styles.railSegment,
-                        isUnitCompleted && styles.railSegmentCompleted,
-                      ]}
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.trophyNodeCircle,
-                        isUnitCompleted && styles.trophyNodeCompleted,
-                      ]}
-                      activeOpacity={0.85}
-                      onPress={() => lastClass && setSelectedLesson(lastClass)}
-                    >
-                      <View style={styles.trophyImageClip}>
-                        <Image
-                          source={SUPERNOVA_IMAGES.trophyNova}
-                          style={styles.nodeImg}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    </TouchableOpacity>
-                    <View style={[styles.railSegment, styles.railSegmentHidden]} />
-                  </View>
+                {/* Centered Unit Trophy Crest Milestone */}
+                {(() => {
+                  const trophyIdx = level.classes.length;
+                  const cx = getZigZagCenterX(trophyIdx, level.classes.length, mapWidth, true);
+                  const cy = MAP_TOP_CY + trophyIdx * MAP_STEP_Y;
+                  const halfTrophy = 31;
 
-                  <TouchableOpacity
-                    style={[
-                      styles.milestoneCard,
-                      isUnitCompleted && styles.milestoneCardCompleted,
-                    ]}
-                    activeOpacity={0.85}
-                    onPress={() => lastClass && setSelectedLesson(lastClass)}
-                  >
-                    <View style={styles.lessonCardBody}>
-                      <Text style={styles.milestoneEyebrow}>UNIT {level.levelNumber} MILESTONE</Text>
-                      <Text style={styles.milestoneTitle}>
-                        {isUnitCompleted
-                          ? 'Unit Mastery Unlocked'
-                          : `Complete ${level.classes.length} classes to unlock Trophy`}
-                      </Text>
-                    </View>
-                    <MaterialCommunityIcons
-                      name="trophy-outline"
-                      size={20}
-                      color={isUnitCompleted ? THEME.colors.gold : THEME.colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
+                  return (
+                    <>
+                      <TouchableOpacity
+                        style={[
+                          styles.trophyNodeCircle,
+                          isUnitCompleted && styles.trophyNodeCompleted,
+                          { left: cx - halfTrophy, top: cy - halfTrophy },
+                        ]}
+                        activeOpacity={0.85}
+                        onPress={() => lastClass && setSelectedLesson(lastClass)}
+                      >
+                        <View style={styles.trophyImageClip}>
+                          <Image
+                            source={SUPERNOVA_IMAGES.trophyNova}
+                            style={[styles.nodeImg, !isUnitCompleted && { opacity: 0.55 }]}
+                            resizeMode="cover"
+                          />
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.mapLabelPill,
+                          isUnitCompleted && styles.milestoneLabelDone,
+                          { left: cx - NODE_LABEL_WIDTH / 2, top: cy + halfTrophy + 7 },
+                        ]}
+                        activeOpacity={0.85}
+                        onPress={() => lastClass && setSelectedLesson(lastClass)}
+                      >
+                        <Text style={styles.milestoneEyebrow}>UNIT {level.levelNumber} TROPHY</Text>
+                        <Text style={styles.mapLabelTitle} numberOfLines={1}>
+                          {isUnitCompleted ? 'Mastery Unlocked' : `Finish ${level.classes.length} Classes`}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  );
+                })()}
               </View>
             </View>
           );
@@ -624,63 +676,79 @@ const styles = StyleSheet.create({
     color: '#C4B5FD',
   },
 
-  /* TIMELINE ROWS */
-  timelineList: {
+  /* ZIG-ZAG COURSE MAP CANVAS */
+  mapCanvas: {
+    position: 'relative',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#12111C',
+    borderWidth: 1,
+    borderColor: '#252238',
+    alignSelf: 'center',
+  },
+  mapBgTexture: {
+    ...StyleSheet.absoluteFillObject,
     width: '100%',
+    height: '100%',
+    opacity: 0.14,
   },
-  timelineRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
+  mapBgVeil: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(14, 14, 20, 0.55)',
   },
-  railColumn: {
-    width: 56,
-    alignItems: 'center',
-  },
-  railSegment: {
-    width: 2.5,
-    flex: 1,
-    minHeight: 12,
-    backgroundColor: THEME.colors.border,
-  },
-  railSegmentHidden: {
-    backgroundColor: 'transparent',
-  },
-  railSegmentCompleted: {
-    backgroundColor: '#9D7CFE',
-  },
-  railSegmentActive: {
+  nextFloatTag: {
+    position: 'absolute',
+    width: 64,
+    paddingVertical: 2.5,
+    borderRadius: 7,
     backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 4,
+    shadowColor: '#7F43FE',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  nodeCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  nextFloatTagText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 8.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.6,
+  },
+  mapNodeCircle: {
+    position: 'absolute',
+    width: NODE_DIAMETER,
+    height: NODE_DIAMETER,
+    borderRadius: NODE_DIAMETER / 2,
     backgroundColor: THEME.colors.surfaceCard,
     borderWidth: 2,
     borderColor: THEME.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 3,
   },
-  nodeCircleCompleted: {
+  mapNodeCompleted: {
     borderColor: '#9D7CFE',
     borderWidth: 2.5,
   },
-  nodeCircleCurrent: {
-    borderColor: THEME.colors.primary,
+  mapNodeCurrent: {
+    borderColor: THEME.colors.primaryGlow,
     borderWidth: 3,
     shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.55,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  nodeCircleLocked: {
-    borderColor: THEME.colors.border,
+  mapNodeLocked: {
+    borderColor: '#29263F',
   },
-  nodeImageClip: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  mapNodeImgClip: {
+    width: NODE_DIAMETER - 10,
+    height: NODE_DIAMETER - 10,
+    borderRadius: (NODE_DIAMETER - 10) / 2,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
@@ -691,11 +759,11 @@ const styles = StyleSheet.create({
   },
   nodeCheckBadge: {
     position: 'absolute',
-    right: -2,
+    right: -1,
     bottom: -1,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -704,151 +772,92 @@ const styles = StyleSheet.create({
   },
   nodeLockBadge: {
     position: 'absolute',
-    right: -2,
+    right: -1,
     bottom: -1,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: THEME.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: THEME.colors.border,
   },
-
-  /* RIGHT COLUMN CARDS */
-  lessonCard: {
-    flex: 1,
-    marginLeft: 10,
-    marginVertical: 6,
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: 14,
+  mapLabelPill: {
+    position: 'absolute',
+    width: NODE_LABEL_WIDTH,
+    backgroundColor: 'rgba(20, 19, 32, 0.94)',
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    paddingHorizontal: 15,
-    paddingVertical: 13,
-    flexDirection: 'row',
+    borderColor: '#29263F',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
     alignItems: 'center',
+    zIndex: 2,
   },
-  lessonCardCompleted: {
-    borderColor: 'rgba(167, 139, 250, 0.28)',
-    backgroundColor: '#171625',
+  mapLabelCompleted: {
+    borderColor: 'rgba(167, 139, 250, 0.3)',
   },
-  lessonCardCurrent: {
+  mapLabelCurrent: {
     borderColor: THEME.colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: 'rgba(40, 28, 72, 0.72)',
+    backgroundColor: '#1E1933',
   },
-  lessonCardBody: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  lessonMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 3,
-  },
-  lessonIndexTag: {
+  mapLabelIndex: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 9.5,
+    fontSize: 8.5,
     color: THEME.colors.textMuted,
     letterSpacing: 0.6,
+    marginBottom: 1,
   },
-  badgeNext: {
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 5,
-  },
-  badgeNextText: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 8.5,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  badgeDone: {
-    backgroundColor: 'rgba(127, 67, 254, 0.16)',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 5,
-  },
-  badgeDoneText: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 8.5,
+  mapLabelIndexCurrent: {
     color: '#C4B5FD',
-    letterSpacing: 0.4,
   },
-  lessonDurationText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 9.5,
-    color: THEME.colors.textSecondary,
-  },
-  lessonTitle: {
+  mapLabelTitle: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 13.5,
-    color: THEME.colors.text,
-  },
-  lessonSub: {
-    fontFamily: THEME.fonts.body,
     fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-  },
-  lessonActionCol: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 14,
   },
 
-  /* MILESTONE ROW */
+  /* TROPHY CREST NODE */
   trophyNodeCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    position: 'absolute',
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: THEME.colors.surfaceCard,
     borderWidth: 2,
-    borderColor: THEME.colors.borderLight,
+    borderColor: '#34304D',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 3,
   },
   trophyNodeCompleted: {
     borderColor: THEME.colors.gold,
+    shadowColor: '#FBBF24',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
   },
   trophyImageClip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     overflow: 'hidden',
     backgroundColor: '#181724',
   },
-  milestoneCard: {
-    flex: 1,
-    marginLeft: 10,
-    marginVertical: 5,
-    backgroundColor: 'rgba(24, 23, 36, 0.65)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  milestoneCardCompleted: {
+  milestoneLabelDone: {
     borderColor: 'rgba(251, 191, 36, 0.45)',
     backgroundColor: 'rgba(251, 191, 36, 0.08)',
   },
   milestoneEyebrow: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 9.5,
+    fontSize: 8.5,
     color: THEME.colors.gold,
     letterSpacing: 0.6,
-    marginBottom: 2,
-  },
-  milestoneTitle: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
+    marginBottom: 1,
   },
 
   /* MODAL POPUP */
