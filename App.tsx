@@ -12,15 +12,16 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { THEME } from './src/constants/theme';
 import { DashboardScreen } from './src/screens/DashboardScreen';
+import { CurriculumScreen } from './src/screens/CurriculumScreen';
 import { AiCoachScreen } from './src/screens/AiCoachScreen';
 import { GrammarNovaScreen } from './src/screens/GrammarNovaScreen';
 import { VocabVaultScreen } from './src/screens/VocabVaultScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 
-type TabType = 'home' | 'coach' | 'grammar' | 'vocab' | 'profile';
+type TabType = 'home' | 'classes' | 'coach' | 'grammar' | 'vocab' | 'profile';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [activeTab, setActiveTab] = useState<TabType>('classes'); // Default to Classes!
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>(undefined);
 
   const handleLaunchScenario = (scenarioId: string) => {
@@ -41,6 +42,7 @@ export default function App() {
               onSelectScenario={handleLaunchScenario}
             />
           )}
+          {activeTab === 'classes' && <CurriculumScreen />}
           {activeTab === 'coach' && (
             <AiCoachScreen initialScenarioId={selectedScenarioId} />
           )}
@@ -53,16 +55,16 @@ export default function App() {
         <View style={styles.bottomNav}>
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setActiveTab('home')}
+            onPress={() => setActiveTab('classes')}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name={activeTab === 'home' ? 'planet' : 'planet-outline'}
+            <MaterialCommunityIcons
+              name={activeTab === 'classes' ? 'school' : 'school-outline'}
               size={22}
-              color={activeTab === 'home' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+              color={activeTab === 'classes' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
             />
-            <Text style={[styles.navText, activeTab === 'home' && styles.navTextActive]}>
-              Home
+            <Text style={[styles.navText, activeTab === 'classes' && styles.navTextActive]}>
+              Classes
             </Text>
           </TouchableOpacity>
 
