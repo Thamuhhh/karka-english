@@ -39,7 +39,12 @@ async function stopPlaybackOnly() {
   }
 }
 
-function speakWithLanguage(text: string, language: string, onDone?: () => void) {
+function speakWithLanguage(
+  text: string,
+  language: string,
+  onDone?: () => void,
+  rateOverride?: number
+) {
   let finished = false;
   const finishOnce = () => {
     if (!finished) {
@@ -48,10 +53,12 @@ function speakWithLanguage(text: string, language: string, onDone?: () => void) 
     }
   };
 
+  const baseRate = rateOverride ?? currentSpeechRate;
+
   try {
     Speech.speak(text, {
       language,
-      rate: language === 'ta-IN' ? Math.min(currentSpeechRate, 0.92) : currentSpeechRate,
+      rate: language === 'ta-IN' ? Math.min(baseRate, 0.92) : baseRate,
       pitch: 1.0,
       onDone: finishOnce,
       onStopped: finishOnce,
@@ -66,10 +73,10 @@ function speakWithLanguage(text: string, language: string, onDone?: () => void) 
   }
 }
 
-export async function speakText(text: string, onDone?: () => void) {
+export async function speakText(text: string, onDone?: () => void, rateOverride?: number) {
   activeSequenceId++;
   await stopPlaybackOnly();
-  speakWithLanguage(text, currentAccent, onDone);
+  speakWithLanguage(text, currentAccent, onDone, rateOverride);
 }
 
 /** Speaks Tamil instructional text using Tamil (India) TTS voice. */
@@ -87,7 +94,8 @@ export interface BilingualSpeechSegment {
 /** Sequentially plays mixed Tamil narration and English example sentences. */
 export async function speakBilingualSequence(
   segments: BilingualSpeechSegment[],
-  onDone?: () => void
+  onDone?: () => void,
+  onSegmentStart?: (index: number, segment: BilingualSpeechSegment) => void
 ) {
   const sequenceToken = ++activeSequenceId;
   await stopPlaybackOnly();
@@ -107,8 +115,10 @@ export async function speakBilingualSequence(
       onDone?.();
       return;
     }
-    const seg = cleanSegments[index++];
+    const segIdx = index++;
+    const seg = cleanSegments[segIdx];
     const lang = seg.lang === 'ta-IN' ? 'ta-IN' : currentAccent;
+    onSegmentStart?.(segIdx, seg);
     speakWithLanguage(seg.text, lang, () => {
       if (sequenceToken === activeSequenceId) {
         playNext();

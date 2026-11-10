@@ -19,8 +19,6 @@ import { UserStats, GrammarCorrection, ChatMessage } from '../types';
 import {
   speakText,
   speakTamil,
-  speakBilingualSequence,
-  BilingualSpeechSegment,
   stopAllAudio,
 } from '../services/ttsService';
 import {
@@ -131,6 +129,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     accuracy: number;
   } | null>(null);
 
+  // Stage 1: Minimal 3-Beat Lecture State (0: Rule, 1: Fix, 2: Check)
+  const [lectureStep, setLectureStep] = useState<0 | 1 | 2>(0);
+  const [spotCheckPick, setSpotCheckPick] = useState<'wrong' | 'right' | null>(null);
+
   // Slide 2: Jumble State
   const [assembledWords, setAssembledWords] = useState<string[]>([]);
   const [availableWords, setAvailableWords] = useState<string[]>([
@@ -160,20 +162,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [isReplying, setIsReplying] = useState(false);
   const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
 
-  const tamilClassSegments: BilingualSpeechSegment[] = [
-    { text: 'வணக்கம்! இன்று நாம் கற்றுக்கொள்ள போவது:', lang: 'ta-IN' },
-    { text: lesson.rule.tamilMentalModel, lang: 'ta-IN' },
-    { text: 'இதை தவறாக இப்படி சொல்லக் கூடாது:', lang: 'ta-IN' },
-    { text: lesson.rule.doAndDont.wrong, lang: 'en' },
-    { text: 'சரியாக இப்படி சொல்லுங்கள்:', lang: 'ta-IN' },
-    { text: lesson.rule.doAndDont.right, lang: 'en' },
-    { text: lesson.rule.doAndDont.whyTamil, lang: 'ta-IN' },
-  ];
-
-  const handlePlayVoice = (text: string, id: string) => {
+  const handlePlayVoice = (text: string, id: string, rateOverride?: number) => {
     stopAllAudio();
     setPlayingAudioId(id);
-    speakText(text, () => setPlayingAudioId(null));
+    speakText(text, () => setPlayingAudioId(null), rateOverride);
   };
 
   const handlePlayTamilVoice = (text: string, id: string) => {
@@ -182,22 +174,20 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     speakTamil(text, () => setPlayingAudioId(null));
   };
 
-  const handlePlayTamilLecture = () => {
-    stopAllAudio();
-    setPlayingAudioId('teacher-lecture');
-    speakBilingualSequence(tamilClassSegments, () => setPlayingAudioId(null));
-  };
-
   const handleStopVoice = () => {
     stopAllAudio();
     setPlayingAudioId(null);
   };
 
-  // Auto-speak Teacher Tamil lecture on Stage 1 and Nila opening question on Stage 4
+  // Auto-speak focused step cleanly without overwhelming lecture walls
   useEffect(() => {
     if (voiceMuted) return;
     if (currentSlide === 'rule') {
-      handlePlayTamilLecture();
+      if (lectureStep === 0) {
+        handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'lecture-tamil');
+      } else if (lectureStep === 1) {
+        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right');
+      }
     } else if (currentSlide === 'speaking') {
       const firstLine = lesson.speakingChallenge.missNovaQuestion;
       handlePlayVoice(firstLine, 'init-nila');
@@ -206,7 +196,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
       stopAllAudio();
       setPlayingAudioId(null);
     };
-  }, [currentSlide]);
+  }, [currentSlide, lectureStep]);
 
   useEffect(() => {
     return () => {
@@ -497,106 +487,189 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         keyboardShouldPersistTaps="handled"
       >
         {/* ============================================================ */}
-        {/* STAGE 1: TEACHER CLASS LECTURE (Nila explains like a tutor)  */}
+        {/* STAGE 1: MINIMAL 3-STEP CLASS LECTURE (Zero Card Clutter)    */}
         {/* ============================================================ */}
         {currentSlide === 'rule' && (
-          <View style={styles.slideBody}>
-            <Text style={styles.stepEyebrow}>STEP 01 · CLASS LECTURE</Text>
-
-            {/* Interactive Teacher Walkthrough Header */}
-            <View style={styles.teacherBanner}>
-              <View style={styles.teacherAvatarRing}>
-                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.teacherAvatarImg} />
+          <View style={styles.lectureCanvas}>
+            {/* Header Eyebrow + 3 Tappable Micro-Step Dots */}
+            <View style={styles.stepHeaderRow}>
+              <Text style={styles.stepEyebrow}>
+                CLASS {String(lesson.classNumber).padStart(2, '0')} · LECTURE
+              </Text>
+              <View style={styles.lectureDotsRow}>
+                {([0, 1, 2] as const).map((stepIdx) => {
+                  const isCurrent = lectureStep === stepIdx;
+                  return (
+                    <TouchableOpacity
+                      key={stepIdx}
+                      onPress={() => {
+                        stopAllAudio();
+                        setPlayingAudioId(null);
+                        setLectureStep(stepIdx);
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                      style={[
+                        styles.lectureDot,
+                        isCurrent && styles.lectureDotActive,
+                      ]}
+                    />
+                  );
+                })}
               </View>
-              <View style={{ flex: 1, marginLeft: 11 }}>
-                <Text style={styles.teacherName}>Nila · Tamil Tutor</Text>
-                <Text style={styles.teacherStatus}>
-                  {playingAudioId === 'teacher-lecture'
-                    ? 'தமிழில் விளக்குகிறேன்...'
-                    : 'தமிழில் பாடம் கேட்கலாம்'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.teacherPlayBtn,
-                  playingAudioId === 'teacher-lecture' && styles.teacherPlayBtnActive,
-                ]}
-                onPress={() =>
-                  playingAudioId === 'teacher-lecture'
-                    ? handleStopVoice()
-                    : handlePlayTamilLecture()
-                }
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={playingAudioId === 'teacher-lecture' ? 'stop' : 'play'}
-                  size={13}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.teacherPlayText}>
-                  {playingAudioId === 'teacher-lecture' ? 'Stop' : 'Hear Tamil'}
-                </Text>
-              </TouchableOpacity>
             </View>
 
-            <Text style={styles.slideTitle}>{lesson.rule.heading}</Text>
-
-            <View style={styles.tamilInsightCard}>
-              <View style={styles.promptTopRow}>
-                <Text style={styles.tamilInsightEyebrow}>THINK IN TAMIL</Text>
-                <TouchableOpacity
-                  style={styles.audioIconBtn}
-                  onPress={() =>
-                    handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'tamil-model')
-                  }
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Ionicons
-                    name={
-                      playingAudioId === 'tamil-model' ? 'volume-high' : 'volume-medium-outline'
-                    }
-                    size={18}
-                    color={THEME.colors.primaryGlow}
+            {/* MICRO-STEP 0: CORE RULE (Open Typography, Zero Box) */}
+            {lectureStep === 0 && (
+              <View style={styles.lectureFocusStage}>
+                <View style={styles.nilaInlineRow}>
+                  <Image
+                    source={SUPERNOVA_IMAGES.novaAvatar}
+                    style={styles.nilaMiniAvatar}
                   />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.tamilInsightBody}>{lesson.rule.tamilMentalModel}</Text>
-            </View>
-
-            <Text style={styles.ruleExplainText}>{lesson.rule.englishExplanation}</Text>
-
-            <View style={styles.contrastStack}>
-              <View style={styles.avoidCard}>
-                <View style={styles.contrastHeaderRow}>
-                  <Ionicons name="close-circle" size={15} color="#8E89A6" />
-                  <Text style={styles.avoidLabel}>AVOID (தவறு)</Text>
-                </View>
-                <Text style={styles.avoidSentence}>"{lesson.rule.doAndDont.wrong}"</Text>
-              </View>
-
-              <View style={styles.naturalCard}>
-                <View style={styles.contrastHeaderRow}>
-                  <Ionicons name="checkmark-circle" size={15} color="#A78BFA" />
-                  <Text style={styles.naturalLabel}>SAY NATURALLY (சரி)</Text>
                   <TouchableOpacity
-                    style={styles.audioIconBtn}
-                    onPress={() => handlePlayVoice(lesson.rule.doAndDont.right, 'right-audio')}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={styles.minimalAudioBtn}
+                    onPress={() =>
+                      playingAudioId === 'lecture-tamil'
+                        ? handleStopVoice()
+                        : handlePlayTamilVoice(lesson.rule.tamilMentalModel, 'lecture-tamil')
+                    }
+                    activeOpacity={0.78}
                   >
                     <Ionicons
-                      name={
-                        playingAudioId === 'right-audio' ? 'volume-high' : 'volume-medium-outline'
-                      }
-                      size={18}
-                      color={THEME.colors.primaryGlow}
+                      name={playingAudioId === 'lecture-tamil' ? 'stop' : 'volume-high-outline'}
+                      size={15}
+                      color="#C4B5FD"
                     />
+                    <Text style={styles.minimalAudioText}>
+                      {playingAudioId === 'lecture-tamil' ? 'Stop Tamil' : 'Hear Tamil'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.naturalSentence}>"{lesson.rule.doAndDont.right}"</Text>
-              </View>
 
-              <Text style={styles.whyNote}>{lesson.rule.doAndDont.whyTamil}</Text>
-            </View>
+                <Text style={styles.lectureHeroTitle}>
+                  {lesson.rule.heading.replace(/^Rule:\s*/i, '').trim()}
+                </Text>
+
+                <View style={styles.openQuoteStrip}>
+                  <Text style={styles.lectureTamilCopy}>{lesson.rule.tamilMentalModel}</Text>
+                </View>
+
+                <Text style={styles.lectureSubCopy}>{lesson.rule.englishExplanation}</Text>
+              </View>
+            )}
+
+            {/* MICRO-STEP 1: BEFORE -> NATURAL HERO PHRASE */}
+            {lectureStep === 1 && (
+              <View style={styles.lectureFocusStage}>
+                <Text style={styles.lectureMutedLabel}>AVOID SAYING</Text>
+                <Text style={styles.lectureWrongStrike}>"{lesson.rule.doAndDont.wrong}"</Text>
+
+                <View style={styles.lectureNaturalBlock}>
+                  <Text style={styles.lectureVioletLabel}>SAY NATURALLY</Text>
+                  <Text style={styles.lectureHeroSentence}>"{lesson.rule.doAndDont.right}"</Text>
+
+                  <View style={styles.minimalSpeedRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.minimalAudioBtn,
+                        playingAudioId === 'lecture-right' && styles.minimalAudioBtnActive,
+                      ]}
+                      onPress={() => handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-right')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="volume-high-outline" size={15} color="#FFFFFF" />
+                      <Text style={styles.minimalAudioText}>Play</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.minimalAudioBtn,
+                        playingAudioId === 'lecture-slow' && styles.minimalAudioBtnActive,
+                      ]}
+                      onPress={() =>
+                        handlePlayVoice(lesson.rule.doAndDont.right, 'lecture-slow', 0.72)
+                      }
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="speedometer-outline" size={14} color="#C4B5FD" />
+                      <Text style={styles.minimalAudioText}>0.7x</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.openQuoteStrip}>
+                  <Text style={styles.lectureWhyText}>{lesson.rule.doAndDont.whyTamil}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* MICRO-STEP 2: CLEAN 1-TAP CHECK BEFORE PRACTICE */}
+            {lectureStep === 2 && (
+              <View style={styles.lectureFocusStage}>
+                <Text style={styles.lectureHeroTitle}>Which one sounds natural?</Text>
+
+                <View style={styles.minimalOptionsCol}>
+                  {(lesson.classNumber % 2 === 0
+                    ? (['right', 'wrong'] as const)
+                    : (['wrong', 'right'] as const)
+                  ).map((kind, idx) => {
+                    const isSelected = spotCheckPick === kind;
+                    const text =
+                      kind === 'right'
+                        ? lesson.rule.doAndDont.right
+                        : lesson.rule.doAndDont.wrong;
+                    const isRightChoice = kind === 'right';
+
+                    return (
+                      <TouchableOpacity
+                        key={kind}
+                        style={[
+                          styles.minimalOptionRow,
+                          isSelected && isRightChoice && styles.minimalOptionRight,
+                          isSelected && !isRightChoice && styles.minimalOptionWrong,
+                        ]}
+                        onPress={() => {
+                          setSpotCheckPick(kind);
+                          if (isRightChoice) {
+                            playSoundEffect('success');
+                            if (!voiceMuted) {
+                              handlePlayVoice(lesson.rule.doAndDont.right, 'spot-right');
+                            }
+                          } else {
+                            playSoundEffect('error');
+                          }
+                        }}
+                        activeOpacity={0.84}
+                      >
+                        <View
+                          style={[
+                            styles.spotOptionBadge,
+                            isSelected && isRightChoice && styles.spotOptionBadgeRight,
+                            isSelected && !isRightChoice && styles.spotOptionBadgeWrong,
+                          ]}
+                        >
+                          <Text style={styles.spotOptionBadgeText}>{idx === 0 ? 'A' : 'B'}</Text>
+                        </View>
+                        <Text style={styles.spotOptionText}>{text}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {spotCheckPick && (
+                  <Text
+                    style={[
+                      styles.minimalCheckNote,
+                      { color: spotCheckPick === 'right' ? '#A7F3D0' : '#FDE68A' },
+                    ]}
+                  >
+                    {spotCheckPick === 'right'
+                      ? 'Correct — ready to practice this in action.'
+                      : lesson.rule.doAndDont.whyTamil}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -1037,9 +1110,23 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           <View style={styles.bottomDrawerInner}>
             {currentSlide === 'rule' && (
               <ActionButton
-                label="Start Practice"
+                label={
+                  lectureStep === 0
+                    ? 'See Example'
+                    : lectureStep === 1
+                      ? 'Quick Check'
+                      : 'Start Practice'
+                }
                 icon="arrow-forward"
-                onPress={() => goToSlide('jumble')}
+                onPress={() => {
+                  if (lectureStep < 2) {
+                    playSoundEffect('button');
+                    setLectureStep((prev) => (prev + 1) as 0 | 1 | 2);
+                    slideScrollRef.current?.scrollTo({ y: 0, animated: false });
+                  } else {
+                    goToSlide('jumble');
+                  }
+                }}
               />
             )}
 
@@ -1362,76 +1449,154 @@ const styles = StyleSheet.create({
     marginTop: -6,
   },
 
-  /* STAGE 1: TEACHER MODE */
-  teacherBanner: {
+  /* STAGE 1: MINIMAL OPEN-CANVAS CLASS LECTURE */
+  lectureCanvas: {
+    gap: 20,
+    paddingTop: 4,
+  },
+  lectureDotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#171625',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2B2842',
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    gap: 6,
   },
-  teacherAvatarRing: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    overflow: 'hidden',
+  lectureDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#2E2A48',
+  },
+  lectureDotActive: {
+    width: 20,
+    backgroundColor: THEME.colors.primaryGlow,
+  },
+  lectureFocusStage: {
+    gap: 20,
+    paddingTop: 6,
+  },
+  nilaInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  nilaMiniAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: 'rgba(167, 139, 250, 0.55)',
-    backgroundColor: '#222036',
+    borderColor: THEME.colors.primaryGlow,
+    backgroundColor: '#181629',
   },
-  teacherAvatarImg: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.05 }],
-  },
-  teacherName: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
-  },
-  teacherStatus: {
-    fontFamily: THEME.fonts.tamil,
-    fontSize: 11.5,
-    color: THEME.colors.textSecondary,
-    lineHeight: 18,
-    marginTop: 1,
-  },
-  teacherPlayBtn: {
+  minimalAudioBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2A2546',
+    gap: 6,
+    backgroundColor: '#1B182E',
     borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.45)',
-    paddingHorizontal: 10,
+    borderColor: '#342E54',
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 10,
-    gap: 5,
+    borderRadius: 20,
   },
-  teacherPlayBtnActive: {
+  minimalAudioBtnActive: {
     backgroundColor: THEME.colors.primary,
     borderColor: '#C4B5FD',
   },
-  teacherPlayText: {
+  minimalAudioText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
+    fontSize: 12,
     color: '#FFFFFF',
   },
-  ruleExplainText: {
+  lectureHeroTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 23,
+    color: '#FFFFFF',
+    lineHeight: 30,
+  },
+  openQuoteStrip: {
+    borderLeftWidth: 2.5,
+    borderLeftColor: THEME.colors.primary,
+    paddingLeft: 14,
+  },
+  lectureTamilCopy: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 15,
+    color: '#F3EEFF',
+    lineHeight: 26,
+  },
+  lectureSubCopy: {
     fontFamily: THEME.fonts.body,
-    fontSize: 14.5,
-    color: '#D7D3EB',
+    fontSize: 14,
+    color: '#A5A1B8',
+    lineHeight: 21,
+  },
+  lectureMutedLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: '#7E789A',
+    letterSpacing: 1,
+    marginBottom: -12,
+  },
+  lectureWrongStrike: {
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 16,
+    color: '#8E88AC',
+    textDecorationLine: 'line-through',
+    lineHeight: 23,
+  },
+  lectureNaturalBlock: {
+    gap: 12,
+    paddingTop: 6,
+  },
+  lectureVioletLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: '#34D399',
+    letterSpacing: 1,
+    marginBottom: -4,
+  },
+  lectureHeroSentence: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 21,
+    color: '#FFFFFF',
+    lineHeight: 29,
+  },
+  minimalSpeedRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
+  },
+  lectureWhyText: {
+    fontFamily: THEME.fonts.tamil,
+    fontSize: 13.5,
+    color: '#C7C2DE',
     lineHeight: 22,
   },
-  tamilInsightCard: {
-    backgroundColor: '#171625',
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: THEME.colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  minimalOptionsCol: {
+    gap: 12,
+  },
+  minimalOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#171527',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#2E2A48',
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+  },
+  minimalOptionRight: {
+    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    borderColor: '#34D399',
+  },
+  minimalOptionWrong: {
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    borderColor: THEME.colors.gold,
+  },
+  minimalCheckNote: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 13,
+    lineHeight: 21,
   },
   tamilInsightEyebrow: {
     fontFamily: THEME.fonts.bold,
@@ -1440,72 +1605,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 5,
   },
-  tamilInsightBody: {
-    fontFamily: THEME.fonts.tamilMedium,
-    fontSize: 13.5,
-    color: '#F1EFFC',
-    lineHeight: 24,
-  },
-  contrastStack: {
-    gap: 10,
-    marginTop: 2,
-  },
-  avoidCard: {
-    backgroundColor: '#161522',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#29273D',
-  },
-  naturalCard: {
-    backgroundColor: '#1A162D',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(127, 67, 254, 0.45)',
-  },
-  contrastHeaderRow: {
-    flexDirection: 'row',
+  spotOptionBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#26223D',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
   },
-  avoidLabel: {
-    fontFamily: THEME.fonts.tamilBold,
-    fontSize: 10.5,
-    color: '#9590AE',
-    lineHeight: 16,
+  spotOptionBadgeRight: {
+    backgroundColor: '#059669',
   },
-  naturalLabel: {
-    fontFamily: THEME.fonts.tamilBold,
-    fontSize: 10.5,
-    color: '#C4B5FD',
-    lineHeight: 16,
+  spotOptionBadgeWrong: {
+    backgroundColor: '#B45309',
+  },
+  spotOptionBadgeText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
+    color: '#FFFFFF',
+  },
+  spotOptionText: {
     flex: 1,
-  },
-  avoidSentence: {
     fontFamily: THEME.fonts.medium,
     fontSize: 14.5,
-    color: '#D5D0E6',
-    marginTop: 6,
-    lineHeight: 21,
-  },
-  naturalSentence: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 15,
     color: '#FFFFFF',
-    marginTop: 6,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   audioIconBtn: {
     padding: 3,
-  },
-  whyNote: {
-    fontFamily: THEME.fonts.tamil,
-    fontSize: 12.5,
-    color: THEME.colors.textSecondary,
-    lineHeight: 21,
-    paddingHorizontal: 2,
-    marginTop: 2,
   },
 
   /* STAGE 2: JUMBLED WORD MATCH */
