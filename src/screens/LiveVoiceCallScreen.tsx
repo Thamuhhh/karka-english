@@ -305,7 +305,9 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             ? 'Add EXPO_PUBLIC_GEMINI_API_KEY in .env and restart with npx expo start -c.'
             : result.reason === 'unintelligible'
               ? 'Could not hear words clearly. Try speaking closer to your microphone.'
-              : 'Could not reach Gemini right now. Check your internet connection or API quota.';
+              : result.detail
+                ? `Gemini error: ${result.detail}`
+                : 'Could not reach Gemini right now. Check your internet connection or API quota.';
         Alert.alert('Voice Check', msg);
         return;
       }

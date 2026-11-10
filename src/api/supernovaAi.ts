@@ -23,35 +23,76 @@ export function isGeminiConfigured(): boolean {
   return !!resolveGeminiKey();
 }
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.0-flash', 'gemini-2.5-flash'];
+let lastGeminiError: string | null = null;
+
+function isVertexExpressKey(apiKey: string): boolean {
+  return apiKey.startsWith('AQ.');
+}
+
+function buildModelEndpoint(apiKey: string, model: string): string {
+  return isVertexExpressKey(apiKey)
+    ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
+    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
+function parseModelJson<T = any>(rawText: string): T {
+  const cleaned = rawText
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/, '')
+    .trim();
+  return JSON.parse(cleaned) as T;
+}
 
 async function callGeminiWithTimeout(
   apiKey: string,
   payload: object,
   timeoutMs = 9000
 ): Promise<any | null> {
+  lastGeminiError = null;
   for (const model of GEMINI_MODELS) {
+    const endpoint = buildModelEndpoint(apiKey, model);
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          ...(controller ? { signal: controller.signal } : {}),
-        }
-      );
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(payload),
+        ...(controller ? { signal: controller.signal } : {}),
+      });
 
       if (res.ok) {
+        lastGeminiError = null;
         return await res.json();
       }
-      if (res.status === 400 || res.status === 403 || res.status === 401) {
+
+      let errSnippet = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        const apiMsg = errJson?.error?.message;
+        if (typeof apiMsg === 'string' && apiMsg.trim()) {
+          errSnippet = `HTTP ${res.status}: ${apiMsg.trim().slice(0, 140)}`;
+        }
+      } catch {
+        // Ignore non-JSON error body
+      }
+      lastGeminiError = errSnippet;
+      console.warn('Gemini request error:', model, errSnippet);
+      if (res.status === 401 || res.status === 403) {
         return null;
       }
-    } catch (e) {
-      // Fall through to next model or local engine
+    } catch (e: any) {
+      lastGeminiError =
+        e?.name === 'AbortError'
+          ? 'Request timed out'
+          : typeof e?.message === 'string'
+            ? e.message
+            : 'Network request failed';
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -64,14 +105,17 @@ export async function validateGeminiApiKey(key: string): Promise<{ ok: boolean; 
   if (!clean) {
     return { ok: false, message: 'API key cannot be empty.' };
   }
-  if (!clean.startsWith('AIza') || clean.length < 25) {
-    return { ok: false, message: 'Key format looks invalid (Google Gemini keys start with AIza).' };
+  if ((!clean.startsWith('AIza') && !clean.startsWith('AQ.')) || clean.length < 25) {
+    return {
+      ok: false,
+      message: 'Key format looks invalid (expected Google AI Studio AIza... or Vertex AQ.... key).',
+    };
   }
 
   const res = await callGeminiWithTimeout(
     clean,
     {
-      contents: [{ parts: [{ text: 'Reply with OK' }] }],
+      contents: [{ role: 'user', parts: [{ text: 'Reply with OK' }] }],
       generationConfig: { maxOutputTokens: 10, temperature: 0 },
     },
     7000
@@ -82,7 +126,7 @@ export async function validateGeminiApiKey(key: string): Promise<{ ok: boolean; 
   }
   return {
     ok: false,
-    message: 'Could not verify online (check network or key quota). Key saved for live retry.',
+    message: lastGeminiError || 'Could not verify online (check network or key quota). Key saved for live retry.',
   };
 }
 
@@ -124,14 +168,14 @@ Respond ONLY with valid JSON without markdown backticks:
 }`;
 
     const json = await callGeminiWithTimeout(activeKey, {
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
     });
 
     const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (rawText) {
       try {
-        const parsed = JSON.parse(rawText);
+        const parsed = parseModelJson(rawText);
         return {
           originalSentence: trimmed,
           correctedSentence: parsed.correctedSentence || trimmed,
@@ -395,6 +439,28 @@ export function localGrammarDiagnosis(sentence: string): GrammarCorrection {
   };
 }
 
+function buildConversationContents(
+  setupPrompt: string,
+  history: ChatMessage[],
+  userMessage: string
+) {
+  const recent = history.slice(-6);
+  const last = recent[recent.length - 1];
+  const tail =
+    last && last.role === 'user' && last.content.trim() === userMessage.trim()
+      ? recent.slice(0, -1)
+      : recent;
+
+  return [
+    { role: 'user', parts: [{ text: setupPrompt }] },
+    ...tail.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    { role: 'user', parts: [{ text: userMessage }] },
+  ];
+}
+
 // -------------------------------------------------------------
 // 2. Supernova Chat Coach (Roleplay & Conversation)
 // -------------------------------------------------------------
@@ -407,28 +473,15 @@ export async function sendChatMessage(
 
   const activeKey = resolveGeminiKey();
   if (activeKey) {
-    const contents = [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `Roleplay Setup:
+    const contents = buildConversationContents(
+      `Roleplay Setup:
 Role: ${scenario.persona}
 Scenario: ${scenario.description}
 System Prompt: ${scenario.systemPrompt}
 Keep replies natural, encouraging, concise (1-3 sentences), and end with an engaging follow-up question.`,
-          },
-        ],
-      },
-      ...history.slice(-6).map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-      {
-        role: 'user',
-        parts: [{ text: userMessage }],
-      },
-    ];
+      history,
+      userMessage
+    );
 
     const json = await callGeminiWithTimeout(activeKey, {
       contents,
@@ -607,27 +660,14 @@ export async function sendLessonRealTalkReply(
 
   const activeKey = resolveGeminiKey();
   if (activeKey) {
-    const contents = [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `You are Nila, an encouraging English conversation partner for a Tamil speaker finishing "${lesson.title}".
+    const contents = buildConversationContents(
+      `You are Nila, an encouraging English conversation partner for a Tamil speaker finishing "${lesson.title}".
 Goal: ${lesson.speakingChallenge.prompt}
 Target grammar pattern: ${lesson.grammarTopic}
 Respond warmly in natural spoken English (1-2 short sentences) reacting specifically to what the learner said, and ask one simple, engaging follow-up question.`,
-          },
-        ],
-      },
-      ...history.slice(-6).map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-      {
-        role: 'user',
-        parts: [{ text: userMessage }],
-      },
-    ];
+      history,
+      userMessage
+    );
 
     const json = await callGeminiWithTimeout(activeKey, {
       contents,
@@ -661,7 +701,7 @@ export type SpokenAudioContext =
 
 export type SpokenAudioResult =
   | { ok: true; transcript: string; reply: string; feedback: GrammarCorrection }
-  | { ok: false; reason: 'no_key' | 'unintelligible' | 'network' };
+  | { ok: false; reason: 'no_key' | 'unintelligible' | 'network'; detail?: string };
 
 /**
  * Evaluates a real recorded user voice turn via Gemini 2.5 Flash multimodal audio:
@@ -731,11 +771,11 @@ Respond ONLY with valid JSON without markdown backticks:
 
   const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!rawText) {
-    return { ok: false, reason: 'network' };
+    return { ok: false, reason: 'network', detail: lastGeminiError || undefined };
   }
 
   try {
-    const parsed = JSON.parse(rawText);
+    const parsed = parseModelJson(rawText);
     const transcript = typeof parsed.transcript === 'string' ? parsed.transcript.trim() : '';
     if (!transcript) {
       return { ok: false, reason: 'unintelligible' };
@@ -776,6 +816,6 @@ Respond ONLY with valid JSON without markdown backticks:
     return { ok: true, transcript, reply, feedback };
   } catch (e) {
     console.warn('Gemini audio JSON parse error:', e);
-    return { ok: false, reason: 'network' };
+    return { ok: false, reason: 'network', detail: 'Could not parse Gemini response cleanly.' };
   }
 }

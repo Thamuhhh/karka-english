@@ -445,7 +445,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             ? 'Add EXPO_PUBLIC_GEMINI_API_KEY in .env and restart with npx expo start -c.'
             : result.reason === 'unintelligible'
               ? 'Could not hear words clearly. Try speaking closer to the mic.'
-              : 'Could not reach Gemini right now. Check your network or API key.';
+              : result.detail
+                ? `Gemini error: ${result.detail}`
+                : 'Could not reach Gemini right now. Check your network or API key.';
         Alert.alert('Voice Check', msg);
         return;
       }
