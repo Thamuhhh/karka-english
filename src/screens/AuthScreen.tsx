@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { AuthUser } from '../types';
@@ -22,6 +24,14 @@ import { saveAuthUser } from '../services/storageService';
 import { playSoundEffect } from '../services/soundEffectsService';
 
 type AuthMode = 'welcome' | 'login' | 'signup';
+type SignupStep = 0 | 1 | 2 | 3;
+type FocusField =
+  | 'loginId'
+  | 'loginPass'
+  | 'signupName'
+  | 'signupEmail'
+  | 'signupPass'
+  | null;
 
 interface AuthScreenProps {
   onAuthenticated: (user: AuthUser) => void;
@@ -30,11 +40,79 @@ interface AuthScreenProps {
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const MAX_CONTENT_WIDTH = 440;
 
-const SIGNUP_PROMPTS = [
-  'First, what should I call you?',
-  'Great! Where should we save your progress?',
-  'Last step — set a quick password.',
-];
+const LEARNING_GOALS = [
+  {
+    id: 'Daily Conversations',
+    title: 'Daily Conversations',
+    subtitle: 'Friends, travel & everyday confidence',
+    icon: 'chatbubbles-outline' as const,
+    color: '#A78BFA',
+    tint: 'rgba(167, 139, 250, 0.16)',
+  },
+  {
+    id: 'Work & Office',
+    title: 'Work & Office',
+    subtitle: 'Standups, meetings & client calls',
+    icon: 'briefcase-outline' as const,
+    color: '#38BDF8',
+    tint: 'rgba(56, 189, 248, 0.16)',
+  },
+  {
+    id: 'Crack Interviews',
+    title: 'Crack Interviews',
+    subtitle: 'Clear answers without hesitation',
+    icon: 'rocket-outline' as const,
+    color: '#FBBF24',
+    tint: 'rgba(251, 191, 36, 0.16)',
+  },
+  {
+    id: 'Speak Without Fear',
+    title: 'Speak Without Fear',
+    subtitle: 'Think & speak naturally from Tamil',
+    icon: 'mic-outline' as const,
+    color: '#34D399',
+    tint: 'rgba(52, 211, 153, 0.16)',
+  },
+] as const;
+
+const DAILY_TARGETS = [
+  {
+    minutes: 5,
+    tier: 'Casual',
+    xp: '20 XP / day',
+    icon: 'leaf-outline' as const,
+    color: '#34D399',
+    tint: 'rgba(52, 211, 153, 0.15)',
+    popular: false,
+  },
+  {
+    minutes: 10,
+    tier: 'Regular',
+    xp: '50 XP / day',
+    icon: 'flame-outline' as const,
+    color: '#A78BFA',
+    tint: 'rgba(167, 139, 250, 0.18)',
+    popular: true,
+  },
+  {
+    minutes: 15,
+    tier: 'Serious',
+    xp: '80 XP / day',
+    icon: 'flash-outline' as const,
+    color: '#FBBF24',
+    tint: 'rgba(251, 191, 36, 0.16)',
+    popular: false,
+  },
+  {
+    minutes: 20,
+    tier: 'Intense',
+    xp: '120 XP / day',
+    icon: 'trophy-outline' as const,
+    color: '#38BDF8',
+    tint: 'rgba(56, 189, 248, 0.16)',
+    popular: false,
+  },
+] as const;
 
 function extractDisplayNameFromEmail(identifier: string): string {
   const cleaned = identifier.trim();
@@ -52,14 +130,98 @@ function extractDisplayNameFromEmail(identifier: string): string {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
+function getPasswordStrength(password: string): {
+  bars: number;
+  label: string;
+  color: string;
+} {
+  if (!password.length) {
+    return { bars: 0, label: '6+ characters', color: THEME.colors.textMuted };
+  }
+  if (password.length < 6) {
+    return { bars: 1, label: 'Too short', color: THEME.colors.gold };
+  }
+  const hasMix = /\d|[^A-Za-z0-9]/.test(password);
+  if (password.length >= 9 || (password.length >= 7 && hasMix)) {
+    return { bars: 3, label: 'Strong', color: THEME.colors.accent };
+  }
+  return { bars: 2, label: 'Good', color: THEME.colors.primaryGlow };
+}
+
+const GoogleLogoSvg: React.FC<{ size?: number }> = ({ size = 17 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      fill="#EA4335"
+      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.28 6.61l3.99 3.1C6.22 6.86 8.87 4.75 12 4.75z"
+    />
+    <Path
+      fill="#FBBC05"
+      d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58l-3.99-3.1A11.98 11.98 0 0 0 0 12c0 1.93.46 3.76 1.28 5.39l3.99-3.1z"
+    />
+    <Path
+      fill="#34A853"
+      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3c-1.07.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96l-3.99 3.1C3.26 21.31 7.31 24 12 24z"
+    />
+    <Path
+      fill="#4285F4"
+      d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.74-2.4 3.58l3.87 3c2.26-2.09 3.55-5.17 3.55-8.82z"
+    />
+  </Svg>
+);
+
+interface SocialQuickAuthProps {
+  dividerLabel: string;
+  isSubmitting: boolean;
+  onSocialAuth: (provider: 'google' | 'guest') => void;
+}
+
+const SocialQuickAuth: React.FC<SocialQuickAuthProps> = ({
+  dividerLabel,
+  isSubmitting,
+  onSocialAuth,
+}) => (
+  <View>
+    <View style={styles.orRow}>
+      <View style={styles.orLine} />
+      <Text style={styles.orText}>{dividerLabel}</Text>
+      <View style={styles.orLine} />
+    </View>
+
+    <View style={styles.socialRow}>
+      <TouchableOpacity
+        style={styles.socialBevelBtn}
+        onPress={() => onSocialAuth('google')}
+        disabled={isSubmitting}
+        activeOpacity={0.85}
+      >
+        <GoogleLogoSvg size={17} />
+        <Text style={styles.socialBevelText}>GOOGLE</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.socialBevelBtn}
+        onPress={() => onSocialAuth('guest')}
+        disabled={isSubmitting}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="sparkles" size={16} color={THEME.colors.gold} />
+        <Text style={styles.socialBevelText}>GUEST</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
 /**
- * Duolingo-inspired tactile Obsidian onboarding, Sign Up wizard, and Sign In screen.
+ * Duolingo-inspired tactile Obsidian onboarding, interactive goal setup, and Sign In screen.
  */
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const [mode, setMode] = useState<AuthMode>('welcome');
-  const [signupStep, setSignupStep] = useState<0 | 1 | 2>(0);
+  const [signupStep, setSignupStep] = useState<SignupStep>(0);
+  const [focusedField, setFocusedField] = useState<FocusField>(null);
 
-  // Form states
+  // Onboarding selections + form states
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [dailyMinutes, setDailyMinutes] = useState<number>(10);
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
@@ -71,18 +233,42 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const transitionAnim = useRef(new Animated.Value(1)).current;
+  const coachBobAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const bobLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(coachBobAnim, {
+          toValue: 1,
+          duration: 1650,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(coachBobAnim, {
+          toValue: 0,
+          duration: 1650,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+      ])
+    );
+    bobLoop.start();
+    return () => bobLoop.stop();
+  }, [coachBobAnim]);
 
   const animateTransition = () => {
-    transitionAnim.setValue(0.4);
+    transitionAnim.setValue(0.35);
     Animated.timing(transitionAnim, {
       toValue: 1,
-      duration: 200,
+      duration: 210,
+      easing: Easing.out(Easing.quad),
       useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   };
 
   const switchMode = (nextMode: AuthMode) => {
     setErrorMsg(null);
+    setFocusedField(null);
     setShowPassword(false);
     if (nextMode === 'signup') {
       setSignupStep(0);
@@ -124,8 +310,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
 
   const handleSignupBack = () => {
     setErrorMsg(null);
+    setFocusedField(null);
     if (signupStep > 0) {
-      setSignupStep((prev) => (prev - 1) as 0 | 1 | 2);
+      setSignupStep((prev) => (prev - 1) as SignupStep);
       animateTransition();
     } else {
       switchMode('welcome');
@@ -135,26 +322,40 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const handleSignupNext = async () => {
     setErrorMsg(null);
     if (signupStep === 0) {
-      if (signupName.trim().length < 2) {
-        setErrorMsg('Please enter at least 2 characters for your name.');
+      if (!selectedGoal) {
+        setErrorMsg('Tap any learning goal to continue.');
         return;
       }
+      playSoundEffect('button');
       setSignupStep(1);
       animateTransition();
       return;
     }
 
     if (signupStep === 1) {
-      const email = signupEmail.trim();
-      if (!/\S+@\S+\.\S+/.test(email)) {
-        setErrorMsg('Enter a valid email address (example: name@domain.com).');
-        return;
-      }
+      playSoundEffect('button');
       setSignupStep(2);
       animateTransition();
       return;
     }
 
+    if (signupStep === 2) {
+      if (signupName.trim().length < 2) {
+        setErrorMsg('Please enter at least 2 characters for your name.');
+        return;
+      }
+      setFocusedField(null);
+      playSoundEffect('button');
+      setSignupStep(3);
+      animateTransition();
+      return;
+    }
+
+    const email = signupEmail.trim();
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setErrorMsg('Enter a valid email address (example: name@domain.com).');
+      return;
+    }
     if (signupPassword.length < 6) {
       setErrorMsg('Create a password with at least 6 characters.');
       return;
@@ -162,29 +363,34 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
 
     await completeAuth({
       name: signupName.trim(),
-      email: signupEmail.trim().toLowerCase(),
+      email: email.toLowerCase(),
       provider: 'email',
       createdAt: new Date().toISOString(),
+      learningGoal: selectedGoal || 'Daily Conversations',
+      dailyGoalMinutes: dailyMinutes,
     });
   };
 
   const handleQuickSocialAuth = async (provider: 'google' | 'guest') => {
     setErrorMsg(null);
     playSoundEffect('button');
+    const goalMeta = selectedGoal ? { learningGoal: selectedGoal, dailyGoalMinutes: dailyMinutes } : {};
     if (provider === 'google') {
       await completeAuth({
-        name: 'Alex',
+        name: signupName.trim() || 'Alex',
         email: 'alex@gmail.com',
         provider: 'google',
         createdAt: new Date().toISOString(),
+        ...goalMeta,
       });
       return;
     }
     await completeAuth({
-      name: 'Guest Learner',
+      name: signupName.trim() || 'Guest Learner',
       email: '',
       provider: 'guest',
       createdAt: new Date().toISOString(),
+      ...goalMeta,
     });
   };
 
@@ -201,12 +407,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     transform: [
       {
         translateY: transitionAnim.interpolate({
-          inputRange: [0.4, 1],
+          inputRange: [0.35, 1],
           outputRange: [8, 0],
         }),
       },
     ],
   };
+
+  const coachBobY = coachBobAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -3.5],
+  });
 
   /* ========================================================================= */
   /* VIEW 1: DUOLINGO-STYLE WELCOME ONBOARDING                                 */
@@ -279,12 +490,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   if (mode === 'login') {
     const canSubmitLogin =
       loginIdentifier.trim().length > 0 && loginPassword.length >= 4 && !isSubmitting;
+    const isLoginGroupFocused = focusedField === 'loginId' || focusedField === 'loginPass';
 
     return (
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <LinearGradient
+          colors={['rgba(127, 67, 254, 0.16)', 'rgba(14, 14, 20, 0)']}
+          style={styles.topGlow}
+          pointerEvents="none"
+        />
+
         <ScrollView
           contentContainerStyle={styles.authScrollContent}
           keyboardShouldPersistTaps="handled"
@@ -305,12 +523,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
 
           <Animated.View style={[styles.formBody, renderAnimatedViewStyle]}>
             {/* Duolingo Connected 2-Input Stack */}
-            <View style={styles.groupedInputsBox}>
+            <View
+              style={[
+                styles.groupedInputsBox,
+                isLoginGroupFocused && styles.inputBoxFocused,
+              ]}
+            >
               <TextInput
                 style={styles.groupedTopInput}
                 placeholder="Email or username"
                 placeholderTextColor={THEME.colors.textMuted}
                 value={loginIdentifier}
+                onFocus={() => setFocusedField('loginId')}
+                onBlur={() => setFocusedField(null)}
                 onChangeText={(txt) => {
                   setLoginIdentifier(txt);
                   if (errorMsg) setErrorMsg(null);
@@ -320,7 +545,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                 returnKeyType="next"
               />
 
-              <View style={styles.groupedDivider} />
+              <View
+                style={[
+                  styles.groupedDivider,
+                  isLoginGroupFocused && styles.groupedDividerFocused,
+                ]}
+              />
 
               <View style={styles.passwordInputWrap}>
                 <TextInput
@@ -328,6 +558,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                   placeholder="Password"
                   placeholderTextColor={THEME.colors.textMuted}
                   value={loginPassword}
+                  onFocus={() => setFocusedField('loginPass')}
+                  onBlur={() => setFocusedField(null)}
                   onChangeText={(txt) => {
                     setLoginPassword(txt);
                     if (errorMsg) setErrorMsg(null);
@@ -389,34 +621,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
               <Text style={styles.forgotLinkText}>FORGOT PASSWORD?</Text>
             </TouchableOpacity>
 
-            {/* Quick Auth Divider & Options */}
-            <View style={styles.orRow}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>OR</Text>
-              <View style={styles.orLine} />
-            </View>
-
-            <View style={styles.socialRow}>
-              <TouchableOpacity
-                style={styles.socialBevelBtn}
-                onPress={() => handleQuickSocialAuth('google')}
-                disabled={isSubmitting}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="logo-google" size={16} color="#FFFFFF" />
-                <Text style={styles.socialBevelText}>GOOGLE</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.socialBevelBtn}
-                onPress={() => handleQuickSocialAuth('guest')}
-                disabled={isSubmitting}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="person-outline" size={16} color="#C4B5FD" />
-                <Text style={styles.socialBevelText}>GUEST</Text>
-              </TouchableOpacity>
-            </View>
+            <SocialQuickAuth
+              dividerLabel="OR"
+              isSubmitting={isSubmitting}
+              onSocialAuth={handleQuickSocialAuth}
+            />
 
             <View style={styles.switchFooterRow}>
               <Text style={styles.switchMuted}>New here?</Text>
@@ -435,46 +644,78 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   }
 
   /* ========================================================================= */
-  /* VIEW 3: DUOLINGO-STYLE 3-STEP SIGN UP WIZARD                              */
+  /* VIEW 3: VIBRANT DUOLINGO ONBOARDING & SIGN UP (AFTER GET STARTED)         */
   /* ========================================================================= */
-  const progressFraction = (signupStep + 1) / 3;
+  const progressFraction = (signupStep + 1) / 4;
+  const trimmedName = signupName.trim();
+
   const canProceedSignup =
     !isSubmitting &&
-    ((signupStep === 0 && signupName.trim().length >= 2) ||
-      (signupStep === 1 && /\S+@\S+\.\S+/.test(signupEmail.trim())) ||
-      (signupStep === 2 && signupPassword.length >= 6));
+    ((signupStep === 0 && Boolean(selectedGoal)) ||
+      signupStep === 1 ||
+      (signupStep === 2 && trimmedName.length >= 2) ||
+      (signupStep === 3 && /\S+@\S+\.\S+/.test(signupEmail.trim()) && signupPassword.length >= 6));
 
-  const signupPromptText =
-    signupStep === 1 && signupName.trim()
-      ? `Nice to meet you, ${signupName.trim()}! Enter your email.`
-      : SIGNUP_PROMPTS[signupStep];
+  const coachPromptByStep: Record<SignupStep, string> = {
+    0: 'What brings you to NovaBreaker? Pick your top focus.',
+    1: 'Awesome! How much time can you practice each day?',
+    2: 'Great habit! Now, what should I call you?',
+    3: trimmedName
+      ? `Last step, ${trimmedName}! Save your ${dailyMinutes} min/day streak.`
+      : 'Last step — save your progress to your new profile.',
+  };
+
+  const headlineByStep: Record<SignupStep, string> = {
+    0: 'Choose your English goal',
+    1: 'Set a daily goal',
+    2: 'Your coach wants to know you',
+    3: 'Create your profile',
+  };
+
+  const passwordStrength = getPasswordStrength(signupPassword);
+  const isFinalStepBoxFocused =
+    focusedField === 'signupEmail' || focusedField === 'signupPass';
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Keep ambient top violet lighting consistent after clicking Get Started */}
+      <LinearGradient
+        colors={['rgba(127, 67, 254, 0.24)', 'rgba(91, 33, 182, 0.08)', 'rgba(14, 14, 20, 0)']}
+        style={styles.onboardingGlow}
+        pointerEvents="none"
+      />
+
       <View style={styles.signupShell}>
-        {/* Duolingo Top Back Arrow + Progress Track */}
+        {/* Duolingo Back Arrow + Luminous Progress Bar */}
         <View style={styles.signupTopRow}>
           <TouchableOpacity
-            style={styles.navBackBtn}
+            style={styles.onboardingBackBtn}
             onPress={handleSignupBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={22} color={THEME.colors.textSecondary} />
+            <Ionicons name="arrow-back" size={20} color="#E9D5FF" />
           </TouchableOpacity>
 
           <View style={styles.signupProgressTrack}>
-            <View
+            <LinearGradient
+              colors={['#C4B5FD', '#7F43FE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={[
                 styles.signupProgressFill,
                 { width: `${Math.round(progressFraction * 100)}%` },
               ]}
-            />
+            >
+              <View style={styles.progressShineBar} />
+            </LinearGradient>
           </View>
 
-          <Text style={styles.stepFractionText}>{signupStep + 1}/3</Text>
+          <View style={styles.stepPillBadge}>
+            <Text style={styles.stepFractionText}>{signupStep + 1}/4</Text>
+          </View>
         </View>
 
         <ScrollView
@@ -484,89 +725,339 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View style={renderAnimatedViewStyle}>
-            {/* Mini Mascot + Conversational Prompt Bubble */}
+            {/* Animated Nila Coach + Pointed Speech Bubble */}
             <View style={styles.promptCoachRow}>
-              <View style={styles.miniMascotRing}>
-                <Image
-                  source={SUPERNOVA_IMAGES.novaAvatar}
-                  style={styles.mascotImg}
-                  resizeMode="cover"
-                />
-              </View>
+              <Animated.View
+                style={[styles.miniMascotHalo, { transform: [{ translateY: coachBobY }] }]}
+              >
+                <View style={styles.miniMascotRing}>
+                  <Image
+                    source={SUPERNOVA_IMAGES.novaAvatar}
+                    style={styles.mascotImg}
+                    resizeMode="cover"
+                  />
+                </View>
+              </Animated.View>
+
               <View style={styles.coachBubble}>
-                <Text style={styles.coachBubbleText}>{signupPromptText}</Text>
+                <View style={styles.coachBubbleTail} />
+                <Text style={styles.coachBubbleText}>{coachPromptByStep[signupStep]}</Text>
               </View>
             </View>
 
-            {/* Step Input Field */}
+            <Text style={styles.stepHeadline}>{headlineByStep[signupStep]}</Text>
+
+            {/* STEP 0: INTERACTIVE DUOLINGO GOAL SELECTOR */}
             {signupStep === 0 && (
-              <View style={styles.singleInputBox}>
-                <Text style={styles.inputLabel}>YOUR NAME</Text>
-                <TextInput
-                  style={styles.singleInput}
-                  placeholder="Enter your name"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={signupName}
-                  onChangeText={(txt) => {
-                    setSignupName(txt);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                  onSubmitEditing={handleSignupNext}
-                />
-              </View>
-            )}
+              <View style={styles.choiceList}>
+                {LEARNING_GOALS.map((goal) => {
+                  const isSelected = selectedGoal === goal.id;
+                  return (
+                    <TouchableOpacity
+                      key={goal.id}
+                      style={[
+                        styles.choiceRowBtn,
+                        isSelected && styles.choiceRowSelected,
+                      ]}
+                      onPress={() => {
+                        playSoundEffect('button');
+                        setSelectedGoal(goal.id);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      activeOpacity={0.86}
+                    >
+                      <View
+                        style={[
+                          styles.choiceIconBadge,
+                          {
+                            backgroundColor: goal.tint,
+                            borderColor: isSelected ? goal.color : 'rgba(255,255,255,0.08)',
+                          },
+                        ]}
+                      >
+                        <Ionicons name={goal.icon} size={20} color={goal.color} />
+                      </View>
 
-            {signupStep === 1 && (
-              <View style={styles.singleInputBox}>
-                <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-                <TextInput
-                  style={styles.singleInput}
-                  placeholder="you@example.com"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={signupEmail}
-                  onChangeText={(txt) => {
-                    setSignupEmail(txt);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  returnKeyType="next"
-                  onSubmitEditing={handleSignupNext}
-                />
-              </View>
-            )}
+                      <View style={styles.choiceTextCol}>
+                        <Text
+                          style={[
+                            styles.choiceTitle,
+                            isSelected && styles.choiceTitleSelected,
+                          ]}
+                        >
+                          {goal.title}
+                        </Text>
+                        <Text style={styles.choiceSubtitle}>{goal.subtitle}</Text>
+                      </View>
 
-            {signupStep === 2 && (
-              <View style={styles.singleInputBox}>
-                <Text style={styles.inputLabel}>PASSWORD</Text>
-                <View style={styles.passwordInputWrap}>
-                  <TextInput
-                    style={[styles.singleInput, { flex: 1 }]}
-                    placeholder="At least 6 characters"
-                    placeholderTextColor={THEME.colors.textMuted}
-                    value={signupPassword}
-                    onChangeText={(txt) => {
-                      setSignupPassword(txt);
-                      if (errorMsg) setErrorMsg(null);
-                    }}
-                    secureTextEntry={!showPassword}
-                    returnKeyType="done"
-                    onSubmitEditing={handleSignupNext}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeToggleBtn}
-                    onPress={() => setShowPassword((prev) => !prev)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={19}
-                      color={THEME.colors.primaryGlow}
-                    />
+                      <View
+                        style={[
+                          styles.choiceCheckCircle,
+                          isSelected && styles.choiceCheckCircleSelected,
+                        ]}
+                      >
+                        {isSelected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <View style={styles.stepZeroLinks}>
+                  <TouchableOpacity onPress={() => switchMode('login')} activeOpacity={0.75}>
+                    <Text style={styles.switchAction}>Already have a profile? Sign in</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            )}
+
+            {/* STEP 1: DUOLINGO DAILY PRACTICE TARGET */}
+            {signupStep === 1 && (
+              <View style={styles.choiceList}>
+                {DAILY_TARGETS.map((target) => {
+                  const isSelected = dailyMinutes === target.minutes;
+                  return (
+                    <TouchableOpacity
+                      key={target.minutes}
+                      style={[
+                        styles.choiceRowBtn,
+                        isSelected && styles.choiceRowSelected,
+                      ]}
+                      onPress={() => {
+                        playSoundEffect('button');
+                        setDailyMinutes(target.minutes);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      activeOpacity={0.86}
+                    >
+                      <View
+                        style={[
+                          styles.choiceIconBadge,
+                          {
+                            backgroundColor: target.tint,
+                            borderColor: isSelected ? target.color : 'rgba(255,255,255,0.08)',
+                          },
+                        ]}
+                      >
+                        <Ionicons name={target.icon} size={20} color={target.color} />
+                      </View>
+
+                      <View style={styles.choiceTextCol}>
+                        <View style={styles.tierHeaderRow}>
+                          <Text
+                            style={[
+                              styles.choiceTitle,
+                              isSelected && styles.choiceTitleSelected,
+                            ]}
+                          >
+                            {target.minutes} min / day
+                          </Text>
+                          {target.popular && (
+                            <View style={styles.popularBadge}>
+                              <Text style={styles.popularBadgeText}>POPULAR</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.choiceSubtitle}>
+                          {target.tier} pace · {target.xp}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.choiceCheckCircle,
+                          isSelected && styles.choiceCheckCircleSelected,
+                        ]}
+                      >
+                        {isSelected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* STEP 2: YOUR NAME + SELECTED GOAL RECAP PILLS */}
+            {signupStep === 2 && (
+              <View>
+                <View style={styles.recapPillsRow}>
+                  {selectedGoal && (
+                    <View style={styles.recapPill}>
+                      <Ionicons name="sparkles" size={12} color={THEME.colors.gold} />
+                      <Text style={styles.recapPillText}>{selectedGoal}</Text>
+                    </View>
+                  )}
+                  <View style={styles.recapPill}>
+                    <Ionicons name="flame" size={12} color={THEME.colors.primaryGlow} />
+                    <Text style={styles.recapPillText}>{dailyMinutes} min / day</Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.singleInputBox,
+                    focusedField === 'signupName' && styles.inputBoxFocused,
+                  ]}
+                >
+                  <Text style={styles.inputLabel}>YOUR NAME</Text>
+                  <View style={styles.singleInputRow}>
+                    <Ionicons
+                      name="person-outline"
+                      size={18}
+                      color={
+                        focusedField === 'signupName' || signupName.length > 0
+                          ? THEME.colors.primaryGlow
+                          : THEME.colors.textMuted
+                      }
+                    />
+                    <TextInput
+                      style={styles.singleInput}
+                      placeholder="Enter your first name"
+                      placeholderTextColor="#7D7898"
+                      value={signupName}
+                      onFocus={() => setFocusedField('signupName')}
+                      onBlur={() => setFocusedField(null)}
+                      onChangeText={(txt) => {
+                        setSignupName(txt);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      autoCapitalize="words"
+                      returnKeyType="next"
+                      onSubmitEditing={handleSignupNext}
+                    />
+                    {trimmedName.length >= 2 && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color={THEME.colors.accent}
+                      />
+                    )}
+                  </View>
+                </View>
+
+                <Text style={styles.helperCaption}>
+                  Nila will greet you personally during voice calls and lessons.
+                </Text>
+              </View>
+            )}
+
+            {/* STEP 3: EMAIL + PASSWORD CONNECTED BOX + STRENGTH METER + SOCIAL SAVE */}
+            {signupStep === 3 && (
+              <View>
+                <View
+                  style={[
+                    styles.groupedInputsBox,
+                    isFinalStepBoxFocused && styles.inputBoxFocused,
+                  ]}
+                >
+                  <View style={styles.signupFieldRow}>
+                    <Ionicons
+                      name="mail-outline"
+                      size={18}
+                      color={
+                        focusedField === 'signupEmail' || signupEmail.length > 0
+                          ? THEME.colors.primaryGlow
+                          : THEME.colors.textMuted
+                      }
+                    />
+                    <TextInput
+                      style={styles.signupFieldInput}
+                      placeholder="Email address"
+                      placeholderTextColor="#7D7898"
+                      value={signupEmail}
+                      onFocus={() => setFocusedField('signupEmail')}
+                      onBlur={() => setFocusedField(null)}
+                      onChangeText={(txt) => {
+                        setSignupEmail(txt);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      returnKeyType="next"
+                    />
+                    {/\S+@\S+\.\S+/.test(signupEmail.trim()) && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={19}
+                        color={THEME.colors.accent}
+                      />
+                    )}
+                  </View>
+
+                  <View
+                    style={[
+                      styles.groupedDivider,
+                      isFinalStepBoxFocused && styles.groupedDividerFocused,
+                    ]}
+                  />
+
+                  <View style={styles.signupFieldRow}>
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={18}
+                      color={
+                        focusedField === 'signupPass' || signupPassword.length > 0
+                          ? THEME.colors.primaryGlow
+                          : THEME.colors.textMuted
+                      }
+                    />
+                    <TextInput
+                      style={styles.signupFieldInput}
+                      placeholder="Create password (6+ chars)"
+                      placeholderTextColor="#7D7898"
+                      value={signupPassword}
+                      onFocus={() => setFocusedField('signupPass')}
+                      onBlur={() => setFocusedField(null)}
+                      onChangeText={(txt) => {
+                        setSignupPassword(txt);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      secureTextEntry={!showPassword}
+                      returnKeyType="done"
+                      onSubmitEditing={handleSignupNext}
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeToggleBtn}
+                      onPress={() => setShowPassword((prev) => !prev)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                        size={19}
+                        color={THEME.colors.primaryGlow}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.strengthRow}>
+                  <View style={styles.strengthBarsWrap}>
+                    {[1, 2, 3].map((level) => (
+                      <View
+                        key={level}
+                        style={[
+                          styles.strengthBar,
+                          passwordStrength.bars >= level && {
+                            backgroundColor: passwordStrength.color,
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <Text
+                    style={[
+                      styles.strengthLabel,
+                      { color: passwordStrength.color },
+                    ]}
+                  >
+                    {passwordStrength.label}
+                  </Text>
+                </View>
+
+                <SocialQuickAuth
+                  dividerLabel="OR SAVE WITH"
+                  isSubmitting={isSubmitting}
+                  onSocialAuth={handleQuickSocialAuth}
+                />
               </View>
             )}
 
@@ -574,45 +1065,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
               <View style={styles.errorRow}>
                 <Ionicons name="alert-circle-outline" size={15} color={THEME.colors.gold} />
                 <Text style={styles.errorText}>{errorMsg}</Text>
-              </View>
-            )}
-
-            {signupStep === 0 && (
-              <View style={styles.signupAltSection}>
-                <View style={styles.orRow}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>QUICK START</Text>
-                  <View style={styles.orLine} />
-                </View>
-
-                <View style={styles.socialRow}>
-                  <TouchableOpacity
-                    style={styles.socialBevelBtn}
-                    onPress={() => handleQuickSocialAuth('google')}
-                    disabled={isSubmitting}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="logo-google" size={16} color="#FFFFFF" />
-                    <Text style={styles.socialBevelText}>GOOGLE</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.socialBevelBtn}
-                    onPress={() => handleQuickSocialAuth('guest')}
-                    disabled={isSubmitting}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="person-outline" size={16} color="#C4B5FD" />
-                    <Text style={styles.socialBevelText}>GUEST</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.switchFooterRow}>
-                  <Text style={styles.switchMuted}>Already have a profile?</Text>
-                  <TouchableOpacity onPress={() => switchMode('login')} activeOpacity={0.75}>
-                    <Text style={styles.switchAction}>Sign in</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             )}
           </Animated.View>
@@ -638,7 +1090,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                   !canProceedSignup && styles.bevelBtnTextDisabled,
                 ]}
               >
-                {signupStep === 2 ? 'CREATE ACCOUNT' : 'CONTINUE'}
+                {signupStep === 3 ? 'CREATE ACCOUNT' : 'CONTINUE'}
               </Text>
             )}
           </TouchableOpacity>
@@ -661,8 +1113,15 @@ const styles = StyleSheet.create({
     right: 0,
     height: 260,
   },
+  onboardingGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 280,
+  },
 
-  /* WELCOME VIEW */
+  /* WELCOME VIEW (Clean baseline preserved) */
   welcomeShell: {
     flex: 1,
     width: '100%',
@@ -727,7 +1186,7 @@ const styles = StyleSheet.create({
   mascotImg: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.04 }],
+    transform: [{ scale: 1.07 }],
   },
   brandWordmark: {
     fontFamily: THEME.fonts.extraBold,
@@ -754,7 +1213,9 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 16,
     backgroundColor: THEME.colors.primary,
-    borderBottomWidth: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.22)',
+    borderBottomWidth: 4.5,
     borderBottomColor: THEME.colors.primaryBorder,
     justifyContent: 'center',
     alignItems: 'center',
@@ -784,11 +1245,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   bevelBtnDisabled: {
-    backgroundColor: '#221F33',
-    borderBottomWidth: 0,
+    backgroundColor: '#231F3A',
+    borderWidth: 1.5,
+    borderColor: '#352F54',
+    borderTopColor: '#352F54',
+    borderBottomWidth: 4,
+    borderBottomColor: '#19162B',
   },
   bevelBtnTextDisabled: {
-    color: '#6E6A85',
+    color: '#8E88AC',
   },
 
   /* LOGIN & SHARED AUTH HEADER */
@@ -825,11 +1290,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   groupedInputsBox: {
-    backgroundColor: '#151422',
+    backgroundColor: '#19172B',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2E2B45',
+    borderColor: '#342F52',
     overflow: 'hidden',
+  },
+  inputBoxFocused: {
+    borderColor: THEME.colors.primaryGlow,
+    backgroundColor: '#1F1B35',
   },
   groupedTopInput: {
     fontFamily: THEME.fonts.bodyMedium,
@@ -840,7 +1309,10 @@ const styles = StyleSheet.create({
   },
   groupedDivider: {
     height: 1.5,
-    backgroundColor: '#2E2B45',
+    backgroundColor: '#312B4D',
+  },
+  groupedDividerFocused: {
+    backgroundColor: 'rgba(167, 139, 250, 0.38)',
   },
   passwordInputWrap: {
     flexDirection: 'row',
@@ -862,12 +1334,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
+    marginTop: 12,
     paddingHorizontal: 2,
   },
   errorText: {
     fontFamily: THEME.fonts.medium,
-    fontSize: 12,
+    fontSize: 12.5,
     color: THEME.colors.gold,
     flex: 1,
   },
@@ -895,12 +1367,12 @@ const styles = StyleSheet.create({
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(196, 181, 253, 0.14)',
   },
   orText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
-    color: THEME.colors.textMuted,
+    color: '#8E88AC',
     letterSpacing: 0.9,
   },
   socialRow: {
@@ -909,13 +1381,13 @@ const styles = StyleSheet.create({
   },
   socialBevelBtn: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#151422',
+    height: 49,
+    borderRadius: 15,
+    backgroundColor: '#19172B',
     borderWidth: 1.5,
-    borderColor: '#2E2B45',
-    borderBottomWidth: 3.5,
-    borderBottomColor: '#221F33',
+    borderColor: '#363055',
+    borderBottomWidth: 4,
+    borderBottomColor: '#231F3A',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -942,7 +1414,7 @@ const styles = StyleSheet.create({
   switchAction: {
     fontFamily: THEME.fonts.bold,
     fontSize: 13,
-    color: THEME.colors.primaryGlow,
+    color: '#C4B5FD',
   },
   legalCaption: {
     fontFamily: THEME.fonts.body,
@@ -953,37 +1425,63 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 
-  /* SIGN UP PROGRESS WIZARD */
+  /* ONBOARDING + SIGN UP WIZARD (AFTER CLICKING GET STARTED) */
   signupShell: {
     flex: 1,
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
   },
   signupTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 22,
+    marginBottom: 20,
+  },
+  onboardingBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(196, 181, 253, 0.16)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   signupProgressTrack: {
     flex: 1,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#221F33',
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#211D36',
+    borderWidth: 1,
+    borderColor: '#342E54',
     overflow: 'hidden',
   },
   signupProgressFill: {
     height: '100%',
-    borderRadius: 4,
-    backgroundColor: THEME.colors.primary,
+    borderRadius: 5,
+    paddingTop: 2,
+    paddingHorizontal: 4,
+  },
+  progressShineBar: {
+    height: 2.5,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  stepPillBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#1E1A33',
+    borderWidth: 1,
+    borderColor: '#38315A',
   },
   stepFractionText: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11.5,
-    color: THEME.colors.textMuted,
+    color: '#C4B5FD',
   },
   signupScroll: {
     flex: 1,
@@ -994,57 +1492,237 @@ const styles = StyleSheet.create({
   promptCoachRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 20,
   },
-  miniMascotRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  miniMascotHalo: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    padding: 2,
+    backgroundColor: 'rgba(139, 92, 246, 0.24)',
     borderWidth: 1.5,
     borderColor: THEME.colors.primaryGlow,
+  },
+  miniMascotRing: {
+    flex: 1,
+    borderRadius: 26,
     backgroundColor: '#161423',
     overflow: 'hidden',
   },
   coachBubble: {
     flex: 1,
-    backgroundColor: '#181629',
+    backgroundColor: '#201B3B',
     borderWidth: 1.5,
-    borderColor: '#2D2947',
+    borderColor: '#5B49A8',
     borderRadius: 16,
-    paddingHorizontal: 14,
+    paddingHorizontal: 15,
     paddingVertical: 11,
+    position: 'relative',
+  },
+  coachBubbleTail: {
+    position: 'absolute',
+    left: -6.5,
+    top: '50%',
+    marginTop: -5.5,
+    width: 11,
+    height: 11,
+    backgroundColor: '#201B3B',
+    borderLeftWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: '#5B49A8',
+    transform: [{ rotate: '45deg' }],
   },
   coachBubbleText: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 14,
+    fontSize: 13.5,
     color: '#FFFFFF',
     lineHeight: 20,
   },
-  singleInputBox: {
-    backgroundColor: '#151422',
+  stepHeadline: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 21,
+    color: '#FFFFFF',
+    marginBottom: 14,
+  },
+
+  /* INTERACTIVE DUOLINGO CHOICE ROWS */
+  choiceList: {
+    gap: 11,
+  },
+  choiceRowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    backgroundColor: '#18162A',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2E2B45',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
+    borderColor: '#312C4E',
+    borderBottomWidth: 4,
+    borderBottomColor: '#211D37',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  choiceRowSelected: {
+    backgroundColor: '#231C42',
+    borderColor: '#8B5CF6',
+    borderBottomColor: THEME.colors.primaryBorder,
+  },
+  choiceIconBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  choiceTextCol: {
+    flex: 1,
+  },
+  tierHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  choiceTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 14.5,
+    color: '#F3EEFF',
+  },
+  choiceTitleSelected: {
+    color: '#FFFFFF',
+  },
+  choiceSubtitle: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: '#A5A1B8',
+    marginTop: 2,
+  },
+  popularBadge: {
+    backgroundColor: 'rgba(127, 67, 254, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.5)',
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  popularBadgeText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 9.5,
+    color: '#E9D5FF',
+    letterSpacing: 0.5,
+  },
+  choiceCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#433C68',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  choiceCheckCircleSelected: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: '#A78BFA',
+  },
+  stepZeroLinks: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+
+  /* STEP 2-3 FORM CONTROLS */
+  recapPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  recapPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#1E1A33',
+    borderWidth: 1,
+    borderColor: '#37305A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  recapPillText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11.5,
+    color: '#DDD6FE',
+  },
+  singleInputBox: {
+    backgroundColor: '#19172B',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#342F52',
+    paddingHorizontal: 15,
+    paddingTop: 11,
+    paddingBottom: 5,
   },
   inputLabel: {
     fontFamily: THEME.fonts.bold,
     fontSize: 10,
-    color: THEME.colors.primaryGlow,
+    color: '#C4B5FD',
     letterSpacing: 0.9,
     marginBottom: 2,
   },
+  singleInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   singleInput: {
+    flex: 1,
     fontFamily: THEME.fonts.bodyMedium,
-    fontSize: 16,
+    fontSize: 15.5,
     color: '#FFFFFF',
     paddingVertical: 10,
   },
-  signupAltSection: {
-    marginTop: 8,
+  helperCaption: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: '#9C96B8',
+    marginTop: 10,
+    paddingHorizontal: 2,
+    lineHeight: 18,
+  },
+  signupFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    gap: 10,
+  },
+  signupFieldInput: {
+    flex: 1,
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 15,
+    color: '#FFFFFF',
+    paddingVertical: 15,
+  },
+  strengthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 12,
+  },
+  strengthBarsWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#272242',
+  },
+  strengthLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11.5,
   },
   signupFooterDock: {
     paddingTop: 10,
