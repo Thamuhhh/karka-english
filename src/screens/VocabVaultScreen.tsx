@@ -25,11 +25,16 @@ import { playSoundEffect } from '../services/soundEffectsService';
 interface VocabVaultScreenProps {
   stats?: UserStats;
   onStatsUpdate?: (stats: UserStats) => void;
+  embedded?: boolean;
 }
 
 type VocabFilter = 'all' | 'review' | 'mastered';
 
-export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({ stats, onStatsUpdate }) => {
+export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({
+  stats,
+  onStatsUpdate,
+  embedded = false,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -146,19 +151,30 @@ export const VocabVaultScreen: React.FC<VocabVaultScreenProps> = ({ stats, onSta
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, embedded && styles.contentEmbedded]}
+    >
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="book" size={20} color={THEME.colors.secondary} />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.title}>Vocabulary Vault</Text>
-          <Text style={styles.subtitle}>
+      {embedded ? (
+        <View style={styles.embeddedMetaRow}>
+          <Text style={styles.embeddedMetaText}>
             {masteredSet.size} of {wordList.length} words mastered
           </Text>
         </View>
-      </View>
+      ) : (
+        <View style={styles.header}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="book" size={20} color={THEME.colors.secondary} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.title}>Vocabulary Vault</Text>
+            <Text style={styles.subtitle}>
+              {masteredSet.size} of {wordList.length} words mastered
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Search Bar */}
       <View style={styles.searchBar}>
@@ -371,6 +387,17 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
+  },
+  contentEmbedded: {
+    paddingTop: 8,
+  },
+  embeddedMetaRow: {
+    marginBottom: 10,
+  },
+  embeddedMetaText: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
   },
   header: {
     flexDirection: 'row',

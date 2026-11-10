@@ -19,6 +19,7 @@ import { playSoundEffect } from '../services/soundEffectsService';
 
 interface GrammarNovaScreenProps {
   onStatsUpdate?: (stats: UserStats) => void;
+  embedded?: boolean;
 }
 
 const SAMPLE_SENTENCES = [
@@ -47,7 +48,10 @@ const TONE_VARIANTS: Array<{
 
 const MAX_CONTENT_WIDTH = 500;
 
-export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpdate }) => {
+export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({
+  onStatsUpdate,
+  embedded = false,
+}) => {
   const [inputText, setInputText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<GrammarCorrection | null>(null);
@@ -102,20 +106,24 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({ onStatsUpd
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, embedded && styles.contentEmbedded]}
       showsVerticalScrollIndicator={false}
     >
       {/* Minimalist Obsidian Header */}
-      <View style={styles.header}>
-        <View style={styles.brandRow}>
-          <View style={styles.iconBadge}>
-            <Ionicons name="sparkles" size={19} color="#C4B5FD" />
+      <View style={[styles.header, embedded && styles.headerEmbedded]}>
+        {embedded ? (
+          <Text style={styles.embeddedSubnote}>Sentence polish &amp; Tamil grammar breakdown</Text>
+        ) : (
+          <View style={styles.brandRow}>
+            <View style={styles.iconBadge}>
+              <Ionicons name="sparkles" size={19} color="#C4B5FD" />
+            </View>
+            <View style={styles.titleBlock}>
+              <Text style={styles.title}>Ask Nila</Text>
+              <Text style={styles.subtitle}>Sentence polish &amp; Tamil grammar breakdown</Text>
+            </View>
           </View>
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>Ask Nila</Text>
-            <Text style={styles.subtitle}>Sentence polish &amp; Tamil grammar breakdown</Text>
-          </View>
-        </View>
+        )}
 
         <View style={styles.enginePill}>
           <View
@@ -367,6 +375,9 @@ const styles = StyleSheet.create({
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
+  contentEmbedded: {
+    paddingTop: 8,
+  },
 
   /* HEADER */
   header: {
@@ -374,6 +385,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 18,
+  },
+  headerEmbedded: {
+    marginBottom: 12,
+  },
+  embeddedSubnote: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    flex: 1,
+    paddingRight: 10,
   },
   brandRow: {
     flexDirection: 'row',

@@ -35,9 +35,7 @@ import {
 import { THEME } from './src/constants/theme';
 import { CurriculumScreen } from './src/screens/CurriculumScreen';
 import { LessonPlayerScreen } from './src/screens/LessonPlayerScreen';
-import { LiveVoiceCallScreen } from './src/screens/LiveVoiceCallScreen';
-import { GrammarNovaScreen } from './src/screens/GrammarNovaScreen';
-import { VocabVaultScreen } from './src/screens/VocabVaultScreen';
+import { SpeakHubScreen } from './src/screens/SpeakHubScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -52,7 +50,7 @@ import {
 } from './src/services/storageService';
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 
-type TabType = 'learn' | 'call' | 'grammar' | 'vocab' | 'league' | 'profile';
+type TabType = 'learn' | 'call' | 'league' | 'profile';
 
 interface NavTabItem {
   id: Exclude<TabType, 'league'>;
@@ -65,9 +63,7 @@ interface NavTabItem {
 
 const NAV_TABS: NavTabItem[] = [
   { id: 'learn', label: 'Course', family: 'mci', activeIcon: 'compass', inactiveIcon: 'compass-outline' },
-  { id: 'grammar', label: 'Ask Nila', family: 'ion', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline' },
   { id: 'call', label: 'Speak', family: 'ion', activeIcon: 'mic', inactiveIcon: 'mic-outline', isCenter: true },
-  { id: 'vocab', label: 'Vocab', family: 'ion', activeIcon: 'book', inactiveIcon: 'book-outline' },
   { id: 'profile', label: 'Profile', family: 'ion', activeIcon: 'person', inactiveIcon: 'person-outline' },
 ];
 
@@ -187,10 +183,8 @@ export default function App() {
                   onOpenLeague={() => setActiveTab('league')}
                 />
               )}
-              {activeTab === 'call' && <LiveVoiceCallScreen onStatsUpdate={setStats} />}
-              {activeTab === 'grammar' && <GrammarNovaScreen onStatsUpdate={setStats} />}
-              {activeTab === 'vocab' && (
-                <VocabVaultScreen stats={stats} onStatsUpdate={setStats} />
+              {activeTab === 'call' && (
+                <SpeakHubScreen stats={stats} onStatsUpdate={setStats} />
               )}
               {activeTab === 'league' && (
                 <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />
