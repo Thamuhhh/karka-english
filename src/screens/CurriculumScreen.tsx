@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -31,9 +31,11 @@ interface CurriculumScreenProps {
   userRank: number;
   onRefillHearts: () => void;
   onOpenLeague?: () => void;
+  onTopColorChange?: (color: string) => void;
 }
 
 const MAX_CONTENT_WIDTH = 480;
+const UNIT_TOP_COLORS = ['#1E1438', '#131E36', '#1D1A36', '#261640'] as const;
 const MAP_STEP_Y = 138;
 const MAP_TOP_CY = 62;
 const NODE_LABEL_WIDTH = 152;
@@ -68,6 +70,7 @@ function formatShortUnitTitle(fullName: string): string {
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   stats,
+  onTopColorChange,
 }) => {
   const { width: windowWidth } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
@@ -97,6 +100,11 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     )?.id || null;
 
   const activeLevel = SUPERNOVA_LEVELS[activeUnitIdx] || SUPERNOVA_LEVELS[0];
+  const activeUnitTopColor = UNIT_TOP_COLORS[activeUnitIdx % UNIT_TOP_COLORS.length];
+
+  useEffect(() => {
+    onTopColorChange?.(activeUnitTopColor);
+  }, [activeUnitTopColor, onTopColorChange]);
   const activeCompletedCount = activeLevel.classes.filter((c) =>
     completedClasses.includes(c.id)
   ).length;
@@ -197,7 +205,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* Single Solid Unified Header: Brand + Live Streak + Sticky Active Unit */}
-      <View style={styles.unifiedTopBar}>
+      <LinearGradient
+        colors={[activeUnitTopColor, THEME.colors.background]}
+        style={styles.unifiedTopBar}
+      >
         <View style={styles.unifiedTopBarInner}>
           <View style={styles.brandRow}>
             <Text style={styles.appNameText}>NovaBreaker</Text>
@@ -231,7 +242,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             )}
           </Animated.View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Single Unified Obsidian Topography Canvas */}
       <View style={styles.mapStage}>
@@ -613,7 +624,6 @@ const styles = StyleSheet.create({
   },
   unifiedTopBar: {
     width: '100%',
-    backgroundColor: THEME.colors.background,
     zIndex: 10,
   },
   unifiedTopBarInner: {

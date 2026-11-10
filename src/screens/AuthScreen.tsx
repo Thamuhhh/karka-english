@@ -35,10 +35,17 @@ type FocusField =
 
 interface AuthScreenProps {
   onAuthenticated: (user: AuthUser) => void;
+  onTopColorChange?: (color: string) => void;
 }
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const MAX_CONTENT_WIDTH = 440;
+
+const AUTH_TOP_COLORS: Record<AuthMode, string> = {
+  welcome: '#1D1436',
+  login: '#20163B',
+  signup: '#27194A',
+};
 
 const LEARNING_GOALS = [
   {
@@ -214,7 +221,10 @@ const SocialQuickAuth: React.FC<SocialQuickAuthProps> = ({
 /**
  * Duolingo-inspired tactile Obsidian onboarding, interactive goal setup, and Sign In screen.
  */
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({
+  onAuthenticated,
+  onTopColorChange,
+}) => {
   const [mode, setMode] = useState<AuthMode>('welcome');
   const [signupStep, setSignupStep] = useState<SignupStep>(0);
   const [focusedField, setFocusedField] = useState<FocusField>(null);
@@ -255,6 +265,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     bobLoop.start();
     return () => bobLoop.stop();
   }, [coachBobAnim]);
+
+  useEffect(() => {
+    onTopColorChange?.(AUTH_TOP_COLORS[mode]);
+  }, [mode, onTopColorChange]);
 
   useEffect(() => {
     slideAnim.setValue(8);
@@ -415,7 +429,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={['rgba(127, 67, 254, 0.14)', 'rgba(14, 14, 20, 0)']}
+          colors={[AUTH_TOP_COLORS.welcome, 'rgba(14, 14, 20, 0)']}
           style={styles.topGlow}
           pointerEvents="none"
         />
@@ -487,7 +501,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <LinearGradient
-          colors={['rgba(127, 67, 254, 0.16)', 'rgba(14, 14, 20, 0)']}
+          colors={[AUTH_TOP_COLORS.login, 'rgba(14, 14, 20, 0)']}
           style={styles.topGlow}
           pointerEvents="none"
         />
@@ -672,7 +686,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     >
       {/* Keep ambient top violet lighting consistent after clicking Get Started */}
       <LinearGradient
-        colors={['rgba(127, 67, 254, 0.24)', 'rgba(91, 33, 182, 0.08)', 'rgba(14, 14, 20, 0)']}
+        colors={[AUTH_TOP_COLORS.signup, 'rgba(91, 33, 182, 0.08)', 'rgba(14, 14, 20, 0)']}
         style={styles.onboardingGlow}
         pointerEvents="none"
       />

@@ -93,6 +93,10 @@ function AppContent() {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('learn');
   const [currentLesson, setCurrentLesson] = useState<SupernovaClass | null>(null);
+  const [authTopColor, setAuthTopColor] = useState('#1D1436');
+  const [courseTopColor, setCourseTopColor] = useState('#1E1438');
+  const [speakTopColor, setSpeakTopColor] = useState('#1E143A');
+  const [lessonTopColor, setLessonTopColor] = useState('#1B1535');
 
   useEffect(() => {
     Promise.all([hydrateAppPreferences(), loadAuthUser()])
@@ -114,8 +118,19 @@ function AppContent() {
     );
   }
 
-  const topSurfaceColor =
-    authUser && !currentLesson && activeTab === 'profile' ? '#201639' : THEME.colors.background;
+  const topSurfaceColor = !authUser
+    ? authTopColor
+    : currentLesson
+      ? lessonTopColor
+      : activeTab === 'learn'
+        ? courseTopColor
+        : activeTab === 'call'
+          ? speakTopColor
+          : activeTab === 'league'
+            ? '#251842'
+            : activeTab === 'profile'
+              ? '#201639'
+              : THEME.colors.background;
 
   const handleAuthenticated = (user: AuthUser) => {
     setAuthUser(user);
@@ -192,7 +207,10 @@ function AppContent() {
       {/* Duolingo-Style Auth / Onboarding Gate */}
       {!authUser ? (
         <View style={[styles.screenContainer, { paddingBottom: insets.bottom }]}>
-          <AuthScreen onAuthenticated={handleAuthenticated} />
+          <AuthScreen
+            onAuthenticated={handleAuthenticated}
+            onTopColorChange={setAuthTopColor}
+          />
         </View>
       ) : currentLesson ? (
         <View style={[styles.screenContainer, { paddingBottom: insets.bottom }]}>
@@ -201,6 +219,7 @@ function AppContent() {
             initialHearts={stats.hearts}
             onHeartsChange={handleHeartsChange}
             onClose={() => setCurrentLesson(null)}
+            onTopColorChange={setLessonTopColor}
             onComplete={handleLessonComplete}
           />
         </View>
@@ -215,10 +234,15 @@ function AppContent() {
                 userRank={userRank}
                 onRefillHearts={handleRefillHearts}
                 onOpenLeague={() => setActiveTab('league')}
+                onTopColorChange={setCourseTopColor}
               />
             )}
             {activeTab === 'call' && (
-              <SpeakHubScreen stats={stats} onStatsUpdate={setStats} />
+              <SpeakHubScreen
+                stats={stats}
+                onStatsUpdate={setStats}
+                onTopColorChange={setSpeakTopColor}
+              />
             )}
             {activeTab === 'league' && (
               <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { UserStats } from '../types';
 import { stopAllAudio } from '../services/ttsService';
@@ -13,6 +14,7 @@ type SpeakMode = 'talk' | 'nila' | 'vocab';
 interface SpeakHubScreenProps {
   stats: UserStats;
   onStatsUpdate?: (stats: UserStats) => void;
+  onTopColorChange?: (color: string) => void;
 }
 
 const SPEAK_MODES: Array<{
@@ -20,17 +22,46 @@ const SPEAK_MODES: Array<{
   label: string;
   activeIcon: keyof typeof Ionicons.glyphMap;
   inactiveIcon: keyof typeof Ionicons.glyphMap;
+  topColor: string;
 }> = [
-  { id: 'talk', label: 'Live Talk', activeIcon: 'mic', inactiveIcon: 'mic-outline' },
-  { id: 'nila', label: 'Ask Nila', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline' },
-  { id: 'vocab', label: 'Vocab', activeIcon: 'book', inactiveIcon: 'book-outline' },
+  {
+    id: 'talk',
+    label: 'Live Talk',
+    activeIcon: 'mic',
+    inactiveIcon: 'mic-outline',
+    topColor: '#1E143A',
+  },
+  {
+    id: 'nila',
+    label: 'Ask Nila',
+    activeIcon: 'sparkles',
+    inactiveIcon: 'sparkles-outline',
+    topColor: '#121E33',
+  },
+  {
+    id: 'vocab',
+    label: 'Vocab',
+    activeIcon: 'book',
+    inactiveIcon: 'book-outline',
+    topColor: '#241830',
+  },
 ];
 
 /**
  * Unified Speak studio integrating Live Talk, Ask Nila, and Vocabulary Vault.
  */
-export const SpeakHubScreen: React.FC<SpeakHubScreenProps> = ({ stats, onStatsUpdate }) => {
+export const SpeakHubScreen: React.FC<SpeakHubScreenProps> = ({
+  stats,
+  onStatsUpdate,
+  onTopColorChange,
+}) => {
   const [mode, setMode] = useState<SpeakMode>('talk');
+  const activeModeColor =
+    SPEAK_MODES.find((item) => item.id === mode)?.topColor ?? '#1E143A';
+
+  useEffect(() => {
+    onTopColorChange?.(activeModeColor);
+  }, [activeModeColor, onTopColorChange]);
 
   const handleSelectMode = (nextMode: SpeakMode) => {
     if (nextMode === mode) return;
@@ -40,8 +71,11 @@ export const SpeakHubScreen: React.FC<SpeakHubScreenProps> = ({ stats, onStatsUp
 
   return (
     <View style={styles.container}>
-      {/* Borderless Editorial Mode Tabs */}
-      <View style={styles.modeHeader}>
+      {/* Borderless Editorial Mode Tabs with Dynamic Top Wash */}
+      <LinearGradient
+        colors={[activeModeColor, THEME.colors.background]}
+        style={styles.modeHeader}
+      >
         <View style={styles.modeRow}>
           {SPEAK_MODES.map((item) => {
             const isActive = mode === item.id;
@@ -67,7 +101,7 @@ export const SpeakHubScreen: React.FC<SpeakHubScreenProps> = ({ stats, onStatsUp
             );
           })}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Active Mode Workspace */}
       <View style={styles.stage}>
@@ -88,7 +122,6 @@ const styles = StyleSheet.create({
   },
   modeHeader: {
     width: '100%',
-    backgroundColor: THEME.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },

@@ -33,7 +33,13 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ stats, onB
   const xpNeeded = Math.max(0, fifthPlaceXp - stats.stardustXp + 10);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <LinearGradient
+        colors={['#251842', 'rgba(14, 14, 20, 0)']}
+        style={styles.topAmbientWash}
+        pointerEvents="none"
+      />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {onBack && (
         <View style={styles.topBackRow}>
           <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
@@ -193,14 +199,26 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ stats, onB
       </View>
 
       <View style={{ height: 40 }} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: THEME.colors.background,
+    position: 'relative',
+  },
+  topAmbientWash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 190,
+  },
+  container: {
+    flex: 1,
   },
   content: {
     padding: 14,

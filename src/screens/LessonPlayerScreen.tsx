@@ -35,6 +35,7 @@ interface LessonPlayerProps {
   initialHearts: number;
   onHeartsChange: (hearts: number) => void;
   onClose: () => void;
+  onTopColorChange?: (color: string) => void;
   onComplete: (
     classId: string,
     xpReward: number,
@@ -111,6 +112,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   initialHearts,
   onHeartsChange,
   onClose,
+  onTopColorChange,
   onComplete,
 }) => {
   const [currentSlide, setCurrentSlide] = useState<SlideType>('rule');
@@ -420,8 +422,19 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const canCheckTranslation =
     transMode === 'type' ? typedAnswer.trim().length > 0 : selectedTransIdx !== null;
 
+  const lessonTopColor = currentSlide === 'victory' ? '#2A1B4E' : '#1B1535';
+
+  useEffect(() => {
+    onTopColorChange?.(lessonTopColor);
+  }, [lessonTopColor, onTopColorChange]);
+
   return (
     <View style={styles.fullscreen}>
+      <LinearGradient
+        colors={[lessonTopColor, 'rgba(14, 14, 20, 0)']}
+        style={styles.topAmbientWash}
+        pointerEvents="none"
+      />
       {/* Top Bar: Close, 4-Step Segment Track, Audio Mute & Hearts */}
       {currentSlide !== 'victory' && (
         <View style={styles.topBarWrapper}>
@@ -1231,6 +1244,14 @@ const styles = StyleSheet.create({
   fullscreen: {
     flex: 1,
     backgroundColor: THEME.colors.background,
+    position: 'relative',
+  },
+  topAmbientWash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 190,
   },
   topBarWrapper: {
     borderBottomWidth: 1,
