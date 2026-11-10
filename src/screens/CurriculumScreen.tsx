@@ -211,12 +211,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       >
         <View style={styles.unifiedTopBarInner}>
           <View style={styles.brandRow}>
-            <Image
-              source={SUPERNOVA_IMAGES.karkaLogo}
-              style={styles.brandLogoImg}
-              resizeMode="contain"
-              accessibilityLabel="Karka"
-            />
+            <View style={styles.brandLogoWrap}>
+              <Image
+                source={SUPERNOVA_IMAGES.karkaLogo}
+                style={styles.brandLogoImg}
+                resizeMode="contain"
+                accessibilityLabel="Karka"
+              />
+            </View>
             <LiveStreakBadge streakDays={stats.streakDays} />
           </View>
 
@@ -635,22 +637,27 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
-    paddingTop: 14,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
+    paddingHorizontal: 22,
   },
   brandRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 13,
+  },
+  brandLogoWrap: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    justifyContent: 'center',
   },
   activeUnitBand: {
     width: '100%',
   },
   brandLogoImg: {
-    width: 96,
-    height: 28,
+    width: 74,
+    height: 22,
   },
 
   /* COURSE TIMELINE */
