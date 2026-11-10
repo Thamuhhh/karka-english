@@ -11,75 +11,64 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { THEME } from './src/constants/theme';
-import { DashboardScreen } from './src/screens/DashboardScreen';
 import { CurriculumScreen } from './src/screens/CurriculumScreen';
-import { AiCoachScreen } from './src/screens/AiCoachScreen';
+import { LiveVoiceCallScreen } from './src/screens/LiveVoiceCallScreen';
 import { GrammarNovaScreen } from './src/screens/GrammarNovaScreen';
 import { VocabVaultScreen } from './src/screens/VocabVaultScreen';
+import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 
-type TabType = 'home' | 'classes' | 'coach' | 'grammar' | 'vocab' | 'profile';
+type TabType = 'learn' | 'call' | 'grammar' | 'vocab' | 'league' | 'profile';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('classes'); // Default to Classes!
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>(undefined);
-
-  const handleLaunchScenario = (scenarioId: string) => {
-    setSelectedScenarioId(scenarioId);
-    setActiveTab('coach');
-  };
+  const [activeTab, setActiveTab] = useState<TabType>('learn');
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar style="light" backgroundColor={THEME.colors.background} />
 
-        {/* Screen Content */}
+        {/* Screen View */}
         <View style={styles.screenContainer}>
-          {activeTab === 'home' && (
-            <DashboardScreen
-              onSelectTab={(tab) => setActiveTab(tab)}
-              onSelectScenario={handleLaunchScenario}
-            />
-          )}
-          {activeTab === 'classes' && <CurriculumScreen />}
-          {activeTab === 'coach' && (
-            <AiCoachScreen initialScenarioId={selectedScenarioId} />
-          )}
+          {activeTab === 'learn' && <CurriculumScreen />}
+          {activeTab === 'call' && <LiveVoiceCallScreen />}
           {activeTab === 'grammar' && <GrammarNovaScreen />}
           {activeTab === 'vocab' && <VocabVaultScreen />}
+          {activeTab === 'league' && <LeaderboardScreen />}
           {activeTab === 'profile' && <ProfileScreen />}
         </View>
 
-        {/* Cosmic Bottom Navigation Bar */}
+        {/* Supernova 5-Tab Cosmic Navigation Bar */}
         <View style={styles.bottomNav}>
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setActiveTab('classes')}
+            onPress={() => setActiveTab('learn')}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
-              name={activeTab === 'classes' ? 'school' : 'school-outline'}
-              size={22}
-              color={activeTab === 'classes' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+              name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
+              size={24}
+              color={activeTab === 'learn' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
             />
-            <Text style={[styles.navText, activeTab === 'classes' && styles.navTextActive]}>
-              Classes
+            <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
+              Learn
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setActiveTab('coach')}
+            onPress={() => setActiveTab('call')}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name={activeTab === 'coach' ? 'mic' : 'mic-outline'}
-              size={22}
-              color={activeTab === 'coach' ? THEME.colors.primaryGlow : THEME.colors.textMuted}
-            />
-            <Text style={[styles.navText, activeTab === 'coach' && styles.navTextActive]}>
-              AI Coach
+            <View style={styles.callTabCircle}>
+              <Ionicons
+                name="mic"
+                size={22}
+                color={THEME.colors.text}
+              />
+            </View>
+            <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveGold]}>
+              Nova Call
             </Text>
           </TouchableOpacity>
 
@@ -90,7 +79,7 @@ export default function App() {
           >
             <MaterialCommunityIcons
               name={activeTab === 'grammar' ? 'lightning-bolt' : 'lightning-bolt-outline'}
-              size={22}
+              size={24}
               color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
             />
             <Text style={[styles.navText, activeTab === 'grammar' && styles.navTextActiveGold]}>
@@ -109,7 +98,22 @@ export default function App() {
               color={activeTab === 'vocab' ? THEME.colors.secondary : THEME.colors.textMuted}
             />
             <Text style={[styles.navText, activeTab === 'vocab' && styles.navTextActiveCyan]}>
-              Vocab
+              Vault
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setActiveTab('league')}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons
+              name={activeTab === 'league' ? 'trophy' : 'trophy-outline'}
+              size={22}
+              color={activeTab === 'league' ? THEME.colors.gold : THEME.colors.textMuted}
+            />
+            <Text style={[styles.navText, activeTab === 'league' && styles.navTextActiveGold]}>
+              League
             </Text>
           </TouchableOpacity>
 
@@ -146,18 +150,26 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
-    paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 8,
+    paddingVertical: 6,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 6,
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  callTabCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   navText: {
-    fontSize: 11,
+    fontSize: 10,
     color: THEME.colors.textMuted,
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: '500',
   },
   navTextActive: {
