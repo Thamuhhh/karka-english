@@ -518,11 +518,21 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
               ]}
             >
               <View style={styles.popoverMetaRow}>
-                <Text style={styles.popoverEyebrow}>
-                  CLASS {String(lessonNumberMap[selectedLesson.id] || selectedLesson.classNumber).padStart(2, '0')} ·{' '}
-                  {selectedLesson.duration.toUpperCase()}
-                </Text>
-                <Text style={styles.popoverXp}>+{selectedXpReward} XP</Text>
+                <View style={styles.popoverMetaLeft}>
+                  <Text style={styles.popoverEyebrow}>
+                    CLASS {String(lessonNumberMap[selectedLesson.id] || selectedLesson.classNumber).padStart(2, '0')} ·{' '}
+                    {selectedLesson.duration.toUpperCase()}
+                  </Text>
+                  <Text style={styles.popoverXp}>+{selectedXpReward} XP</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.popoverCloseBtn}
+                  onPress={() => setSelectedLesson(null)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="close" size={15} color="#C9C5DE" />
+                </TouchableOpacity>
               </View>
 
               <Text style={styles.popoverTitle}>
@@ -889,7 +899,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  popoverMetaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    paddingRight: 8,
   },
   popoverEyebrow: {
     fontFamily: THEME.fonts.extraBold,
@@ -899,8 +916,16 @@ const styles = StyleSheet.create({
   },
   popoverXp: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 11.5,
+    fontSize: 11,
     color: THEME.colors.goldGlow,
+  },
+  popoverCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   popoverTitle: {
     fontFamily: THEME.fonts.bold,
