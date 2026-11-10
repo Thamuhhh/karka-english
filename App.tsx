@@ -205,7 +205,7 @@ export default function App() {
               <View style={styles.bottomNav}>
                 {NAV_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
-                  const iconColor = isActive ? THEME.colors.primaryGlow : THEME.colors.textMuted;
+                  const iconColor = isActive ? '#FFFFFF' : THEME.colors.textMuted;
                   const iconName = (isActive ? tab.activeIcon : tab.inactiveIcon) as any;
 
                   if (tab.isCenter) {
@@ -234,15 +234,17 @@ export default function App() {
                   return (
                     <TouchableOpacity
                       key={tab.id}
-                      style={[styles.navItem, isActive && styles.navItemActive]}
+                      style={styles.navItem}
                       onPress={() => setActiveTab(tab.id)}
                       activeOpacity={0.75}
                     >
-                      {tab.family === 'mci' ? (
-                        <MaterialCommunityIcons name={iconName} size={20} color={iconColor} />
-                      ) : (
-                        <Ionicons name={iconName} size={20} color={iconColor} />
-                      )}
+                      <View style={[styles.navIconPill, isActive && styles.navIconPillActive]}>
+                        {tab.family === 'mci' ? (
+                          <MaterialCommunityIcons name={iconName} size={18} color={iconColor} />
+                        ) : (
+                          <Ionicons name={iconName} size={18} color={iconColor} />
+                        )}
+                      </View>
                       <Text style={[styles.navText, isActive && styles.navTextActive]}>
                         {tab.label}
                       </Text>
@@ -294,10 +296,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingVertical: 4,
-    borderRadius: 12,
   },
-  navItemActive: {
-    backgroundColor: 'rgba(127, 67, 254, 0.14)',
+  navIconPill: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  navIconPillActive: {
+    backgroundColor: 'rgba(127, 67, 254, 0.24)',
+    borderColor: 'rgba(167, 139, 250, 0.42)',
   },
   centerCallWrapper: {
     flex: 1,
@@ -330,6 +341,6 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     fontFamily: THEME.fonts.bold,
-    color: THEME.colors.primaryGlow,
+    color: '#C4B5FD',
   },
 });
