@@ -9,9 +9,11 @@ import {
   Easing,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
+import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { speakText, stopAllAudio } from '../services/ttsService';
 import { sendChatMessage } from '../api/supernovaAi';
 import { SCENARIOS } from '../constants/scenarios';
@@ -224,9 +226,9 @@ export const LiveVoiceCallScreen: React.FC = () => {
           ]}
         />
 
-        {/* Miss Nova Central Circle */}
+        {/* Miss Nova Central Circle with Official Portrait */}
         <View style={styles.missNovaCircle}>
-          <Text style={{ fontSize: 64 }}>👩‍🏫</Text>
+          <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatarImg} />
         </View>
 
         <Text style={styles.missNovaName}>Miss Nova</Text>
@@ -314,7 +316,7 @@ export const LiveVoiceCallScreen: React.FC = () => {
             style={[styles.callActionBtn, { backgroundColor: isCalling ? THEME.colors.error : THEME.colors.success }]}
             onPress={toggleCallState}
           >
-            <Ionicons name={isCalling ? 'call' : 'call-outline'} size={24} color={THEME.colors.text} />
+            <Image source={SUPERNOVA_IMAGES.endCall} style={styles.endCallIcon} resizeMode="contain" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -329,7 +331,7 @@ export const LiveVoiceCallScreen: React.FC = () => {
               }
             }}
           >
-            <Ionicons name="mic" size={32} color={THEME.colors.text} />
+            <Image source={SUPERNOVA_IMAGES.bubbleMic} style={styles.bubbleMicIcon} resizeMode="contain" />
             <Text style={styles.micLabel}>{isUserSpeaking ? 'Release to Send' : 'Hold to Speak'}</Text>
           </TouchableOpacity>
 
@@ -415,12 +417,26 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(99, 102, 241, 0.25)',
+    backgroundColor: 'rgba(127, 67, 254, 0.25)',
     borderWidth: 3,
-    borderColor: THEME.colors.primaryGlow,
+    borderColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
+    overflow: 'hidden',
+  },
+  missNovaAvatarImg: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  endCallIcon: {
+    width: 24,
+    height: 24,
+  },
+  bubbleMicIcon: {
+    width: 34,
+    height: 34,
   },
   missNovaName: {
     fontSize: 22,

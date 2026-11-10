@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS, SupernovaClass } from '../constants/curriculum';
+import { SUPERNOVA_IMAGES, COURSE_NODE_IMAGES } from '../constants/supernovaAssets';
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
@@ -24,6 +26,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   completedClasses,
 }) => {
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
+
+  let globalLessonIndex = 0;
 
   return (
     <View style={styles.container}>
@@ -44,19 +48,20 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           <Text style={styles.statPillText}>5 / 5</Text>
         </View>
 
-        <View style={styles.missNovaPill}>
-          <Text style={{ fontSize: 16 }}>👩‍🏫</Text>
+        {/* Real Miss Nova Avatar Card */}
+        <View style={styles.missNovaHeaderPill}>
+          <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatar} />
           <Text style={styles.missNovaText}>Miss Nova</Text>
         </View>
       </View>
 
-      {/* Gamified SuperFluency Roadmap */}
+      {/* Gamified Course V5 Roadmap */}
       <ScrollView
         style={styles.roadmapScroll}
         contentContainerStyle={styles.roadmapContent}
         showsVerticalScrollIndicator={false}
       >
-        {SUPERNOVA_LEVELS.map((level) => {
+        {SUPERNOVA_LEVELS.map((level, lIdx) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -102,23 +107,18 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   </View>
                 </View>
 
-                <View
-                  style={[
-                    styles.unitIconContainer,
-                    { backgroundColor: `${level.accentColor}18` },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="school"
-                    size={28}
-                    color={level.accentColor}
-                  />
+                <View style={styles.unitLevelArtBox}>
+                  <Image source={SUPERNOVA_IMAGES.levelTitle1} style={styles.levelTitleArt} resizeMode="contain" />
                 </View>
               </View>
 
               {/* Serpentine Connected Stepping Stone Nodes */}
               <View style={styles.nodesContainer}>
                 {level.classes.map((cls, cIdx) => {
+                  globalLessonIndex++;
+                  const nodeImageIndex = ((globalLessonIndex - 1) % 22) + 1;
+                  const nodeArt = COURSE_NODE_IMAGES[nodeImageIndex];
+
                   const isCompleted = completedClasses.includes(cls.id);
                   const isCurrent =
                     !isCompleted &&
@@ -143,7 +143,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                         </View>
                       )}
 
-                      {/* 3D Stepping Stone Button */}
+                      {/* 3D Stepping Stone with Real Course V5 Artwork */}
                       <TouchableOpacity
                         style={[
                           styles.steppingStoneBtn,
@@ -154,29 +154,26 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                         activeOpacity={0.8}
                         onPress={() => setSelectedLesson(cls)}
                       >
-                        <View
-                          style={[
-                            styles.steppingStoneInner,
-                            isCompleted && styles.steppingStoneInnerCompleted,
-                            isCurrent && styles.steppingStoneInnerCurrent,
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name={
-                              isCompleted
-                                ? 'check-bold'
-                                : isCurrent
-                                ? 'star'
-                                : 'lock'
-                            }
-                            size={28}
-                            color={
-                              isCompleted || isCurrent
-                                ? '#FFFFFF'
-                                : THEME.colors.textMuted
-                            }
+                        {nodeArt ? (
+                          <Image
+                            source={isCompleted || isCurrent ? nodeArt.colored : nodeArt.grayscale}
+                            style={styles.nodeArtworkImage}
+                            resizeMode="cover"
                           />
-                        </View>
+                        ) : (
+                          <MaterialCommunityIcons
+                            name={isCompleted ? 'check-bold' : isCurrent ? 'star' : 'lock'}
+                            size={28}
+                            color="#FFFFFF"
+                          />
+                        )}
+
+                        {/* Status Overlay Icon */}
+                        {isCompleted && (
+                          <View style={styles.completedBadgeCheck}>
+                            <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
+                          </View>
+                        )}
                       </TouchableOpacity>
 
                       {/* Lesson Label */}
@@ -197,9 +194,9 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     activeOpacity={0.8}
                     onPress={() => setSelectedLesson(level.classes[0])}
                   >
-                    <Text style={{ fontSize: 36 }}>🎁</Text>
+                    <Image source={SUPERNOVA_IMAGES.trophyNova} style={styles.chestImage} resizeMode="contain" />
                   </TouchableOpacity>
-                  <Text style={styles.chestLabel}>Level {level.levelNumber} Trophy Chest</Text>
+                  <Text style={styles.chestLabel}>Level {level.levelNumber} Trophy</Text>
                 </View>
               </View>
             </View>
@@ -208,7 +205,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* SUPERNOVA LESSON POPUP MODAL (Authentic Supernova Bottom Sheet/Modal) */}
+      {/* SUPERNOVA AUTHENTIC LESSON MODAL (OnStartChallengePopup) */}
       <Modal
         visible={!!selectedLesson}
         transparent
@@ -246,9 +243,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Title & Concept */}
-              <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
-              <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
+              {/* Title & Concept with Miss Nova portrait */}
+              <View style={styles.modalNovaRow}>
+                <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.modalNovaAvatar} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.modalTitle}>{selectedLesson.title}</Text>
+                  <Text style={styles.modalSubtitle}>{selectedLesson.subtitle}</Text>
+                </View>
+              </View>
 
               {/* Tamil Mother Tongue Bridge Preview */}
               <View style={styles.tamilConceptBox}>
@@ -309,7 +311,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                       ? 'PRACTICE AGAIN (+50 XP)'
                       : 'START LESSON (+100 XP)'}
                   </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                  <Image source={SUPERNOVA_IMAGES.continueArrow} style={styles.continueArrowIcon} />
                 </View>
               </TouchableOpacity>
             </View>
@@ -354,19 +356,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  missNovaPill: {
+  missNovaHeaderPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.secondaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: THEME.colors.surfaceCard,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+  },
+  missNovaAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   missNovaText: {
     fontSize: 12,
     fontWeight: '700',
-    color: THEME.colors.secondary,
-    marginLeft: 4,
+    color: THEME.colors.primary,
+    marginLeft: 6,
+    marginRight: 4,
   },
   roadmapScroll: {
     flex: 1,
@@ -386,11 +396,11 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
     borderLeftWidth: 6,
     marginBottom: 24,
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
   },
   unitBannerLeft: {
     flex: 1,
@@ -451,13 +461,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.textSecondary,
   },
-  unitIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  unitLevelArtBox: {
+    width: 60,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
+  },
+  levelTitleArt: {
+    width: 60,
+    height: 60,
   },
   nodesContainer: {
     alignItems: 'center',
@@ -492,7 +505,7 @@ const styles = StyleSheet.create({
   startBadgeText: {
     fontSize: 11,
     fontWeight: '900',
-    color: THEME.colors.primaryText,
+    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   startBadgeArrow: {
@@ -510,44 +523,53 @@ const styles = StyleSheet.create({
     bottom: -6,
   },
   steppingStoneBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#CBD5E1',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: THEME.colors.surfaceCard,
     borderBottomWidth: 6,
-    borderBottomColor: '#94A3B8',
+    borderBottomColor: '#12151E',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   steppingStoneCompleted: {
-    backgroundColor: THEME.colors.accent,
+    borderColor: THEME.colors.accent,
+    borderWidth: 2,
     borderBottomColor: THEME.colors.accentBorder,
   },
   steppingStoneCurrent: {
-    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
+    borderWidth: 3,
     borderBottomColor: THEME.colors.primaryBorder,
   },
   steppingStoneLocked: {
-    backgroundColor: '#E2E8F0',
-    borderBottomColor: '#CBD5E1',
+    borderColor: THEME.colors.border,
+    borderWidth: 1,
+    opacity: 0.6,
   },
-  steppingStoneInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  nodeArtworkImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  completedBadgeCheck: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  steppingStoneInnerCompleted: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  steppingStoneInnerCurrent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   nodeLabelCard: {
     marginTop: 8,
     alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.surfaceCard,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -568,10 +590,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   chestBtn: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: THEME.colors.goldLight,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.colors.surfaceCard,
     borderWidth: 2,
     borderColor: THEME.colors.gold,
     borderBottomWidth: 6,
@@ -579,17 +601,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  chestImage: {
+    width: 56,
+    height: 56,
+  },
   chestLabel: {
     fontSize: 12,
     fontWeight: '800',
-    color: THEME.colors.goldBorder,
+    color: THEME.colors.gold,
     marginTop: 8,
   },
 
   /* MODAL POPUP STYLES */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -599,15 +625,15 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: width - 40,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.xl,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.35,
     shadowRadius: 20,
     elevation: 10,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: THEME.colors.border,
   },
   modalHeader: {
@@ -621,7 +647,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalLevelPill: {
-    backgroundColor: THEME.colors.secondaryLight,
+    backgroundColor: THEME.colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -630,7 +656,7 @@ const styles = StyleSheet.create({
   modalLevelText: {
     fontSize: 11,
     fontWeight: '800',
-    color: THEME.colors.secondary,
+    color: '#FFFFFF',
   },
   modalDurationPill: {
     flexDirection: 'row',
@@ -654,37 +680,48 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalNovaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalNovaAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: THEME.colors.primary,
+  },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: THEME.colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   modalSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: THEME.colors.textSecondary,
-    lineHeight: 18,
-    marginBottom: 14,
+    lineHeight: 16,
   },
   tamilConceptBox: {
-    backgroundColor: THEME.colors.goldLight,
+    backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: THEME.colors.gold,
+    borderColor: THEME.colors.goldBorder,
     marginBottom: 14,
   },
   tamilConceptLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: THEME.colors.goldBorder,
+    color: THEME.colors.gold,
     marginBottom: 4,
     letterSpacing: 0.5,
   },
   tamilConceptText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#78350F',
+    color: THEME.colors.gold,
     lineHeight: 18,
   },
   methodologyBox: {
@@ -723,7 +760,7 @@ const styles = StyleSheet.create({
   rewardsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.md,
     paddingVertical: 10,
     marginBottom: 16,
@@ -739,10 +776,10 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   modalStartBtn: {
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.primary,
     borderRadius: THEME.radius.lg,
     borderBottomWidth: 4,
-    borderBottomColor: THEME.colors.accentBorder,
+    borderBottomColor: THEME.colors.primaryBorder,
     overflow: 'hidden',
   },
   modalStartBtnInner: {
@@ -756,5 +793,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  continueArrowIcon: {
+    width: 14,
+    height: 14,
+    tintColor: '#FFFFFF',
+    marginLeft: 8,
   },
 });

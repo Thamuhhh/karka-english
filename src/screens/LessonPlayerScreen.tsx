@@ -8,9 +8,11 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
+import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { SupernovaClass } from '../constants/curriculum';
 import { speakText, stopAllAudio } from '../services/ttsService';
 import { addXp, incrementMetric } from '../services/storageService';
@@ -353,7 +355,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.missNovaBubbleCard}>
               <View style={styles.missNovaHeaderRow}>
                 <View style={styles.missNovaAvatarSmall}>
-                  <Text style={{ fontSize: 24 }}>👩‍🏫</Text>
+                  <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.missNovaAvatarSmallImg} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={styles.missNovaTitle}>Miss Nova (AI Tutor)</Text>
@@ -942,9 +944,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'rgba(127, 67, 254, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  missNovaAvatarSmallImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   missNovaTitle: {
     fontSize: 14,

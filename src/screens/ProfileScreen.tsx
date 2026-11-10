@@ -7,9 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
+import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { UserStats } from '../types';
 import {
   loadUserStats,
@@ -61,10 +63,10 @@ export const ProfileScreen: React.FC = () => {
       {/* Profile Header Card */}
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          <MaterialCommunityIcons name="star-face" size={44} color={THEME.colors.gold} />
+          <Image source={SUPERNOVA_IMAGES.streakNova} style={styles.streakNovaAvatar} resizeMode="contain" />
         </View>
-        <Text style={styles.userName}>Space Voyager</Text>
-        <Text style={styles.userRank}>{stats?.cosmicRank || 'Star Cadet'}</Text>
+        <Text style={styles.userName}>Supernova Learner</Text>
+        <Text style={styles.userRank}>{stats?.cosmicRank || 'SuperFluency Champion'}</Text>
 
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
@@ -206,13 +208,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: 'rgba(245, 158, 11, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
+    overflow: 'hidden',
+  },
+  streakNovaAvatar: {
+    width: 68,
+    height: 68,
   },
   userName: {
     fontSize: 20,

@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -40,9 +41,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <StatusBar style="dark" backgroundColor={THEME.colors.background} />
+        <StatusBar style="light" backgroundColor={THEME.colors.background} />
 
-        {/* If a Lesson is active, show the DEDICATED FULL-SCREEN INDIVIDUAL LESSON PAGE (Hides bottom tabs!) */}
+        {/* Dedicated Full-Screen Lesson Player (Hides tabs when learning) */}
         {currentLesson ? (
           <LessonPlayerScreen
             lesson={currentLesson}
@@ -51,7 +52,7 @@ export default function App() {
           />
         ) : (
           <>
-            {/* Main Tabs Screen Container */}
+            {/* Screen Container */}
             <View style={styles.screenContainer}>
               {activeTab === 'learn' && (
                 <CurriculumScreen
@@ -66,7 +67,7 @@ export default function App() {
               {activeTab === 'profile' && <ProfileScreen />}
             </View>
 
-            {/* Supernova 6-Tab Navigation Bar */}
+            {/* Official Supernova Bottom Navigation Bar */}
             <View style={styles.bottomNav}>
               <TouchableOpacity
                 style={styles.navItem}
@@ -76,10 +77,10 @@ export default function App() {
                 <MaterialCommunityIcons
                   name={activeTab === 'learn' ? 'compass' : 'compass-outline'}
                   size={24}
-                  color={activeTab === 'learn' ? THEME.colors.secondary : THEME.colors.textMuted}
+                  color={activeTab === 'learn' ? THEME.colors.primary : THEME.colors.textMuted}
                 />
                 <Text style={[styles.navText, activeTab === 'learn' && styles.navTextActive]}>
-                  Learn
+                  Course
                 </Text>
               </TouchableOpacity>
 
@@ -89,9 +90,9 @@ export default function App() {
                 activeOpacity={0.7}
               >
                 <View style={[styles.callTabCircle, activeTab === 'call' && styles.callTabCircleActive]}>
-                  <Ionicons name="mic" size={18} color="#1E1B4B" />
+                  <Ionicons name="mic" size={18} color="#FFFFFF" />
                 </View>
-                <Text style={[styles.navText, activeTab === 'call' && styles.navTextActiveGold]}>
+                <Text style={[styles.navText, activeTab === 'call' && styles.navTextActivePurple]}>
                   Nova Call
                 </Text>
               </TouchableOpacity>
@@ -102,7 +103,7 @@ export default function App() {
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
-                  name={activeTab === 'grammar' ? 'lightning-bolt' : 'lightning-bolt-outline'}
+                  name={activeTab === 'grammar' ? 'chat-question' : 'chat-question-outline'}
                   size={24}
                   color={activeTab === 'grammar' ? THEME.colors.gold : THEME.colors.textMuted}
                 />
@@ -149,7 +150,7 @@ export default function App() {
                 <Ionicons
                   name={activeTab === 'profile' ? 'person' : 'person-outline'}
                   size={22}
-                  color={activeTab === 'profile' ? THEME.colors.secondary : THEME.colors.textMuted}
+                  color={activeTab === 'profile' ? THEME.colors.primary : THEME.colors.textMuted}
                 />
                 <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
                   Profile
@@ -178,11 +179,6 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.border,
     paddingVertical: 8,
     paddingBottom: Platform.OS === 'ios' ? 18 : 8,
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
   },
   navItem: {
     flex: 1,
@@ -201,6 +197,7 @@ const styles = StyleSheet.create({
   },
   callTabCircleActive: {
     transform: [{ scale: 1.08 }],
+    backgroundColor: THEME.colors.primaryHover,
   },
   navText: {
     fontSize: 10,
@@ -209,11 +206,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   navTextActive: {
-    color: THEME.colors.secondary,
+    color: THEME.colors.primary,
+    fontWeight: '800',
+  },
+  navTextActivePurple: {
+    color: THEME.colors.primaryGlow,
     fontWeight: '800',
   },
   navTextActiveGold: {
-    color: THEME.colors.goldBorder,
+    color: THEME.colors.gold,
     fontWeight: '800',
   },
   navTextActiveAccent: {
