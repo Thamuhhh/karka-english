@@ -24,7 +24,7 @@ export function isGeminiConfigured(): boolean {
 }
 
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
-const MODEL_COOLDOWN_MS = 180_000;
+const MODEL_COOLDOWN_MS = 60_000;
 const modelCooldownUntil: Record<string, number> = {};
 let lastGeminiError: string | null = null;
 
@@ -95,11 +95,14 @@ async function tryEndpointProvider(
   buildEndpoint: EndpointBuilder
 ): Promise<ProviderAttemptResult> {
   const modelErrors: string[] = [];
+  let hadTimeout = false;
 
   for (const model of getOrderedModels()) {
     const endpoint = buildEndpoint(model);
+    // Avoid chaining multiple full-length waits if a request has already stalled on this turn
+    const perModelTimeout = hadTimeout ? Math.min(timeoutMs, 15000) : timeoutMs;
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    const timer = controller ? setTimeout(() => controller.abort(), perModelTimeout) : null;
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -151,15 +154,18 @@ async function tryEndpointProvider(
     } catch (e: any) {
       const isTimeout = e?.name === 'AbortError';
       if (isTimeout) {
-        modelCooldownUntil[model] = Date.now() + MODEL_COOLDOWN_MS;
+        hadTimeout = true;
       }
       const catchMsg = isTimeout
-        ? `Timed out after ${Math.round(timeoutMs / 1000)}s`
+        ? `Timed out after ${Math.round(perModelTimeout / 1000)}s`
         : typeof e?.message === 'string'
           ? e.message
           : 'Network request failed';
       modelErrors.push(`${model}: ${catchMsg}`);
       console.warn('Gemini request error:', model, catchMsg);
+      if (hadTimeout && modelErrors.length >= 2) {
+        break;
+      }
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -175,7 +181,7 @@ async function tryEndpointProvider(
 async function callGeminiWithTimeout(
   apiKey: string,
   payload: Record<string, any>,
-  timeoutMs = 10000
+  timeoutMs = 15000
 ): Promise<any | null> {
   lastGeminiError = null;
 
@@ -280,7 +286,7 @@ Respond ONLY with valid JSON without markdown backticks:
     const json = await callGeminiWithTimeout(activeKey, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 320,
+        maxOutputTokens: 512,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingLevel: 'LOW' },
       },
@@ -590,7 +596,7 @@ Respond ONLY with valid JSON:
   const json = await callGeminiWithTimeout(activeKey, {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
-      maxOutputTokens: 320,
+      maxOutputTokens: 512,
       responseMimeType: 'application/json',
       thinkingConfig: { thinkingLevel: 'LOW' },
     },
@@ -920,12 +926,12 @@ Return JSON only (<=12 words for tips/explanations, 1-2 short spoken sentences +
         },
       ],
       generationConfig: {
-        maxOutputTokens: 340,
+        maxOutputTokens: 512,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingLevel: 'LOW' },
       },
     },
-    14000
+    25000
   );
 
   const rawText = extractCandidateText(json);
