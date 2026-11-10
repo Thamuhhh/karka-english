@@ -90,6 +90,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
       (cls) => !completedClasses.includes(cls.id)
     )?.id || null;
+  const stickyUnitIndices = SUPERNOVA_LEVELS.map((_, idx) => idx * 2);
 
   // Precompute global sequential lesson number for each class ID
   const lessonNumberMap: Record<string, number> = {};
@@ -123,13 +124,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           pointerEvents="none"
         />
 
-        {/* Clean Obsidian Architectural Course Timeline */}
+        {/* Clean Obsidian Architectural Course Timeline with Sticky Unit Headers */}
         <ScrollView
           style={styles.courseScroll}
           contentContainerStyle={styles.courseContent}
+          stickyHeaderIndices={stickyUnitIndices}
           showsVerticalScrollIndicator={false}
         >
-        {SUPERNOVA_LEVELS.map((level, levelIdx) => {
+        {SUPERNOVA_LEVELS.flatMap((level) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -139,13 +141,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           const lastClass = level.classes[level.classes.length - 1];
           const isUnitCompleted = completedInLevel === level.classes.length;
 
-          return (
-            <View
-              key={level.levelNumber}
-              style={[styles.unitSection, levelIdx > 0 && styles.unitSectionSpaced]}
-            >
-              {/* Pure Editorial Typographic Chapter Break (Zero Boxes) */}
-              <View style={styles.unitEditorialHeader}>
+          return [
+            /* Sticky Editorial Unit Header (Pins below Top Nav while in unit) */
+            <View key={`hdr-${level.levelNumber}`} style={styles.stickyUnitHeader}>
+              <View style={styles.stickyUnitHeaderInner}>
                 <View style={styles.unitEditorialMetaRow}>
                   <View style={styles.unitEyebrowGroup}>
                     <View
@@ -163,11 +162,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   </Text>
                 </View>
 
-                <Text style={styles.unitEditorialTitle}>
+                <Text style={styles.unitEditorialTitle} numberOfLines={1}>
                   {formatShortUnitTitle(level.levelName)}
-                </Text>
-                <Text style={styles.unitEditorialDesc} numberOfLines={2}>
-                  {level.description}
                 </Text>
 
                 <View style={styles.unitHairlineTrack}>
@@ -184,6 +180,13 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   )}
                 </View>
               </View>
+            </View>,
+
+            /* Unit Open Zig-Zag Map Section */
+            <View key={`map-${level.levelNumber}`} style={styles.unitMapSection}>
+              <Text style={styles.unitEditorialDesc} numberOfLines={2}>
+                {level.description}
+              </Text>
 
               {/* Open Winding Obsidian SVG Zig-Zag Progression Path */}
               <View
@@ -383,11 +386,11 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   );
                 })()}
               </View>
-            </View>
-          );
+            </View>,
+          ];
         })}
 
-        <View style={{ height: 32 }} />
+        <View key="map-bottom-spacer" style={{ height: 32 }} />
         </ScrollView>
       </View>
 
@@ -595,28 +598,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   courseContent: {
-    paddingHorizontal: 18,
-    paddingTop: 20,
     paddingBottom: 24,
+    width: '100%',
+  },
+  stickyUnitHeader: {
+    width: '100%',
+    backgroundColor: 'rgba(14, 14, 20, 0.94)',
+    zIndex: 10,
+  },
+  stickyUnitHeaderInner: {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  unitSection: {
-    marginBottom: 24,
-  },
-  unitSectionSpaced: {
-    marginTop: 14,
-  },
-  unitEditorialHeader: {
-    paddingHorizontal: 4,
-    marginBottom: 6,
+  unitMapSection: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 26,
   },
   unitEditorialMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   unitEyebrowGroup: {
     flexDirection: 'row',
@@ -646,17 +656,18 @@ const styles = StyleSheet.create({
   },
   unitEditorialTitle: {
     fontFamily: THEME.fonts.bold,
-    fontSize: 20,
+    fontSize: 18.5,
     color: '#FFFFFF',
-    lineHeight: 26,
+    lineHeight: 24,
+    marginBottom: 9,
   },
   unitEditorialDesc: {
     fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     lineHeight: 17,
-    marginTop: 3,
-    marginBottom: 11,
+    paddingHorizontal: 2,
+    marginBottom: 4,
   },
   unitHairlineTrack: {
     width: '100%',
