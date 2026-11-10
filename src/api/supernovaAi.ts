@@ -729,7 +729,7 @@ export function generateLocalScenarioReply(
     if (lower.includes('busy') || lower.includes('tired') || lower.includes('good') || lower.includes('productive')) {
       return 'Sounds like quite a day! Want to unwind a bit and grab some iced coffee later this evening?';
     }
-    return "No way, seriously?! Tell me more—how did everyone else react?";
+    return "Nice! Tell me a bit more about that—what has been keeping you busy lately?";
   }
 
   return "Got it! That sounds well explained. What would you like to practice saying next?";

@@ -58,9 +58,9 @@ const SCENARIO_PROMPTS: Record<string, string[]> = {
     'I will sync with QA right after standup.',
   ],
   'casual-hangout': [
-    'My day was good! Let us order pepperoni pizza.',
-    'I am down to watch a movie tonight.',
-    'Let us grab iced coffee on the way home.',
+    'My day is going well! I just finished some work.',
+    'I am thinking of relaxing and watching a movie tonight.',
+    'Can we talk about daily routines or weekend plans?',
   ],
 };
 
@@ -366,7 +366,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   };
 
   const currentQuickPrompts =
-    SCENARIO_PROMPTS[activeScenario.id] || SCENARIO_PROMPTS['interview-tech'];
+    SCENARIO_PROMPTS[activeScenario.id] || SCENARIO_PROMPTS['casual-hangout'];
   const latestAiText =
     [...messages].reverse().find((m) => m.role === 'assistant')?.content ||
     activeScenario.initialMessage;
