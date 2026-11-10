@@ -232,7 +232,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const transitionAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const coachBobAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -256,15 +256,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     return () => bobLoop.stop();
   }, [coachBobAnim]);
 
-  const animateTransition = () => {
-    transitionAnim.setValue(0.35);
-    Animated.timing(transitionAnim, {
-      toValue: 1,
-      duration: 210,
+  useEffect(() => {
+    slideAnim.setValue(8);
+    const anim = Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 180,
       easing: Easing.out(Easing.quad),
       useNativeDriver: USE_NATIVE_DRIVER,
-    }).start();
-  };
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [mode, signupStep, slideAnim]);
 
   const switchMode = (nextMode: AuthMode) => {
     setErrorMsg(null);
@@ -274,7 +276,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
       setSignupStep(0);
     }
     setMode(nextMode);
-    animateTransition();
   };
 
   const completeAuth = async (user: AuthUser) => {
@@ -313,7 +314,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     setFocusedField(null);
     if (signupStep > 0) {
       setSignupStep((prev) => (prev - 1) as SignupStep);
-      animateTransition();
     } else {
       switchMode('welcome');
     }
@@ -328,14 +328,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
       }
       playSoundEffect('button');
       setSignupStep(1);
-      animateTransition();
       return;
     }
 
     if (signupStep === 1) {
       playSoundEffect('button');
       setSignupStep(2);
-      animateTransition();
       return;
     }
 
@@ -347,7 +345,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
       setFocusedField(null);
       playSoundEffect('button');
       setSignupStep(3);
-      animateTransition();
       return;
     }
 
@@ -403,15 +400,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   };
 
   const renderAnimatedViewStyle = {
-    opacity: transitionAnim,
-    transform: [
-      {
-        translateY: transitionAnim.interpolate({
-          inputRange: [0.35, 1],
-          outputRange: [8, 0],
-        }),
-      },
-    ],
+    transform: [{ translateY: slideAnim }],
   };
 
   const coachBobY = coachBobAnim.interpolate({
@@ -1564,8 +1553,8 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   choiceRowSelected: {
-    backgroundColor: '#231C42',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#261E47',
+    borderColor: '#A78BFA',
     borderBottomColor: THEME.colors.primaryBorder,
   },
   choiceIconBadge: {
