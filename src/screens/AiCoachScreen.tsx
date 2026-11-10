@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
@@ -17,6 +16,7 @@ import { SCENARIOS } from '../constants/scenarios';
 import { sendChatMessage } from '../api/supernovaAi';
 import { speakText, stopAllAudio } from '../services/ttsService';
 import { incrementMetric } from '../services/storageService';
+import { AnimatedChatBubble, TypingDots, TypewriterText } from '../components/ChatAnimations';
 
 interface AiCoachProps {
   initialScenarioId?: string;
@@ -32,11 +32,13 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
+  const [animatedBotMsgId, setAnimatedBotMsgId] = useState<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Initialize scenario chat
   useEffect(() => {
+    setAnimatedBotMsgId(null);
     setMessages([
       {
         id: 'msg-init',
@@ -80,6 +82,7 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
         timestamp: Date.now(),
       };
 
+      setAnimatedBotMsgId(botMsg.id);
       setMessages([...newHistory, botMsg]);
       // Automatically play assistant audio immediately without waiting for AsyncStorage
       speakAssistantMessage(botMsg.id, reply);
@@ -162,9 +165,16 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
           const isFeedbackOpen = expandedFeedbackId === msg.id;
 
           return (
-            <View key={msg.id} style={[styles.msgWrapper, isUser ? styles.msgWrapperUser : styles.msgWrapperBot]}>
+            <AnimatedChatBubble
+              key={msg.id}
+              style={[styles.msgWrapper, isUser ? styles.msgWrapperUser : styles.msgWrapperBot]}
+            >
               <View style={[styles.msgBubble, isUser ? styles.userBubble : styles.botBubble]}>
-                <Text style={styles.msgText}>{msg.content}</Text>
+                <TypewriterText
+                  text={msg.content}
+                  animate={!isUser && msg.id === animatedBotMsgId}
+                  style={styles.msgText}
+                />
 
                 {/* Assistant Audio Button */}
                 {!isUser && (
@@ -242,17 +252,20 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
                   )}
                 </View>
               )}
-            </View>
+            </AnimatedChatBubble>
           );
         })}
 
         {isLoading && (
-          <View style={[styles.msgWrapper, styles.msgWrapperBot]}>
+          <AnimatedChatBubble style={[styles.msgWrapper, styles.msgWrapperBot]}>
             <View style={[styles.msgBubble, styles.botBubble, styles.loadingBubble]}>
-              <ActivityIndicator size="small" color={THEME.colors.primaryGlow} />
-              <Text style={styles.loadingText}>Nila is thinking...</Text>
+              <TypingDots
+                color={THEME.colors.primaryGlow}
+                label="Nila is typing..."
+                labelStyle={styles.loadingText}
+              />
             </View>
-          </View>
+          </AnimatedChatBubble>
         )}
       </ScrollView>
 

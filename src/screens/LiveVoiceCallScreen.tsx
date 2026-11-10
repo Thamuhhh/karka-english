@@ -20,6 +20,7 @@ import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { playSoundEffect } from '../services/soundEffectsService';
 import { speakText, stopAllAudio, warmupVoices } from '../services/ttsService';
+import { AnimatedChatBubble, TypingDots, TypewriterText } from '../components/ChatAnimations';
 import {
   beginAudioCapture,
   finishAudioCapture,
@@ -76,6 +77,8 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const [isSendingText, setIsSendingText] = useState(false);
+  const [animatedBotMsgId, setAnimatedBotMsgId] = useState<string | null>(null);
   const [userTranscript, setUserTranscript] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -202,6 +205,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     playSoundEffect('button');
     setActiveScenarioIdx(idx);
     setShowScenarios(false);
+    setAnimatedBotMsgId(null);
     setLastFeedback(null);
     setCallDuration(0);
     const introMsg: ChatMessage = {
@@ -216,11 +220,12 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
   const handleSendSpokenText = async (textToSend?: string) => {
     const text = (textToSend ?? userTranscript).trim();
-    if (!text) return;
+    if (!text || isSendingText || isProcessingAudio) return;
 
     if (!isCalling) setIsCalling(true);
     setUserTranscript('');
     stopAllAudio();
+    setIsAiSpeaking(false);
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -231,7 +236,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
     const newHistory = [...messages, userMsg];
     setMessages(newHistory);
-    setIsAiSpeaking(true);
+    setIsSendingText(true);
 
     try {
       const { reply, feedback } = await sendChatMessage(newHistory, text, activeScenario);
@@ -244,6 +249,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
         timestamp: Date.now(),
       };
 
+      setAnimatedBotMsgId(botMsg.id);
       setMessages([...newHistory, botMsg]);
       speakAiMessage(reply);
       await addXp(10);
@@ -252,6 +258,8 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     } catch (e) {
       console.warn('Call error:', e);
       setIsAiSpeaking(false);
+    } finally {
+      setIsSendingText(false);
     }
   };
 
@@ -325,6 +333,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
         timestamp: Date.now(),
       };
 
+      setAnimatedBotMsgId(botMsg.id);
       setLastFeedback(result.feedback);
       setMessages((prev) => [...prev, userMsg, botMsg]);
       speakAiMessage(result.reply);
@@ -365,11 +374,11 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     }
   };
 
+  const isAwaitingReply = isProcessingAudio || isSendingText;
   const currentQuickPrompts =
     SCENARIO_PROMPTS[activeScenario.id] || SCENARIO_PROMPTS['casual-hangout'];
-  const latestAiText =
-    [...messages].reverse().find((m) => m.role === 'assistant')?.content ||
-    activeScenario.initialMessage;
+  const latestAiMsg = [...messages].reverse().find((m) => m.role === 'assistant');
+  const latestAiText = latestAiMsg?.content || activeScenario.initialMessage;
   const hasTyped = userTranscript.trim().length > 0;
 
   return (
@@ -477,16 +486,27 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           {messages.map((msg) => {
             const isUser = msg.role === 'user';
             return (
-              <View
+              <AnimatedChatBubble
                 key={msg.id}
                 style={[styles.chatRow, isUser ? styles.chatRowUser : styles.chatRowBot]}
               >
                 <View style={[styles.chatBubble, isUser ? styles.chatBubbleUser : styles.chatBubbleBot]}>
-                  <Text style={styles.chatBubbleText}>{msg.content}</Text>
+                  <TypewriterText
+                    text={msg.content}
+                    animate={!isUser && msg.id === animatedBotMsgId}
+                    style={styles.chatBubbleText}
+                  />
                 </View>
-              </View>
+              </AnimatedChatBubble>
             );
           })}
+          {isAwaitingReply && (
+            <AnimatedChatBubble style={[styles.chatRow, styles.chatRowBot]}>
+              <View style={[styles.chatBubble, styles.chatBubbleBot]}>
+                <TypingDots color="#C4B5FD" />
+              </View>
+            </AnimatedChatBubble>
+          )}
         </ScrollView>
       ) : (
         <ScrollView
@@ -569,6 +589,8 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
                   ? 'Audio muted'
                   : isProcessingAudio
                   ? 'Checking pronunciation & reply...'
+                  : isSendingText
+                  ? 'Nila is typing...'
                   : isUserSpeaking
                   ? 'Listening... Tap mic to send'
                   : isAiSpeaking
@@ -586,7 +608,17 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
           {/* Open Spoken Dialogue Quote (Zero Box Border) */}
           <View style={styles.quoteBlock}>
-            <Text style={styles.quoteText}>"{latestAiText}"</Text>
+            {isAwaitingReply ? (
+              <TypingDots color={THEME.colors.primaryGlow} label="Nila is replying..." />
+            ) : (
+              <TypewriterText
+                text={latestAiText}
+                animate={latestAiMsg?.id === animatedBotMsgId}
+                prefix='"'
+                suffix='"'
+                style={styles.quoteText}
+              />
+            )}
             <TouchableOpacity
               style={styles.replayChip}
               onPress={() => speakAiMessage(latestAiText)}
@@ -685,21 +717,29 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
         />
 
         {hasTyped ? (
-          <TouchableOpacity onPress={() => handleSendSpokenText()} activeOpacity={0.85}>
+          <TouchableOpacity
+            onPress={() => handleSendSpokenText()}
+            activeOpacity={0.85}
+            disabled={isAwaitingReply}
+          >
             <LinearGradient
               colors={THEME.gradients.primary}
               style={styles.actionCircleBtn}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+              {isAwaitingReply ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+              )}
             </LinearGradient>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[styles.micCircleBtn, isUserSpeaking && styles.micCircleBtnListening]}
             activeOpacity={0.82}
-            disabled={isProcessingAudio}
+            disabled={isAwaitingReply}
             onPress={handleMicToggle}
           >
             {isProcessingAudio ? (

@@ -34,6 +34,7 @@ import {
   TranslationEvalResult,
 } from '../api/supernovaAi';
 import { playSoundEffect } from '../services/soundEffectsService';
+import { AnimatedChatBubble, TypingDots, TypewriterText } from '../components/ChatAnimations';
 
 interface LessonPlayerProps {
   lesson: SupernovaClass;
@@ -167,6 +168,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   ]);
   const [replyDraft, setReplyDraft] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const [animatedBotMsgId, setAnimatedBotMsgId] = useState<string | null>(null);
   const [isRecordingTalk, setIsRecordingTalk] = useState(false);
   const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
   const talkRecordingRef = useRef<Audio.Recording | null>(null);
@@ -378,6 +380,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         content: reply,
         timestamp: Date.now(),
       };
+      setAnimatedBotMsgId(nilaMsgId);
       setRealTalkMessages((prev) => [...prev, nilaMsg]);
       if (!feedback.hasErrors) {
         playSoundEffect('success');
@@ -471,6 +474,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
       if (result.feedback.fluencyScore >= 70) {
         setChecksCorrect((prev) => prev + 1);
       }
+      setAnimatedBotMsgId(nilaMsgId);
       setRealTalkMessages((prev) => [...prev, userMsg, nilaMsg]);
       if (!result.feedback.hasErrors) {
         playSoundEffect('success');
@@ -1010,7 +1014,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               {realTalkMessages.map((msg) => {
                 const isNila = msg.role === 'assistant';
                 return (
-                  <View
+                  <AnimatedChatBubble
                     key={msg.id}
                     style={[styles.chatRow, isNila ? styles.chatRowLeft : styles.chatRowRight]}
                   >
@@ -1026,7 +1030,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         isNila ? styles.nilaBubble : styles.userBubble,
                       ]}
                     >
-                      <Text style={styles.chatBubbleText}>{msg.content}</Text>
+                      <TypewriterText
+                        text={msg.content}
+                        animate={isNila && msg.id === animatedBotMsgId}
+                        style={styles.chatBubbleText}
+                      />
                       {isNila && (
                         <TouchableOpacity
                           onPress={() => handlePlayVoice(msg.content, msg.id)}
@@ -1044,19 +1052,23 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         </TouchableOpacity>
                       )}
                     </View>
-                  </View>
+                  </AnimatedChatBubble>
                 );
               })}
 
               {isReplying && (
-                <View style={[styles.chatRow, styles.chatRowLeft]}>
+                <AnimatedChatBubble style={[styles.chatRow, styles.chatRowLeft]}>
                   <View style={styles.chatAvatarSmall}>
                     <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.chatAvatarImg} />
                   </View>
                   <View style={[styles.chatBubble, styles.nilaBubble]}>
-                    <Text style={styles.typingText}>Nila is replying...</Text>
+                    <TypingDots
+                      color="#C4B5FD"
+                      label="Nila is typing..."
+                      labelStyle={styles.typingText}
+                    />
                   </View>
-                </View>
+                </AnimatedChatBubble>
               )}
             </View>
 
