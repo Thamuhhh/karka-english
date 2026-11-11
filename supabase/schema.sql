@@ -9,6 +9,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default 'Elvate Learner',
   avatar_color text not null default '#7F43FE',
+  avatar_id text default 'lion',
   preferred_accent text not null default 'en-US'
     check (preferred_accent in ('en-US', 'en-GB', 'en-AU')),
   speech_rate numeric(3, 2) not null default 0.95
@@ -67,6 +68,7 @@ create table if not exists public.leaderboard_entries (
   display_name text not null default 'Elvate Learner',
   avatar_initials text not null default 'KL',
   avatar_color text not null default '#7F43FE',
+  avatar_id text default 'lion',
   stardust_xp integer not null default 120 check (stardust_xp >= 0),
   streak_days integer not null default 1 check (streak_days >= 0),
   cosmic_rank text not null default 'Bronze League',
@@ -281,3 +283,7 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function private.handle_new_user();
+
+-- Backward-compatible columns for avatar pack
+alter table public.profiles add column if not exists avatar_id text default 'lion';
+alter table public.leaderboard_entries add column if not exists avatar_id text default 'lion';

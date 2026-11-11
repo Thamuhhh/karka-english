@@ -56,3 +56,4 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.04 }],
   },
 });
+

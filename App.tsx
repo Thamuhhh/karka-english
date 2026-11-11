@@ -44,6 +44,8 @@ import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { isLessonUnlocked, SupernovaClass } from './src/constants/curriculum';
 import { AuthUser, UserStats } from './src/types';
+import { AvatarPickerModal } from './src/components/AvatarPickerModal';
+import { AvatarPackId } from './src/constants/avatarPack';
 import {
   createDefaultStats,
   hydrateAppPreferences,
@@ -54,6 +56,7 @@ import {
   refillHeartsWithGems,
   loadAuthUser,
   signOutAuthUser,
+  updateAuthUserAvatar,
 } from './src/services/storageService';
 import {
   completeAuthSessionFromUrl,
@@ -110,6 +113,7 @@ function AppContent() {
   const [speakTopColor, setSpeakTopColor] = useState('#1E143A');
   const [lessonTopColor, setLessonTopColor] = useState('#1B1535');
   const [authInitialError, setAuthInitialError] = useState<string | null>(null);
+  const [showOnboardingAvatarPicker, setShowOnboardingAvatarPicker] = useState(false);
   const activeAuthKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -162,6 +166,9 @@ function AppContent() {
           setAuthInitialError(null);
           setStats(cloudStats);
           setAuthUser(verifiedUser);
+          if (!verifiedUser.avatarId) {
+            setShowOnboardingAvatarPicker(true);
+          }
         } else {
           if (loadedAuth) {
             await signOutAuthUser();
@@ -262,6 +269,21 @@ function AppContent() {
     const latestStats = await loadUserStats();
     setStats(latestStats);
     setAuthUser(user);
+    if (!user.avatarId) {
+      setShowOnboardingAvatarPicker(true);
+    } else {
+      setActiveTab('learn');
+    }
+  };
+
+  const handleOnboardingAvatarSelect = async (avatarId: AvatarPackId) => {
+    const updated = await updateAuthUserAvatar(avatarId);
+    if (updated) {
+      setAuthUser(updated);
+    } else if (authUser) {
+      setAuthUser({ ...authUser, avatarId });
+    }
+    setShowOnboardingAvatarPicker(false);
     setActiveTab('learn');
   };
 
@@ -393,6 +415,7 @@ function AppContent() {
                 authUser={authUser}
                 onStatsUpdate={setStats}
                 onSignOut={handleSignOut}
+                onAuthUserUpdate={setAuthUser}
               />
             )}
           </View>
@@ -452,6 +475,14 @@ function AppContent() {
             </View>
           </>
         )}
+
+      {/* Post-Login Avatar Selection Onboarding */}
+      <AvatarPickerModal
+        visible={showOnboardingAvatarPicker}
+        currentAvatarId={authUser?.avatarId}
+        onSelectAvatar={handleOnboardingAvatarSelect}
+        isOnboarding={true}
+      />
 
       {/* Custom Animated Launch Splash Screen */}
       {splashVisible && (

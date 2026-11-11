@@ -1,3 +1,9 @@
+// Stub image asset loading in Node.js test environment
+if (typeof require !== 'undefined' && require.extensions) {
+  require.extensions['.png'] = () => ({});
+  require.extensions['.jpg'] = () => ({});
+}
+
 import {
   getNextUnlockedClassId,
   isLessonUnlocked,
@@ -163,7 +169,40 @@ for (const word of STARTER_VOCABULARY) {
 }
 
 // ---------------------------------------------------------------
-// 6. Active Q&A Translation & Real Talk Lesson Engine
+// 6. Avatar Profile Pack Verification (8 Animal Characters)
+// ---------------------------------------------------------------
+const {
+  AVATAR_PACK_ITEMS,
+  getAvatarPackItem,
+  isValidAvatarId,
+  DEFAULT_AVATAR_ID,
+} = require('../src/constants/avatarPack');
+
+assertEqual(AVATAR_PACK_ITEMS.length, 8, 'Expected exactly 8 avatar pack characters');
+const expectedAvatarIds = ['lion', 'panda', 'shiba', 'owl', 'kitten', 'penguin', 'redpanda', 'husky'];
+for (const id of expectedAvatarIds) {
+  assert(isValidAvatarId(id), `Expected avatar ${id} to be valid`);
+  const item = getAvatarPackItem(id);
+  assertEqual(item.id, id, `Mismatch in avatar id for ${id}`);
+  assert(item.name.trim().length > 0, `Avatar ${id} missing name`);
+  assert(item.tamilName.trim().length > 0, `Avatar ${id} missing tamilName`);
+  assert(item.accentColor.startsWith('#'), `Avatar ${id} invalid accentColor`);
+}
+assertEqual(DEFAULT_AVATAR_ID, 'lion', 'Default avatar should be lion');
+assertEqual(getAvatarPackItem('unknown-id').id, 'lion', 'Fallback avatar should be lion');
+
+const userWithAvatar = getRankedLeaderboard(makeMockStats(), {
+  name: 'Vimal',
+  email: 'vimal@example.com',
+  provider: 'email',
+  createdAt: '2026-11-10',
+  avatarId: 'panda',
+});
+const meUser = userWithAvatar.find((u) => u.isCurrentUser);
+assertEqual(meUser?.avatarId, 'panda', 'Leaderboard entry must preserve chosen avatarId');
+
+// ---------------------------------------------------------------
+// 7. Active Q&A Translation & Real Talk Lesson Engine
 // ---------------------------------------------------------------
 async function runAsyncChecks() {
   const firstClass = SUPERNOVA_LEVELS[0].classes[0];

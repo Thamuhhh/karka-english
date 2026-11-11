@@ -73,6 +73,7 @@ export interface LeaderboardEntry {
   xp: number;
   streak: number;
   isCurrentUser?: boolean;
+  avatarId?: string;
 }
 
 export interface AuthUser {
@@ -83,4 +84,5 @@ export interface AuthUser {
   createdAt: string;
   isCloudSession?: boolean;
   isAnonymous?: boolean;
+  avatarId?: string;
 }

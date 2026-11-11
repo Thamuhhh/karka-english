@@ -11,6 +11,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { getAvatarSource } from '../constants/avatarPack';
 import { AuthUser, LeaderboardEntry, UserStats } from '../types';
 import {
   getRankedLeaderboard,
@@ -30,12 +31,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   onBack,
 }) => {
   const [rankedUsers, setRankedUsers] = useState<LeaderboardEntry[]>(() =>
-    getRankedLeaderboard(stats)
+    getRankedLeaderboard(stats, authUser)
   );
 
   useEffect(() => {
     let cancelled = false;
-    setRankedUsers(getRankedLeaderboard(stats));
+    setRankedUsers(getRankedLeaderboard(stats, authUser));
 
     if (authUser?.isCloudSession) {
       fetchCloudLeaderboard(stats, authUser).then((cloudEntries) => {
@@ -122,7 +123,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 top3[1].isCurrentUser && styles.podiumYouRing,
               ]}
             >
-              <Text style={styles.podiumInitials}>{top3[1].initials}</Text>
+              {top3[1].avatarId ? (
+                <Image
+                  source={getAvatarSource(top3[1].avatarId)}
+                  style={styles.podiumAvatarImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.podiumInitials}>{top3[1].initials}</Text>
+              )}
               <View style={[styles.podiumBadge, { backgroundColor: '#94A3B8' }]}>
                 <Text style={styles.podiumRankText}>2</Text>
               </View>
@@ -144,7 +153,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 top3[0].isCurrentUser && styles.podiumYouRing,
               ]}
             >
-              <Text style={styles.podiumInitialsGold}>{top3[0].initials}</Text>
+              {top3[0].avatarId ? (
+                <Image
+                  source={getAvatarSource(top3[0].avatarId)}
+                  style={styles.podiumAvatarImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.podiumInitialsGold}>{top3[0].initials}</Text>
+              )}
               <View style={[styles.podiumBadge, { backgroundColor: THEME.colors.gold }]}>
                 <Text style={styles.podiumRankText}>1</Text>
               </View>
@@ -164,7 +181,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 top3[2].isCurrentUser && styles.podiumYouRing,
               ]}
             >
-              <Text style={styles.podiumInitials}>{top3[2].initials}</Text>
+              {top3[2].avatarId ? (
+                <Image
+                  source={getAvatarSource(top3[2].avatarId)}
+                  style={styles.podiumAvatarImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.podiumInitials}>{top3[2].initials}</Text>
+              )}
               <View style={[styles.podiumBadge, { backgroundColor: '#B45309' }]}>
                 <Text style={styles.podiumRankText}>3</Text>
               </View>
@@ -202,7 +227,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 { backgroundColor: user.color + '28', borderColor: user.color },
               ]}
             >
-              <Text style={[styles.rankInitials, { color: user.color }]}>{user.initials}</Text>
+              {user.avatarId ? (
+                <Image
+                  source={getAvatarSource(user.avatarId)}
+                  style={styles.rankAvatarImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={[styles.rankInitials, { color: user.color }]}>{user.initials}</Text>
+              )}
             </View>
 
             <View style={{ flex: 1, marginLeft: 12 }}>
@@ -365,6 +398,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: THEME.colors.border,
   },
+  podiumAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
   podiumAvatarGold: {
     width: 60,
     height: 60,
@@ -475,6 +513,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
+  },
+  rankAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 17,
   },
   rankInitials: {
     fontFamily: THEME.fonts.bold,

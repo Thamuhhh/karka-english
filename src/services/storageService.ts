@@ -310,6 +310,10 @@ export async function hydrateUserCloudSession(authUser: AuthUser): Promise<UserS
     setSpeechRate(cloudData.speechRate);
     await AsyncStorage.setItem(KEYS.SPEECH_RATE, String(cloudData.speechRate)).catch(() => {});
   }
+  if (cloudData.avatarId && !authUser.avatarId) {
+    authUser.avatarId = cloudData.avatarId;
+    await saveAuthUser(authUser);
+  }
 
   const effectiveVocabSource = isSwitchingAccounts ? STARTER_VOCABULARY : localVocab;
   const mergedVocab = mergeVocabulary(
@@ -598,6 +602,7 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
         createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : new Date().toISOString(),
         isCloudSession: Boolean(parsed.isCloudSession),
         isAnonymous: Boolean(parsed.isAnonymous),
+        avatarId: typeof parsed.avatarId === 'string' && parsed.avatarId ? parsed.avatarId : undefined,
       };
     }
     return null;
@@ -612,6 +617,26 @@ export async function saveAuthUser(user: AuthUser): Promise<void> {
     await AsyncStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
   } catch (e) {
     console.warn('Failed to save auth user:', e);
+  }
+}
+
+export async function updateAuthUserAvatar(avatarId: string): Promise<AuthUser | null> {
+  try {
+    const current = await loadAuthUser();
+    if (!current) return null;
+    const updated: AuthUser = {
+      ...current,
+      avatarId,
+    };
+    await saveAuthUser(updated);
+    if (current.isCloudSession && current.id) {
+      const stats = await loadUserStats();
+      void pushProgressAndLeaderboard(updated, stats);
+    }
+    return updated;
+  } catch (e) {
+    console.warn('Failed to update user avatar:', e);
+    return null;
   }
 }
 

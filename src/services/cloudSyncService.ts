@@ -20,11 +20,13 @@ export interface CloudUserBundle {
   accent?: EnglishAccent;
   speechRate?: number;
   profileName?: string;
+  avatarId?: string;
 }
 
 interface ProfileRow {
   display_name: string | null;
   avatar_color: string | null;
+  avatar_id: string | null;
   preferred_accent: string | null;
   speech_rate: number | string | null;
   daily_goal_xp: number | null;
@@ -69,6 +71,7 @@ interface LeaderboardRow {
   display_name: string;
   avatar_initials: string;
   avatar_color: string;
+  avatar_id?: string | null;
   stardust_xp: number;
   streak_days: number;
   cosmic_rank: string;
@@ -181,6 +184,7 @@ export async function ensureCloudProvisioned(
           id: userId,
           display_name: displayName,
           avatar_color: avatarColor,
+          avatar_id: authUser.avatarId || 'lion',
           preferred_accent: prefs.accent,
           speech_rate: prefs.speechRate,
           daily_goal_xp: seedStats.dailyGoalXp,
@@ -200,6 +204,7 @@ export async function ensureCloudProvisioned(
           display_name: displayName,
           avatar_initials: avatarInitials,
           avatar_color: avatarColor,
+          avatar_id: authUser.avatarId || 'lion',
           stardust_xp: seedStats.stardustXp,
           streak_days: seedStats.streakDays,
           cosmic_rank: computeLeagueRankName(seedStats.stardustXp),
@@ -219,7 +224,7 @@ export async function pullCloudUserData(authUser: AuthUser): Promise<CloudUserBu
     const [profileRes, progressRes, vocabRes] = await Promise.all([
       supabase
         .from('profiles')
-        .select('display_name, avatar_color, preferred_accent, speech_rate, daily_goal_xp, sound_enabled')
+        .select('display_name, avatar_color, avatar_id, preferred_accent, speech_rate, daily_goal_xp, sound_enabled')
         .eq('id', authUser.id)
         .maybeSingle<ProfileRow>(),
       supabase
@@ -277,6 +282,7 @@ export async function pullCloudUserData(authUser: AuthUser): Promise<CloudUserBu
           ? parsedRate
           : undefined,
       profileName: profile?.display_name || undefined,
+      avatarId: profile?.avatar_id || undefined,
     };
   } catch (e) {
     console.warn('Cloud sync pull failed (using offline cache):', e);
@@ -306,6 +312,7 @@ export async function pushProgressAndLeaderboard(
           display_name: displayName,
           avatar_initials: avatarInitials,
           avatar_color: avatarColor,
+          avatar_id: authUser.avatarId || 'lion',
           stardust_xp: Math.max(0, stats.stardustXp),
           streak_days: Math.max(1, stats.streakDays),
           cosmic_rank: rankName,
@@ -317,6 +324,7 @@ export async function pushProgressAndLeaderboard(
         .update({
           daily_goal_xp: Math.max(10, stats.dailyGoalXp),
           sound_enabled: stats.soundEnabled,
+          avatar_id: authUser.avatarId || 'lion',
         })
         .eq('id', userId),
     ]);
@@ -407,7 +415,7 @@ export async function fetchCloudLeaderboard(
   try {
     const { data, error } = await supabase
       .from('leaderboard_entries')
-      .select('user_id, display_name, avatar_initials, avatar_color, stardust_xp, streak_days, cosmic_rank')
+      .select('user_id, display_name, avatar_initials, avatar_color, avatar_id, stardust_xp, streak_days, cosmic_rank')
       .order('stardust_xp', { ascending: false })
       .order('streak_days', { ascending: false })
       .limit(50);
@@ -426,6 +434,7 @@ export async function fetchCloudLeaderboard(
         name: isMe ? `${authUser.name} (You)` : row.display_name,
         initials: row.avatar_initials || computeAvatarInitials(row.display_name),
         color: row.avatar_color || pickAvatarColor(row.user_id),
+        avatarId: (isMe ? authUser.avatarId : undefined) || row.avatar_id || undefined,
         xp: isMe ? Math.max(row.stardust_xp, stats.stardustXp) : row.stardust_xp,
         streak: isMe ? Math.max(row.streak_days, stats.streakDays) : row.streak_days,
         isCurrentUser: isMe,
@@ -437,6 +446,7 @@ export async function fetchCloudLeaderboard(
         name: `${authUser.name} (You)`,
         initials: computeAvatarInitials(authUser.name),
         color: pickAvatarColor(authUser.id),
+        avatarId: authUser.avatarId || 'lion',
         xp: stats.stardustXp,
         streak: stats.streakDays,
         isCurrentUser: true,

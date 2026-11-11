@@ -8,6 +8,7 @@ import {
   Alert,
   Switch,
   Modal,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS } from '../constants/curriculum';
 import { MascotAvatar } from '../components/MascotAvatar';
+import { AvatarPickerModal } from '../components/AvatarPickerModal';
+import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
 import {
   loadPreferredAccent,
@@ -22,6 +25,7 @@ import {
   savePreferredSpeechRate,
   updateSoundSetting,
   resetAllUserProgress,
+  updateAuthUserAvatar,
 } from '../services/storageService';
 import { EnglishAccent, getSpeechRate } from '../services/ttsService';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
@@ -32,6 +36,7 @@ interface ProfileScreenProps {
   authUser?: AuthUser | null;
   onStatsUpdate: (stats: UserStats) => void;
   onSignOut?: () => void;
+  onAuthUserUpdate?: (user: AuthUser) => void;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -132,16 +137,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   authUser,
   onStatsUpdate,
   onSignOut,
+  onAuthUserUpdate,
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocKey | null>(null);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  const playerAvatar = getAvatarPackItem(authUser?.avatarId);
 
   useEffect(() => {
     loadPreferredAccent().then(setSelectedAccent);
     setIsSlowSpeech(getSpeechRate() < 0.9);
   }, []);
+
+  const handleSelectAvatar = async (avatarId: AvatarPackId) => {
+    const updated = await updateAuthUserAvatar(avatarId);
+    if (updated && onAuthUserUpdate) {
+      onAuthUserUpdate(updated);
+    }
+    setShowAvatarPicker(false);
+  };
 
   const handleAccentChange = async (acc: EnglishAccent) => {
     setSelectedAccent(acc);
@@ -201,14 +218,55 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Open Account Identity Row (Zero Boxes) */}
         <View style={styles.identityHeader}>
           <View style={styles.identityLeft}>
-            <MascotAvatar
-              mood={stats.streakDays >= 3 ? 'reward' : stats.conversationsDone > 0 ? 'love' : 'wave'}
-              size={56}
-              borderColor="rgba(167, 139, 250, 0.55)"
-              borderWidth={1.5}
-            />
+            <TouchableOpacity
+              onPress={() => setShowAvatarPicker(true)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Change avatar"
+              style={styles.avatarTouchable}
+            >
+              <View
+                style={[
+                  styles.avatarRing,
+                  { borderColor: playerAvatar.accentColor },
+                ]}
+              >
+                <Image
+                  source={playerAvatar.source}
+                  style={styles.avatarImg}
+                  resizeMode="contain"
+                />
+              </View>
+              <View
+                style={[
+                  styles.editBadge,
+                  { backgroundColor: playerAvatar.accentColor },
+                ]}
+              >
+                <Ionicons name="pencil" size={10} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.identityText}>
-              <Text style={styles.userName}>{authUser?.name || 'Elvate Learner'}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.userName}>{authUser?.name || 'Elvate Learner'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowAvatarPicker(true)}
+                  style={[
+                    styles.avatarTag,
+                    { backgroundColor: `${playerAvatar.accentColor}25` },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.avatarTagText,
+                      { color: playerAvatar.accentColor },
+                    ]}
+                  >
+                    {playerAvatar.tamilName}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.tierMeta}>
                 {tierLabel} · {stats.cosmicRank}
               </Text>
@@ -220,6 +278,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </View>
           <LiveStreakBadge streakDays={stats.streakDays} />
+        </View>
+
+        {/* Mascot Coach Companion Row */}
+        <View style={styles.coachCard}>
+          <MascotAvatar
+            mood={stats.streakDays >= 3 ? 'reward' : stats.conversationsDone > 0 ? 'love' : 'wave'}
+            size={40}
+            borderColor="rgba(167, 139, 250, 0.45)"
+            borderWidth={1.5}
+          />
+          <View style={styles.coachTextGroup}>
+            <Text style={styles.coachTitle}>AI Coach Nova</Text>
+            <Text style={styles.coachSubtitle}>
+              {stats.streakDays >= 3
+                ? 'Super streak! Keep this momentum burning!'
+                : 'Welcome back! Ready for today’s English session?'}
+            </Text>
+          </View>
         </View>
 
         {/* Open Course Fluency Line */}
@@ -515,6 +591,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           )}
         </View>
       </Modal>
+
+      {/* Avatar Pack Customizer Modal */}
+      <AvatarPickerModal
+        visible={showAvatarPicker}
+        currentAvatarId={authUser?.avatarId}
+        onSelectAvatar={handleSelectAvatar}
+        onClose={() => setShowAvatarPicker(false)}
+        isOnboarding={false}
+      />
     </View>
   );
 };
@@ -558,11 +643,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 10,
   },
+  avatarTouchable: {
+    position: 'relative',
+  },
   avatarRing: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: 'rgba(167, 139, 250, 0.55)',
     backgroundColor: '#161423',
     overflow: 'hidden',
@@ -570,16 +658,43 @@ const styles = StyleSheet.create({
   avatarImg: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.04 }],
+    borderRadius: 28,
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#161423',
   },
   identityText: {
     flex: 1,
     marginLeft: 13,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   userName: {
     fontFamily: THEME.fonts.bold,
     fontSize: 19,
     color: '#FFFFFF',
+  },
+  avatarTag: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  avatarTagText: {
+    fontFamily: THEME.fonts.tamilBold,
+    fontSize: 10,
   },
   tierMeta: {
     fontFamily: THEME.fonts.medium,
@@ -592,6 +707,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: THEME.colors.textMuted,
     marginTop: 1,
+  },
+  coachCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 67, 254, 0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 12,
+  },
+  coachTextGroup: {
+    flex: 1,
+  },
+  coachTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
+    color: THEME.colors.gold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  coachSubtitle: {
+    fontFamily: THEME.fonts.body,
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    lineHeight: 16,
+    marginTop: 2,
   },
 
   /* COURSE FLUENCY */
