@@ -1,13 +1,17 @@
-import { Linking, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import type { Session, User } from '@supabase/supabase-js';
 import { AuthUser } from '../types';
 import {
   getAuthRedirectUrl,
+  getOAuthRedirectUrl,
   isSupabaseConfigured,
   supabase,
   supabasePublishableKey,
   supabaseUrl,
 } from '../lib/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export interface AuthActionResult {
   user?: AuthUser;
@@ -272,37 +276,80 @@ export async function signInAsGuest(preferredName?: string): Promise<AuthActionR
   };
 }
 
-async function isGoogleProviderEnabled(): Promise<boolean> {
+async function isOAuthProviderEnabled(provider: 'google' | 'facebook'): Promise<boolean> {
   if (!supabaseUrl || !supabasePublishableKey) return false;
   try {
     const res = await fetch(`${supabaseUrl}/auth/v1/settings`, {
       headers: { apikey: supabasePublishableKey },
     });
     if (!res.ok) return true;
-    const json = (await res.json()) as { external?: { google?: boolean } };
-    return Boolean(json?.external?.google);
+    const json = (await res.json()) as { external?: Record<string, boolean> };
+    return Boolean(json?.external?.[provider]);
   } catch {
     return true;
   }
 }
 
-export async function signInWithGoogleOAuth(): Promise<AuthActionResult> {
+export async function completeAuthSessionFromUrl(url: string): Promise<AuthActionResult> {
+  if (!supabase || !url) return {};
+  try {
+    const parsed = new URL(url);
+    const queryParams = parsed.searchParams;
+    const hashRaw = parsed.hash.startsWith('#') ? parsed.hash.slice(1) : parsed.hash;
+    const hashParams = new URLSearchParams(hashRaw);
+
+    const errDesc =
+      hashParams.get('error_description') ||
+      queryParams.get('error_description') ||
+      hashParams.get('error') ||
+      queryParams.get('error');
+    if (errDesc) {
+      return { error: errDesc };
+    }
+
+    const code = queryParams.get('code') || hashParams.get('code');
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) return { error: error.message };
+      if (data.user) return { user: mapSupabaseUserToAuthUser(data.user) };
+    }
+
+    const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) return { error: error.message };
+      if (data.user) return { user: mapSupabaseUserToAuthUser(data.user) };
+    }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Failed to parse sign-in callback.' };
+  }
+  return {};
+}
+
+export async function signInWithOAuthProvider(
+  provider: 'google' | 'facebook'
+): Promise<AuthActionResult> {
   if (!supabase) {
     return { error: 'Supabase is not configured.' };
   }
 
-  const enabled = await isGoogleProviderEnabled();
+  const label = provider === 'google' ? 'Google' : 'Facebook';
+  const enabled = await isOAuthProviderEnabled(provider);
   if (!enabled) {
     return {
-      error:
-        'Google Sign-In is not enabled in Supabase Dashboard yet (Authentication -> Providers -> Google). Use Email or Guest for now.',
+      error: `${label} Sign-In is not enabled in Supabase Dashboard yet (Authentication -> Providers -> ${label}).`,
     };
   }
 
+  const redirectTo = getOAuthRedirectUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
+    provider,
     options: {
-      redirectTo: getAuthRedirectUrl(),
+      redirectTo,
       skipBrowserRedirect: Platform.OS !== 'web',
     },
   });
@@ -312,10 +359,21 @@ export async function signInWithGoogleOAuth(): Promise<AuthActionResult> {
   }
 
   if (Platform.OS !== 'web' && data?.url) {
-    await Linking.openURL(data.url);
+    const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (authResult.type === 'success' && authResult.url) {
+      return completeAuthSessionFromUrl(authResult.url);
+    }
   }
 
   return {};
+}
+
+export async function signInWithGoogleOAuth(): Promise<AuthActionResult> {
+  return signInWithOAuthProvider('google');
+}
+
+export async function signInWithFacebookOAuth(): Promise<AuthActionResult> {
+  return signInWithOAuthProvider('facebook');
 }
 
 export async function sendPasswordReset(emailInput: string): Promise<{ error?: string }> {

@@ -46,3 +46,10 @@ export function getAuthRedirectUrl(): string {
   }
   return 'https://thamuhhh.github.io/karka-english/';
 }
+
+export function getOAuthRedirectUrl(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+  return 'karka://auth/callback';
+}

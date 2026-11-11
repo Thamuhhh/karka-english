@@ -2,6 +2,7 @@
   "expo": {
     "name": "Karka",
     "slug": "karka",
+    "scheme": "karka",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/appicon.png",

@@ -5,6 +5,8 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -53,7 +55,11 @@ import {
   loadAuthUser,
   signOutAuthUser,
 } from './src/services/storageService';
-import { getVerifiedAuthUser, subscribeToSupabaseAuth } from './src/services/authService';
+import {
+  completeAuthSessionFromUrl,
+  getVerifiedAuthUser,
+  subscribeToSupabaseAuth,
+} from './src/services/authService';
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 
 type TabType = 'learn' | 'call' | 'league' | 'profile';
@@ -145,6 +151,28 @@ function AppContent() {
 
     bootstrapSession();
 
+    let linkingSubscription: { remove: () => void } | null = null;
+    if (Platform.OS !== 'web') {
+      const handleIncomingAuthUrl = async (incomingUrl: string | null) => {
+        if (!incomingUrl) return;
+        if (
+          incomingUrl.includes('access_token=') ||
+          incomingUrl.includes('code=') ||
+          incomingUrl.includes('error=')
+        ) {
+          const res = await completeAuthSessionFromUrl(incomingUrl);
+          if (res.error && mounted) {
+            Alert.alert('Sign-In Failed', res.error);
+          }
+        }
+      };
+
+      Linking.getInitialURL().then(handleIncomingAuthUrl).catch(() => {});
+      linkingSubscription = Linking.addEventListener('url', (ev) => {
+        void handleIncomingAuthUrl(ev.url);
+      });
+    }
+
     const unsubscribe = subscribeToSupabaseAuth(async (event, nextUser) => {
       if (!mounted) return;
       if (event === 'SIGNED_OUT' || !nextUser) {
@@ -174,6 +202,7 @@ function AppContent() {
     return () => {
       mounted = false;
       unsubscribe();
+      linkingSubscription?.remove();
     };
   }, []);
 

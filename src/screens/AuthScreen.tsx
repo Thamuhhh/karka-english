@@ -323,6 +323,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         const result = await signInWithGoogleOAuth();
         if (result.error) {
           setErrorMsg(result.error);
+          return;
+        }
+        if (result.user) {
+          await completeAuth(result.user);
         }
         return;
       }
