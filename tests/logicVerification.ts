@@ -1,4 +1,8 @@
-import { SUPERNOVA_LEVELS } from '../src/constants/curriculum';
+import {
+  getNextUnlockedClassId,
+  isLessonUnlocked,
+  SUPERNOVA_LEVELS,
+} from '../src/constants/curriculum';
 import { SCENARIOS } from '../src/constants/scenarios';
 import { STARTER_VOCABULARY } from '../src/api/dictionary';
 import {
@@ -54,6 +58,20 @@ function makeMockStats(overrides: Partial<UserStats> = {}): UserStats {
 assertEqual(SUPERNOVA_LEVELS.length, 4, 'Expected 4 curriculum units');
 const allClasses = SUPERNOVA_LEVELS.flatMap((u) => u.classes);
 assertEqual(allClasses.length, 22, 'Expected 22 total curriculum classes');
+
+// Sequential progression: new user starts with 0 completed -> only Class 1 open
+assertEqual(getNextUnlockedClassId([]), 'sn-1-1', 'New user should start at sn-1-1');
+assertEqual(isLessonUnlocked('sn-1-1', []), true, 'Class 1 must be open for new user');
+assertEqual(isLessonUnlocked('sn-1-2', []), false, 'Class 2 must be locked before Class 1 is done');
+assertEqual(isLessonUnlocked('sn-2-1', []), false, 'Unit 2 must be locked for new user');
+assertEqual(getNextUnlockedClassId(['sn-1-1']), 'sn-1-2', 'Completing Class 1 unlocks Class 2');
+assertEqual(isLessonUnlocked('sn-1-2', ['sn-1-1']), true, 'Class 2 opens after Class 1 completion');
+assertEqual(isLessonUnlocked('sn-1-3', ['sn-1-1']), false, 'Class 3 stays locked until Class 2 completes');
+assertEqual(
+  getNextUnlockedClassId(['sn-1-1', 'sn-1-2', 'sn-1-3', 'sn-1-4', 'sn-1-5']),
+  'sn-2-1',
+  'Completing Unit 1 unlocks Unit 2 Class 1'
+);
 
 const seenIds = new Set<string>();
 for (const cls of allClasses) {

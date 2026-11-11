@@ -42,7 +42,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
-import { SupernovaClass } from './src/constants/curriculum';
+import { isLessonUnlocked, SupernovaClass } from './src/constants/curriculum';
 import { AuthUser, UserStats } from './src/types';
 import {
   createDefaultStats,
@@ -277,6 +277,9 @@ function AppContent() {
   const userRank = getUserLeaderboardRank(stats);
 
   const handleStartLesson = (lesson: SupernovaClass) => {
+    if (!isLessonUnlocked(lesson.id, stats.completedClasses)) {
+      return;
+    }
     setCurrentLesson(lesson);
   };
 

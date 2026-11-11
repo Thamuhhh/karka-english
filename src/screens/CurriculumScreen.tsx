@@ -17,7 +17,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_LEVELS, SupernovaClass } from '../constants/curriculum';
+import {
+  getNextUnlockedClassId,
+  getPreviousClassFor,
+  isLessonUnlocked,
+  SUPERNOVA_LEVELS,
+  SupernovaClass,
+} from '../constants/curriculum';
 import { UserStats } from '../types';
 import {
   SUPERNOVA_IMAGES,
@@ -95,10 +101,17 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       : selectedLesson.xpReward
     : 0;
 
-  const nextActiveClassId =
-    SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes).find(
-      (cls) => !completedClasses.includes(cls.id)
-    )?.id || null;
+  const nextActiveClassId = getNextUnlockedClassId(completedClasses);
+  const allOrderedClasses = SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes);
+  const nextActiveLesson =
+    (nextActiveClassId
+      ? allOrderedClasses.find((cls) => cls.id === nextActiveClassId)
+      : null) || null;
+  const isSelectedUnlocked = selectedLesson
+    ? isLessonUnlocked(selectedLesson.id, completedClasses)
+    : false;
+  const blockingLesson =
+    selectedLesson && !isSelectedUnlocked ? getPreviousClassFor(selectedLesson.id) : null;
 
   const activeLevel = SUPERNOVA_LEVELS[activeUnitIdx] || SUPERNOVA_LEVELS[0];
   const activeUnitTopColor = UNIT_TOP_COLORS[activeUnitIdx % UNIT_TOP_COLORS.length];
@@ -341,8 +354,8 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 
                     const isSegmentDone = completedClasses.includes(cls.id);
                     const isNextClass =
-                      level.classes[cIdx + 1]?.id === nextActiveClassId ||
-                      cls.id === nextActiveClassId;
+                      isSegmentDone &&
+                      (level.classes[cIdx + 1]?.id === nextActiveClassId || nextIsTrophy);
 
                     return (
                       <React.Fragment key={`seg-${cls.id}`}>
@@ -378,6 +391,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
                   const isCurrent = cls.id === nextActiveClassId;
+                  const isLocked = !isLessonUnlocked(cls.id, completedClasses);
                   const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
                   const cx = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
                   const cy = MAP_TOP_CY + cIdx * MAP_STEP_Y;
@@ -401,16 +415,16 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           styles.mapNodeCircle,
                           isCompleted && styles.mapNodeCompleted,
                           isCurrent && styles.mapNodeCurrent,
-                          !isCompleted && !isCurrent && styles.mapNodeLocked,
+                          isLocked && styles.mapNodeLocked,
                           { left: cx - halfNode, top: cy - halfNode },
                         ]}
-                        activeOpacity={0.86}
+                        activeOpacity={isLocked ? 0.7 : 0.86}
                         onPress={() => setSelectedLesson(cls)}
                       >
                         <View style={styles.mapNodeImgClip}>
                           <LessonEmblemView
                             classId={cls.id}
-                            dimmed={!isCompleted && !isCurrent}
+                            dimmed={isLocked}
                           />
                         </View>
 
@@ -419,7 +433,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                             <MaterialCommunityIcons name="check-bold" size={10} color="#FFFFFF" />
                           </View>
                         )}
-                        {!isCompleted && !isCurrent && (
+                        {isLocked && (
                           <View style={styles.nodeLockBadge}>
                             <Ionicons
                               name="lock-closed"
@@ -435,9 +449,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           styles.mapLabelPill,
                           isCompleted && styles.mapLabelCompleted,
                           isCurrent && styles.mapLabelCurrent,
+                          isLocked && styles.mapLabelLocked,
                           { left: cx - NODE_LABEL_WIDTH / 2, top: cy + halfNode + 7 },
                         ]}
-                        activeOpacity={0.85}
+                        activeOpacity={isLocked ? 0.7 : 0.85}
                         onPress={() => setSelectedLesson(cls)}
                       >
                         <Text
@@ -447,7 +462,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                           ]}
                         >
                           {String(lessonNum).padStart(2, '0')} ·{' '}
-                          {isCompleted ? 'DONE' : cls.duration.toUpperCase()}
+                          {isCompleted ? 'DONE' : isLocked ? 'LOCKED' : cls.duration.toUpperCase()}
                         </Text>
                         <Text style={styles.mapLabelTitle} numberOfLines={2}>
                           {formatShortLessonTitle(cls.title)}
@@ -565,6 +580,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             <View
               style={[
                 styles.popoverCard,
+                !isSelectedUnlocked && styles.popoverCardLocked,
                 { width: Math.min(windowWidth - 44, 320) },
               ]}
             >
@@ -574,7 +590,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                     CLASS {String(lessonNumberMap[selectedLesson.id] || selectedLesson.classNumber).padStart(2, '0')} ·{' '}
                     {selectedLesson.duration.toUpperCase()}
                   </Text>
-                  <Text style={styles.popoverXp}>+{selectedXpReward} XP</Text>
+                  {isSelectedUnlocked ? (
+                    <Text style={styles.popoverXp}>+{selectedXpReward} XP</Text>
+                  ) : (
+                    <View style={styles.popoverLockedPill}>
+                      <Ionicons name="lock-closed" size={10} color={THEME.colors.textSecondary} />
+                      <Text style={styles.popoverLockedText}>LOCKED</Text>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity
                   style={styles.popoverCloseBtn}
@@ -593,20 +616,42 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 {selectedLesson.subtitle}
               </Text>
 
-              <TouchableOpacity
-                style={styles.popoverStartBtn}
-                activeOpacity={0.86}
-                onPress={() => {
-                  const lesson = selectedLesson;
-                  setSelectedLesson(null);
-                  onStartLesson(lesson);
-                }}
-              >
-                <Text style={styles.popoverStartText}>
-                  {isSelectedCompleted ? 'PRACTICE AGAIN' : 'START LESSON'}
-                </Text>
-                <Ionicons name="arrow-forward" size={16} color="#141320" />
-              </TouchableOpacity>
+              {isSelectedUnlocked ? (
+                <TouchableOpacity
+                  style={styles.popoverStartBtn}
+                  activeOpacity={0.86}
+                  onPress={() => {
+                    const lesson = selectedLesson;
+                    setSelectedLesson(null);
+                    onStartLesson(lesson);
+                  }}
+                >
+                  <Text style={styles.popoverStartText}>
+                    {isSelectedCompleted ? 'PRACTICE AGAIN' : 'START LESSON'}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={16} color="#141320" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.popoverLockedFooter}>
+                  <Text style={styles.popoverLockReason}>
+                    {blockingLesson
+                      ? `Complete Class ${String(lessonNumberMap[blockingLesson.id] || blockingLesson.classNumber).padStart(2, '0')} (${formatShortLessonTitle(blockingLesson.title)}) first to open this class.`
+                      : 'Complete the previous class first to unlock this lesson.'}
+                  </Text>
+                  {nextActiveLesson && (
+                    <TouchableOpacity
+                      style={styles.popoverJumpBtn}
+                      activeOpacity={0.86}
+                      onPress={() => setSelectedLesson(nextActiveLesson)}
+                    >
+                      <Ionicons name="lock-open-outline" size={15} color="#FFFFFF" />
+                      <Text style={styles.popoverJumpText}>
+                        OPEN CLASS {String(lessonNumberMap[nextActiveLesson.id] || nextActiveLesson.classNumber).padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -863,6 +908,10 @@ const styles = StyleSheet.create({
   mapLabelCurrent: {
     backgroundColor: 'rgba(127, 67, 254, 0.2)',
   },
+  mapLabelLocked: {
+    backgroundColor: 'rgba(14, 14, 20, 0.5)',
+    opacity: 0.62,
+  },
   mapLabelIndex: {
     fontFamily: THEME.fonts.bold,
     fontSize: 8.5,
@@ -998,6 +1047,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  popoverCardLocked: {
+    borderColor: 'rgba(130, 125, 160, 0.38)',
+  },
+  popoverLockedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  popoverLockedText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 9.5,
+    color: THEME.colors.textSecondary,
+    letterSpacing: 0.6,
+  },
+  popoverLockedFooter: {
+    marginTop: 14,
+    gap: 10,
+  },
+  popoverLockReason: {
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: 12,
+    color: '#D5CFE8',
+    lineHeight: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+  },
+  popoverJumpBtn: {
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: THEME.colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  popoverJumpText: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 12.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   popoverStartText: {
     fontFamily: THEME.fonts.extraBold,

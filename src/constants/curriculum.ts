@@ -1154,3 +1154,28 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
     ],
   },
 ];
+
+/** Returns all curriculum lessons ordered sequentially across units. */
+export function getOrderedCurriculumClasses(): SupernovaClass[] {
+  return SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes);
+}
+
+/** Returns the first uncompleted class ID in curriculum order, or null if all completed. */
+export function getNextUnlockedClassId(completedClasses: string[]): string | null {
+  const ordered = getOrderedCurriculumClasses();
+  const nextClass = ordered.find((cls) => !completedClasses.includes(cls.id));
+  return nextClass?.id ?? null;
+}
+
+/** Returns the immediate prerequisite lesson before classId, or null for the very first class. */
+export function getPreviousClassFor(classId: string): SupernovaClass | null {
+  const ordered = getOrderedCurriculumClasses();
+  const idx = ordered.findIndex((cls) => cls.id === classId);
+  return idx > 0 ? ordered[idx - 1] : null;
+}
+
+/** Enforces sequential progression: a class opens only if already completed or it is the next active class. */
+export function isLessonUnlocked(classId: string, completedClasses: string[]): boolean {
+  if (completedClasses.includes(classId)) return true;
+  return getNextUnlockedClassId(completedClasses) === classId;
+}

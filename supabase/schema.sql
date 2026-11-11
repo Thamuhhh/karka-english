@@ -25,18 +25,18 @@ create table if not exists public.user_progress (
   user_id uuid primary key references auth.users (id) on delete cascade,
   streak_days integer not null default 1 check (streak_days >= 1),
   last_active_date date not null default current_date,
-  stardust_xp integer not null default 120 check (stardust_xp >= 0),
+  stardust_xp integer not null default 0 check (stardust_xp >= 0),
   cosmic_rank text not null default 'Bronze League',
   gems integer not null default 450 check (gems >= 0),
   hearts integer not null default 5 check (hearts >= 0),
   max_hearts integer not null default 5 check (max_hearts >= 1),
-  today_xp integer not null default 20 check (today_xp >= 0),
+  today_xp integer not null default 0 check (today_xp >= 0),
   today_date date not null default current_date,
   daily_goal_xp integer not null default 100 check (daily_goal_xp >= 10),
   words_mastered integer not null default 0 check (words_mastered >= 0),
   conversations_done integer not null default 0 check (conversations_done >= 0),
   sentences_checked integer not null default 0 check (sentences_checked >= 0),
-  completed_classes text[] not null default array['sn-1-1']::text[],
+  completed_classes text[] not null default '{}'::text[],
   mastered_words text[] not null default '{}'::text[],
   sound_enabled boolean not null default true,
   updated_at timestamptz not null default now()
@@ -268,7 +268,7 @@ begin
     streak_days,
     cosmic_rank
   )
-  values (new.id, resolved_name, resolved_initials, resolved_color, 120, 1, 'Bronze League')
+  values (new.id, resolved_name, resolved_initials, resolved_color, 0, 1, 'Bronze League')
   on conflict (user_id) do nothing;
 
   return new;

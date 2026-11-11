@@ -110,9 +110,9 @@ function isValidAccent(accent: string | null | undefined): accent is EnglishAcce
 }
 
 function mapProgressRowToUserStats(row: UserProgressRow): UserStats {
-  const completed = Array.isArray(row.completed_classes) && row.completed_classes.length > 0
+  const completed = Array.isArray(row.completed_classes)
     ? Array.from(new Set(row.completed_classes))
-    : ['sn-1-1'];
+    : [];
   const mastered = Array.isArray(row.mastered_words)
     ? Array.from(new Set(row.mastered_words))
     : [];

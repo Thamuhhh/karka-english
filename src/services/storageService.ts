@@ -43,18 +43,18 @@ export function createDefaultStats(): UserStats {
   return {
     streakDays: 1,
     lastActiveDate: today,
-    stardustXp: 120,
-    cosmicRank: computeLeagueRankName(120),
+    stardustXp: 0,
+    cosmicRank: computeLeagueRankName(0),
     gems: 450,
     hearts: 5,
     maxHearts: 5,
-    todayXp: 20,
+    todayXp: 0,
     todayDate: today,
     dailyGoalXp: 100,
     wordsMastered: 0,
     conversationsDone: 0,
     sentencesChecked: 0,
-    completedClasses: ['sn-1-1'],
+    completedClasses: [],
     masteredWords: [],
     soundEnabled: true,
   };
@@ -66,10 +66,9 @@ function normalizeStats(raw: Partial<UserStats>): UserStats {
   const xp = typeof raw.stardustXp === 'number' ? raw.stardustXp : defaults.stardustXp;
   const maxHearts = typeof raw.maxHearts === 'number' ? raw.maxHearts : 5;
   const rawHearts = typeof raw.hearts === 'number' ? raw.hearts : maxHearts;
-  const completedClasses =
-    Array.isArray(raw.completedClasses) && raw.completedClasses.length > 0
-      ? Array.from(new Set(raw.completedClasses))
-      : defaults.completedClasses;
+  const completedClasses = Array.isArray(raw.completedClasses)
+    ? Array.from(new Set(raw.completedClasses))
+    : defaults.completedClasses;
   const masteredWords = Array.isArray(raw.masteredWords)
     ? Array.from(new Set(raw.masteredWords))
     : [];
@@ -266,7 +265,26 @@ export async function hydrateUserCloudSession(authUser: AuthUser): Promise<UserS
 
   let resolvedStats = localStats;
   if (cloudData.stats) {
-    const normalizedCloud = normalizeStats(cloudData.stats);
+    let normalizedCloud = normalizeStats(cloudData.stats);
+    const isLegacyUntouchedSeed =
+      normalizedCloud.completedClasses.length === 1 &&
+      normalizedCloud.completedClasses[0] === 'sn-1-1' &&
+      normalizedCloud.stardustXp === 120 &&
+      normalizedCloud.todayXp === 20 &&
+      normalizedCloud.conversationsDone === 0 &&
+      normalizedCloud.sentencesChecked === 0 &&
+      normalizedCloud.wordsMastered === 0;
+
+    if (isLegacyUntouchedSeed) {
+      normalizedCloud = {
+        ...normalizedCloud,
+        completedClasses: [],
+        stardustXp: 0,
+        todayXp: 0,
+        cosmicRank: computeLeagueRankName(0),
+      };
+    }
+
     const shouldMergeLocal =
       canMergeLocalProgress &&
       (localStats.stardustXp > normalizedCloud.stardustXp ||
@@ -277,7 +295,7 @@ export async function hydrateUserCloudSession(authUser: AuthUser): Promise<UserS
       ? mergeStats(normalizedCloud, localStats)
       : normalizedCloud;
 
-    if (shouldMergeLocal) {
+    if (shouldMergeLocal || isLegacyUntouchedSeed) {
       void pushProgressAndLeaderboard(authUser, resolvedStats);
     }
   } else {
