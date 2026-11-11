@@ -170,7 +170,7 @@ export async function ensureCloudProvisioned(
 ): Promise<void> {
   if (!supabase || !canUseCloud(authUser)) return;
   const userId = authUser.id;
-  const displayName = authUser.name.trim() || 'Karka Learner';
+  const displayName = authUser.name.trim() || 'Elvate Learner';
   const avatarColor = pickAvatarColor(userId);
   const avatarInitials = computeAvatarInitials(displayName);
 
@@ -290,7 +290,7 @@ export async function pushProgressAndLeaderboard(
 ): Promise<void> {
   if (!supabase || !canUseCloud(authUser)) return;
   const userId = authUser.id;
-  const displayName = authUser.name.trim() || 'Karka Learner';
+  const displayName = authUser.name.trim() || 'Elvate Learner';
   const avatarInitials = computeAvatarInitials(displayName);
   const avatarColor = pickAvatarColor(userId);
   const rankName = computeLeagueRankName(stats.stardustXp);

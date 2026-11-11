@@ -30,7 +30,7 @@ import {
   signUpWithEmail,
 } from '../services/authService';
 import { playSoundEffect } from '../services/soundEffectsService';
-import { KarkaWordmark } from '../components/KarkaBrand';
+import { ElvateWordmark } from '../components/ElvateBrand';
 
 type AuthMode = 'welcome' | 'login' | 'signup';
 type FocusField =
@@ -413,7 +413,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </View>
             </View>
 
-            <KarkaWordmark width={136} height={40} style={styles.brandWordmarkWrap} />
+            <ElvateWordmark width={136} height={40} style={styles.brandWordmarkWrap} />
             <Text style={styles.brandTagline}>
               Master everyday &amp; workplace English through Tamil.
             </Text>
@@ -483,7 +483,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </TouchableOpacity>
             <Text style={styles.authNavTitle}>Enter your details</Text>
             <View style={styles.navBrandRight}>
-              <KarkaWordmark width={52} height={16} />
+              <ElvateWordmark width={52} height={16} />
             </View>
           </View>
 
@@ -624,7 +624,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </Animated.View>
 
           <Text style={styles.legalCaption}>
-            By signing in to Karka, you agree to our Terms and Privacy Policy.
+            By signing in to Elvate, you agree to our Terms and Privacy Policy.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -671,7 +671,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </TouchableOpacity>
           <Text style={styles.authNavTitle}>Create your profile</Text>
           <View style={styles.navBrandRight}>
-            <KarkaWordmark width={52} height={16} />
+            <ElvateWordmark width={52} height={16} />
           </View>
         </View>
 
@@ -886,7 +886,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         </Animated.View>
 
         <Text style={styles.legalCaption}>
-          By creating an account on Karka, you agree to our Terms and Privacy Policy.
+          By creating an account on Elvate, you agree to our Terms and Privacy Policy.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

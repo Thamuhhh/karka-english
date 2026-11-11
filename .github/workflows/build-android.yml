@@ -1,4 +1,4 @@
-name: Build Karka Android APK
+name: Build Elvate Android APK
 
 on:
   push:
@@ -67,27 +67,28 @@ jobs:
           APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
           test -n "$APK_PATH"
           mkdir -p release-apk
-          cp "$APK_PATH" release-apk/Karka-English.apk
+          cp "$APK_PATH" release-apk/Elvate-English.apk
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name "apksigner" | sort -V | tail -n 1)
-          if ! "$APKSIGNER" verify release-apk/Karka-English.apk >/dev/null 2>&1; then
-            keytool -genkeypair -v -noprompt -keystore /tmp/karka-ci.keystore -alias karka -keyalg RSA -keysize 2048 -validity 10000 -storepass karka123 -keypass karka123 -dname "CN=Karka, OU=App, O=Karka, L=Chennai, S=TN, C=IN"
-            "$APKSIGNER" sign --ks /tmp/karka-ci.keystore --ks-pass pass:karka123 --key-pass pass:karka123 release-apk/Karka-English.apk
+          if ! "$APKSIGNER" verify release-apk/Elvate-English.apk >/dev/null 2>&1; then
+            keytool -genkeypair -v -noprompt -keystore /tmp/elvate-ci.keystore -alias elvate -keyalg RSA -keysize 2048 -validity 10000 -storepass elvate123 -keypass elvate123 -dname "CN=Elvate, OU=App, O=Elvate, L=Chennai, S=TN, C=IN"
+            "$APKSIGNER" sign --ks /tmp/elvate-ci.keystore --ks-pass pass:elvate123 --key-pass pass:elvate123 release-apk/Elvate-English.apk
           fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Karka-English-APK
-          path: release-apk/Karka-English.apk
+          name: Elvate-English-APK
+          path: release-apk/Elvate-English.apk
 
       - name: Publish latest APK release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view latest-apk >/dev/null 2>&1; then
-            gh release upload latest-apk release-apk/Karka-English.apk --clobber
+            gh release upload latest-apk release-apk/Elvate-English.apk --clobber
+            gh release delete-asset latest-apk Karka-English.apk --yes >/dev/null 2>&1 || true
           else
-            gh release create latest-apk release-apk/Karka-English.apk \
-              --title "Karka English Latest APK" \
-              --notes "Automated Android APK build for Karka English (includes all 66 offline lecture audio clips)."
+            gh release create latest-apk release-apk/Elvate-English.apk \
+              --title "Elvate English Latest APK" \
+              --notes "Automated Android APK build for Elvate English (includes all 66 offline lecture audio clips)."
           fi

@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
-import { KarkaWordmark } from './KarkaBrand';
+import { ElvateWordmark } from './ElvateBrand';
 
 interface AnimatedSplashScreenProps {
   isReady: boolean;
@@ -25,7 +25,7 @@ const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const MIN_SPLASH_MS = 1350;
 
 /**
- * Custom animated Karka splash screen layered over disabled Android static native splash.
+ * Custom animated Elvate splash screen layered over disabled Android static native splash.
  */
 export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
   isReady,
@@ -258,7 +258,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
             },
           ]}
         >
-          <KarkaWordmark width={116} height={34} style={styles.wordmarkSpacing} />
+          <ElvateWordmark width={116} height={34} style={styles.wordmarkSpacing} />
 
           <View style={styles.progressTrack}>
             <Animated.View
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   iconSquircleClip: {
     flex: 1,
     borderRadius: 25,
-    backgroundColor: '#4C089C',
+    backgroundColor: '#9048F6',
     borderWidth: 1.5,
     borderColor: 'rgba(196, 181, 253, 0.42)',
     overflow: 'hidden',

@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 
-interface KarkaWordmarkProps {
+interface ElvateWordmarkProps {
   width?: number;
   height?: number;
   showIcon?: boolean;
@@ -10,8 +10,8 @@ interface KarkaWordmarkProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Shared Karka brand wordmark with optional rounded app emblem. */
-export const KarkaWordmark: React.FC<KarkaWordmarkProps> = ({
+/** Shared Elvate brand wordmark with optional rounded app emblem. */
+export const ElvateWordmark: React.FC<ElvateWordmarkProps> = ({
   width = 84,
   height = 24,
   showIcon = false,
@@ -30,10 +30,10 @@ export const KarkaWordmark: React.FC<KarkaWordmarkProps> = ({
       </View>
     )}
     <Image
-      source={SUPERNOVA_IMAGES.karkaLogo}
+      source={SUPERNOVA_IMAGES.elvateLogo}
       style={{ width, height }}
       resizeMode="contain"
-      accessibilityLabel="Karka"
+      accessibilityLabel="Elvate"
     />
   </View>
 );
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   },
   iconClip: {
     overflow: 'hidden',
-    backgroundColor: '#4C089C',
+    backgroundColor: '#9048F6',
     borderWidth: 1,
     borderColor: 'rgba(196, 181, 253, 0.38)',
   },

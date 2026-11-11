@@ -22,7 +22,7 @@ export interface AuthActionResult {
 
 export function extractNameFromEmail(identifier: string): string {
   const cleaned = identifier.trim();
-  if (!cleaned) return 'Karka Learner';
+  if (!cleaned) return 'Elvate Learner';
   const base = cleaned.includes('@') ? cleaned.split('@')[0] : cleaned;
   const formatted = base
     .replace(/[._-]+/g, ' ')
@@ -31,7 +31,7 @@ export function extractNameFromEmail(identifier: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
-  return formatted || 'Karka Learner';
+  return formatted || 'Elvate Learner';
 }
 
 export function mapSupabaseUserToAuthUser(user: User): AuthUser {
@@ -55,7 +55,7 @@ export function mapSupabaseUserToAuthUser(user: User): AuthUser {
       ? 'Guest Learner'
       : user.email
         ? extractNameFromEmail(user.email)
-        : 'Karka Learner');
+        : 'Elvate Learner');
 
   return {
     id: user.id,

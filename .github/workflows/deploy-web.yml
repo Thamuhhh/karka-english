@@ -1,4 +1,4 @@
-name: Deploy Karka Web to GitHub Pages
+name: Deploy Elvate Web to GitHub Pages
 
 on:
   push:

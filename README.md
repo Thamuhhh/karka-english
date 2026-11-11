@@ -1,4 +1,4 @@
-# Karka English
+# Elvate English
 
 An AI-powered Tamil-to-English conversational learning app built with **React Native & Expo**, featuring Nila AI tutor feedback, offline Tamil + English lecture audio, and cosmic gamification.
 

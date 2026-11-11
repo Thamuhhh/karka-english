@@ -26,7 +26,7 @@ import {
 } from '../services/storageService';
 import { EnglishAccent, getSpeechRate } from '../services/ttsService';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
-import { KarkaWordmark } from '../components/KarkaBrand';
+import { ElvateWordmark } from '../components/ElvateBrand';
 
 interface ProfileScreenProps {
   stats: UserStats;
@@ -93,7 +93,7 @@ const LEGAL_DOCS: Record<
     sections: [
       {
         heading: 'Educational Use',
-        body: 'Karka English is provided as a personal Tamil-to-English fluency and speaking practice companion.',
+        body: 'Elvate English is provided as a personal Tamil-to-English fluency and speaking practice companion.',
       },
       {
         heading: 'AI & Offline Feedback',
@@ -101,13 +101,13 @@ const LEGAL_DOCS: Record<
       },
       {
         heading: 'Content & Fair Use',
-        body: 'Course lessons, prompts, and visual assets within Karka are intended for your personal, non-commercial learning experience.',
+        body: 'Course lessons, prompts, and visual assets within Elvate are intended for your personal, non-commercial learning experience.',
       },
     ],
   },
   licenses: {
     title: 'Data & Open Source',
-    updated: 'Karka v1.0.0',
+    updated: 'Elvate v1.0.0',
     sections: [
       {
         heading: 'Core Stack',
@@ -210,7 +210,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               />
             </View>
             <View style={styles.identityText}>
-              <Text style={styles.userName}>{authUser?.name || 'Karka Learner'}</Text>
+              <Text style={styles.userName}>{authUser?.name || 'Elvate Learner'}</Text>
               <Text style={styles.tierMeta}>
                 {tierLabel} · {stats.cosmicRank}
               </Text>
@@ -442,7 +442,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         {/* Production App Footer */}
         <View style={styles.appFooter}>
-          <KarkaWordmark width={82} height={24} showIcon iconSize={20} style={styles.footerLogoWrap} />
+          <ElvateWordmark width={82} height={24} showIcon iconSize={20} style={styles.footerLogoWrap} />
           <Text style={styles.footerSub}>Tamil-to-English Fluency Studio</Text>
 
           <View style={styles.footerLegalLinks}>
@@ -459,7 +459,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.footerVersion}>Version 1.0.0 · © 2026 Karka</Text>
+          <Text style={styles.footerVersion}>Version 1.0.0 · © 2026 Elvate</Text>
         </View>
 
         <View style={{ height: 24 }} />

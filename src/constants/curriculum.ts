@@ -1138,7 +1138,7 @@ export const SUPERNOVA_LEVELS: SupernovaLevel[] = [
             'Continuous try gives English speaking freely.',
           ],
           correctOptionIndex: 1,
-          explanation: '"Attain effortless English fluency" encapsulates the core philosophy of Karka English.',
+          explanation: '"Attain effortless English fluency" encapsulates the core philosophy of Elvate English.',
           tamilExplanation: '"Attain effortless English fluency" என்பது அநாயாசமான சரளப் பேச்சை அடையும் நிலையை உணர்த்துகிறது.',
         },
         speakingChallenge: {

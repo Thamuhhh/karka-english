@@ -13,7 +13,7 @@ import { loadUserStats, addXp } from '../services/storageService';
 import { STARTER_VOCABULARY } from '../api/dictionary';
 import { SCENARIOS } from '../constants/scenarios';
 import { speakText, playRemoteAudio } from '../services/ttsService';
-import { KarkaWordmark } from '../components/KarkaBrand';
+import { ElvateWordmark } from '../components/ElvateBrand';
 
 interface DashboardProps {
   onSelectTab: (tab: 'coach' | 'grammar' | 'vocab' | 'profile') => void;
@@ -60,7 +60,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({ onSelectTab, onSelec
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Ready to practice today?</Text>
-          <KarkaWordmark width={88} height={26} showIcon iconSize={22} style={styles.brandTitle} />
+          <ElvateWordmark width={88} height={26} showIcon iconSize={22} style={styles.brandTitle} />
         </View>
         <View style={styles.streakBadge}>
           <MaterialCommunityIcons name="fire" size={20} color={THEME.colors.gold} />

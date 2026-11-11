@@ -23,7 +23,7 @@ import {
   SUPERNOVA_IMAGES,
 } from '../constants/supernovaAssets';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
-import { KarkaWordmark } from '../components/KarkaBrand';
+import { ElvateWordmark } from '../components/ElvateBrand';
 import { LessonEmblemView } from '../components/LessonEmblemView';
 
 interface CurriculumScreenProps {
@@ -213,7 +213,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         <View style={styles.unifiedTopBarInner}>
           <View style={styles.brandRow}>
             <View style={styles.brandLogoWrap}>
-              <KarkaWordmark width={74} height={22} />
+              <ElvateWordmark width={74} height={22} />
             </View>
             <LiveStreakBadge streakDays={stats.streakDays} />
           </View>

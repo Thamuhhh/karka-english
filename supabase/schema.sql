@@ -1,4 +1,4 @@
--- Karka English (Supabase Postgres Schema + RLS + Protected Routes)
+-- Elvate English (Supabase Postgres Schema + RLS + Protected Routes)
 -- Run once in Supabase Dashboard -> SQL Editor (idempotent / safe to re-run).
 
 create schema if not exists private;
@@ -7,7 +7,7 @@ revoke all on schema private from public, anon, authenticated;
 -- 1. User Profiles (Owner-only account preferences & display name; no PII shared publicly)
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
-  display_name text not null default 'Karka Learner',
+  display_name text not null default 'Elvate Learner',
   avatar_color text not null default '#7F43FE',
   preferred_accent text not null default 'en-US'
     check (preferred_accent in ('en-US', 'en-GB', 'en-AU')),
@@ -64,7 +64,7 @@ create table if not exists public.user_vocabulary (
 -- 4. Protected Leaderboard Standings (Non-PII display standings visible only to authenticated users)
 create table if not exists public.leaderboard_entries (
   user_id uuid primary key references auth.users (id) on delete cascade,
-  display_name text not null default 'Karka Learner',
+  display_name text not null default 'Elvate Learner',
   avatar_initials text not null default 'KL',
   avatar_color text not null default '#7F43FE',
   stardust_xp integer not null default 120 check (stardust_xp >= 0),
@@ -236,7 +236,7 @@ begin
   resolved_name := coalesce(
     nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
     nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
-    case when new.is_anonymous then 'Guest Learner' else 'Karka Learner' end
+    case when new.is_anonymous then 'Guest Learner' else 'Elvate Learner' end
   );
 
   words := regexp_split_to_array(trim(resolved_name), '\s+');

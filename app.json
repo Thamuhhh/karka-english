@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Karka",
-    "slug": "karka",
+    "name": "Elvate",
+    "slug": "elvate",
     "scheme": "karka",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/appicon.png",
+    "icon": "./assets/R_Appicon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0E14",
     "newArchEnabled": true,
@@ -32,8 +32,8 @@
         "backgroundColor": "#0E0E14"
       },
       "adaptiveIcon": {
-        "foregroundImage": "./assets/appicon.png",
-        "backgroundColor": "#4C089C"
+        "foregroundImage": "./assets/R_Appicon.png",
+        "backgroundColor": "#9048F6"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
