@@ -1,4 +1,4 @@
-name: Deploy Elvate Web to GitHub Pages
+name: Deploy Elvate Landing Page to GitHub Pages
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_and_deploy:
+  deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -24,39 +24,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: TypeScript verification
-        run: npx tsc --noEmit
-
-      - name: Export Expo Web bundle
-        env:
-          EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-        run: npx expo export --platform web
-
-      - name: Prepare GitHub Pages SPA files
-        run: |
-          cp dist/index.html dist/404.html
-          touch dist/.nojekyll
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
 
-      - name: Upload Pages artifact
+      - name: Upload landing page
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: website
 
       - name: Deploy to GitHub Pages
         id: deployment

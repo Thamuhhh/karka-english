@@ -14,4 +14,6 @@ Then open `http://localhost:8000/website/`. The page uses the supplied enhanced 
 
 ## Deploy
 
-Deploy the `website` folder together with the referenced project `assets` folder, preserving their relative paths. Keep the local Poppins fonts, their `OFL.txt` license, and the enhanced mascot images in `website/assets/mascot` in the site bundle. The Android download links target the stable `latest-apk` release asset, which the Android build workflow replaces after each successful build.
+Pushing to `master` or `main` runs `.github/workflows/deploy-web.yml` and publishes this folder to GitHub Pages. The site keeps its local Poppins fonts, logo, and mascot artwork in `website/assets`. Android download links target the stable `latest-apk` release asset, which the Android build workflow replaces after each successful build.
+
+For this repository, the Pages URL is `https://thamuhhh.github.io/karka-english/` once the deployment workflow succeeds.
