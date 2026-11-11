@@ -13,6 +13,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
 import { ChatMessage, RoleplayScenario, GrammarCorrection } from '../types';
 import { SCENARIOS } from '../constants/scenarios';
+import { MascotAvatar, resolveAiMascotMood } from '../components/MascotAvatar';
 import { sendChatMessage } from '../api/supernovaAi';
 import { speakText, stopAllAudio } from '../services/ttsService';
 import { incrementMetric } from '../services/storageService';
@@ -105,6 +106,15 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
     setExpandedFeedbackId(expandedFeedbackId === msgId ? null : msgId);
   };
 
+  const latestUserFeedback =
+    [...messages].reverse().find((m) => m.role === 'user' && m.feedback)?.feedback ?? null;
+  const coachMood = resolveAiMascotMood({
+    isTyping: isLoading,
+    isSpeaking: playingMessageId !== null,
+    feedback: latestUserFeedback,
+    idleMood: inputText.trim().length > 0 ? 'reading' : 'wave',
+  });
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -137,9 +147,12 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
 
       {/* Persona Header Info */}
       <View style={styles.personaBanner}>
-        <View style={styles.avatarCircle}>
-          <Ionicons name={activeScenario.avatar as any} size={20} color={THEME.colors.primaryGlow} />
-        </View>
+        <MascotAvatar
+          mood={coachMood}
+          size={40}
+          borderColor="rgba(167, 139, 250, 0.45)"
+          borderWidth={1.5}
+        />
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.personaName}>{activeScenario.persona}</Text>
           <Text style={styles.personaDesc} numberOfLines={1}>
@@ -259,6 +272,13 @@ export const AiCoachScreen: React.FC<AiCoachProps> = ({ initialScenarioId }) => 
         {isLoading && (
           <AnimatedChatBubble style={[styles.msgWrapper, styles.msgWrapperBot]}>
             <View style={[styles.msgBubble, styles.botBubble, styles.loadingBubble]}>
+              <MascotAvatar
+                mood="typing"
+                size={26}
+                borderColor="rgba(167, 139, 250, 0.4)"
+                borderWidth={1}
+                style={{ marginRight: 8 }}
+              />
               <TypingDots
                 color={THEME.colors.primaryGlow}
                 label="Nila is typing..."

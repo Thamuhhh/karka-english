@@ -1,11 +1,46 @@
-// Cohesive asset registry combining bespoke 3D obsidian-violet artwork and extracted UI assets
+export type MascotMood =
+  | 'wave'
+  | 'reading'
+  | 'thinking'
+  | 'excited'
+  | 'idea'
+  | 'headset'
+  | 'speaking'
+  | 'listening'
+  | 'typing'
+  | 'correct'
+  | 'surprised'
+  | 'confused'
+  | 'reward'
+  | 'strict'
+  | 'love';
+
+export const MASCOT_EXPRESSIONS: Record<MascotMood, any> = {
+  wave: require('../../assets/mascot/elvate_wave.png'),
+  reading: require('../../assets/mascot/elvate_reading.png'),
+  thinking: require('../../assets/mascot/elvate_thinking.png'),
+  excited: require('../../assets/mascot/elvate_excited.png'),
+  idea: require('../../assets/mascot/elvate_idea.png'),
+  headset: require('../../assets/mascot/elvate_headset.png'),
+  speaking: require('../../assets/mascot/elvate_speaking.png'),
+  listening: require('../../assets/mascot/elvate_listening.png'),
+  typing: require('../../assets/mascot/elvate_typing.png'),
+  correct: require('../../assets/mascot/elvate_correct.png'),
+  surprised: require('../../assets/mascot/elvate_surprised.png'),
+  confused: require('../../assets/mascot/elvate_confused.png'),
+  reward: require('../../assets/mascot/elvate_reward.png'),
+  strict: require('../../assets/mascot/elvate_strict.png'),
+  love: require('../../assets/mascot/elvate_love.png'),
+};
+
+// Cohesive asset registry combining Elvate mascot artwork and extracted UI assets
 export const SUPERNOVA_IMAGES = {
   // Brand Wordmark & App Icon
   elvateLogo: require('../../assets/Elvate Logo.png'),
   appIcon: require('../../assets/R_Appicon.png'),
 
-  // Bespoke 3D Coach & Milestone Artwork
-  novaAvatar: require('../../assets/generated/nova_studio_portrait.jpg'),
+  // Default Coach & Milestone Artwork
+  novaAvatar: MASCOT_EXPRESSIONS.wave,
   trophyNova: require('../../assets/generated/map_trophy_crest.jpg'),
 
   // Bespoke 3D Map World Assets

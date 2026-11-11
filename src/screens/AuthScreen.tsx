@@ -4,7 +4,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { MascotAvatar } from '../components/MascotAvatar';
 import { AuthUser } from '../types';
 import { hydrateUserCloudSession } from '../services/storageService';
 import {
@@ -405,10 +404,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
             <View style={styles.mascotHalo}>
               <View style={styles.mascotRing}>
-                <Image
-                  source={SUPERNOVA_IMAGES.novaAvatar}
-                  style={styles.mascotImg}
-                  resizeMode="cover"
+                <MascotAvatar
+                  mood={errorMsg ? 'surprised' : isSubmitting ? 'excited' : 'wave'}
+                  size={101}
+                  backgroundColor="transparent"
                 />
               </View>
             </View>
@@ -682,10 +681,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               style={[styles.miniMascotHalo, { transform: [{ translateY: coachBobY }] }]}
             >
               <View style={styles.miniMascotRing}>
-                <Image
-                  source={SUPERNOVA_IMAGES.novaAvatar}
-                  style={styles.mascotImg}
-                  resizeMode="cover"
+                <MascotAvatar
+                  mood={
+                    errorMsg
+                      ? 'confused'
+                      : isSubmitting
+                      ? 'typing'
+                      : signupPassword.length > 0 && signupPassword.length < 6
+                      ? 'strict'
+                      : signupName.trim().length > 0 &&
+                        signupEmail.includes('@') &&
+                        signupPassword.length >= 6
+                      ? 'excited'
+                      : 'love'
+                  }
+                  size={46}
+                  backgroundColor="transparent"
                 />
               </View>
             </Animated.View>
@@ -975,6 +986,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.primaryGlow,
     backgroundColor: '#161423',
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   mascotImg: {
     width: '100%',
@@ -1103,6 +1116,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#161423',
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   coachBubble: {
     flex: 1,

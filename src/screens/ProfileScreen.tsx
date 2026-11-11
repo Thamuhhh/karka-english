@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Image,
   Switch,
   Modal,
   useWindowDimensions,
@@ -15,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS } from '../constants/curriculum';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { MascotAvatar } from '../components/MascotAvatar';
 import { AuthUser, UserStats } from '../types';
 import {
   loadPreferredAccent,
@@ -202,13 +201,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Open Account Identity Row (Zero Boxes) */}
         <View style={styles.identityHeader}>
           <View style={styles.identityLeft}>
-            <View style={styles.avatarRing}>
-              <Image
-                source={SUPERNOVA_IMAGES.novaAvatar}
-                style={styles.avatarImg}
-                resizeMode="cover"
-              />
-            </View>
+            <MascotAvatar
+              mood={stats.streakDays >= 3 ? 'reward' : stats.conversationsDone > 0 ? 'love' : 'wave'}
+              size={56}
+              borderColor="rgba(167, 139, 250, 0.55)"
+              borderWidth={1.5}
+            />
             <View style={styles.identityText}>
               <Text style={styles.userName}>{authUser?.name || 'Elvate Learner'}</Text>
               <Text style={styles.tierMeta}>

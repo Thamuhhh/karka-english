@@ -8,13 +8,12 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { MascotAvatar, resolveAiMascotMood } from '../components/MascotAvatar';
 import { SupernovaClass } from '../constants/curriculum';
 import { UserStats, GrammarCorrection, ChatMessage } from '../types';
 import {
@@ -645,9 +644,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             {lectureStep === 0 && (
               <View style={styles.lectureFocusStage}>
                 <View style={styles.nilaInlineRow}>
-                  <Image
-                    source={SUPERNOVA_IMAGES.novaAvatar}
-                    style={styles.nilaMiniAvatar}
+                  <MascotAvatar
+                    mood={playingAudioId === 'lecture-tamil' ? 'speaking' : 'reading'}
+                    size={42}
+                    borderColor={THEME.colors.primaryGlow}
+                    borderWidth={1.5}
                   />
                   <TouchableOpacity
                     style={styles.minimalAudioBtn}
@@ -747,7 +748,29 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             {/* MICRO-STEP 2: CLEAN 1-TAP CHECK BEFORE PRACTICE */}
             {lectureStep === 2 && (
               <View style={styles.lectureFocusStage}>
-                <Text style={styles.lectureHeroTitle}>Which one sounds natural?</Text>
+                <View style={styles.nilaInlineRow}>
+                  <MascotAvatar
+                    mood={
+                      spotCheckPick === 'right'
+                        ? 'correct'
+                        : spotCheckPick === 'wrong'
+                        ? 'confused'
+                        : 'thinking'
+                    }
+                    size={40}
+                    borderColor={
+                      spotCheckPick === 'right'
+                        ? '#34D399'
+                        : spotCheckPick === 'wrong'
+                        ? THEME.colors.gold
+                        : 'rgba(167, 139, 250, 0.45)'
+                    }
+                    borderWidth={1.3}
+                  />
+                  <Text style={[styles.lectureHeroTitle, { flex: 1 }]}>
+                    Which one sounds natural?
+                  </Text>
+                </View>
 
                 <View style={styles.minimalOptionsCol}>
                   {(lesson.classNumber % 2 === 0
@@ -1049,17 +1072,35 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
             {/* Conversational Dialogue Thread */}
             <View style={styles.chatThreadCard}>
-              {realTalkMessages.map((msg) => {
+              {realTalkMessages.map((msg, idx) => {
                 const isNila = msg.role === 'assistant';
+                const isLatestMsg = idx === realTalkMessages.length - 1;
+                const msgMood =
+                  playingAudioId === msg.id
+                    ? 'speaking'
+                    : isLatestMsg
+                    ? resolveAiMascotMood({
+                        isListening: isRecordingTalk,
+                        isTyping: isReplying,
+                        isSpeaking: playingAudioId !== null,
+                        feedback: lastTurnFeedback,
+                        idleMood: replyDraft.trim().length > 0 ? 'reading' : 'headset',
+                      })
+                    : 'wave';
+
                 return (
                   <AnimatedChatBubble
                     key={msg.id}
                     style={[styles.chatRow, isNila ? styles.chatRowLeft : styles.chatRowRight]}
                   >
                     {isNila && (
-                      <View style={styles.chatAvatarSmall}>
-                        <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.chatAvatarImg} />
-                      </View>
+                      <MascotAvatar
+                        mood={msgMood}
+                        size={30}
+                        borderColor="rgba(167, 139, 250, 0.5)"
+                        borderWidth={1}
+                        style={{ marginRight: 8 }}
+                      />
                     )}
 
                     <View
@@ -1096,9 +1137,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
               {isReplying && (
                 <AnimatedChatBubble style={[styles.chatRow, styles.chatRowLeft]}>
-                  <View style={styles.chatAvatarSmall}>
-                    <Image source={SUPERNOVA_IMAGES.novaAvatar} style={styles.chatAvatarImg} />
-                  </View>
+                  <MascotAvatar
+                    mood="typing"
+                    size={30}
+                    borderColor="rgba(167, 139, 250, 0.5)"
+                    borderWidth={1}
+                    style={{ marginRight: 8 }}
+                  />
                   <View style={[styles.chatBubble, styles.nilaBubble]}>
                     <TypingDots
                       color="#C4B5FD"
@@ -1226,10 +1271,10 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         {currentSlide === 'victory' && (
           <View style={styles.victoryContainer}>
             <View style={styles.victoryCrestWrap}>
-              <Image
-                source={SUPERNOVA_IMAGES.trophyNova}
-                style={styles.victoryCrestImg}
-                resizeMode="cover"
+              <MascotAvatar
+                mood={(victorySummary?.accuracy ?? 100) >= 85 ? 'reward' : 'love'}
+                size={92}
+                backgroundColor="transparent"
               />
             </View>
 
@@ -1324,10 +1369,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       ]}
                     >
                       <View style={styles.feedbackHeadlineRow}>
-                        <Ionicons
-                          name={isJumbleCorrect ? 'checkmark-circle' : 'alert-circle'}
-                          size={19}
-                          color={isJumbleCorrect ? '#C4B5FD' : '#E2B94B'}
+                        <MascotAvatar
+                          mood={isJumbleCorrect ? 'excited' : 'strict'}
+                          size={30}
+                          borderColor={isJumbleCorrect ? 'rgba(167, 139, 250, 0.55)' : 'rgba(251, 191, 36, 0.55)'}
+                          borderWidth={1.2}
                         />
                         <Text
                           style={[
@@ -1398,10 +1444,11 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                       ]}
                     >
                       <View style={styles.feedbackHeadlineRow}>
-                        <Ionicons
-                          name={transEval.isCorrect ? 'checkmark-circle' : 'alert-circle'}
-                          size={19}
-                          color={transEval.isCorrect ? '#C4B5FD' : '#E2B94B'}
+                        <MascotAvatar
+                          mood={transEval.isCorrect ? 'correct' : 'idea'}
+                          size={30}
+                          borderColor={transEval.isCorrect ? 'rgba(167, 139, 250, 0.55)' : 'rgba(251, 191, 36, 0.55)'}
+                          borderWidth={1.2}
                         />
                         <Text
                           style={[
@@ -2244,6 +2291,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(251, 191, 36, 0.75)',
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     marginBottom: 18,
   },
   victoryCrestImg: {

@@ -10,14 +10,13 @@ import {
   Animated,
   Easing,
   TextInput,
-  Image,
   Platform,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { MascotAvatar, resolveAiMascotMood } from '../components/MascotAvatar';
 import { playSoundEffect } from '../services/soundEffectsService';
 import { speakText, stopAllAudio, warmupVoices } from '../services/ttsService';
 import { AnimatedChatBubble, TypingDots, TypewriterText } from '../components/ChatAnimations';
@@ -414,6 +413,14 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const latestAiMsg = [...messages].reverse().find((m) => m.role === 'assistant');
   const latestAiText = latestAiMsg?.content || activeScenario.initialMessage;
   const hasTyped = userTranscript.trim().length > 0;
+  const liveMood = resolveAiMascotMood({
+    isListening: isUserSpeaking,
+    isProcessing: isProcessingAudio,
+    isTyping: isSendingText,
+    isSpeaking: isAiSpeaking,
+    feedback: lastFeedback,
+    idleMood: hasTyped ? 'reading' : 'headset',
+  });
 
   return (
     <View style={styles.container}>
@@ -539,6 +546,20 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             return (
               <AnimatedChatBubble key={msg.id} style={styles.msgGroup}>
                 <View style={[styles.chatRow, isUser ? styles.chatRowUser : styles.chatRowBot]}>
+                  {!isUser && (
+                    <MascotAvatar
+                      mood={
+                        isAiSpeaking && msg.id === latestAiMsg?.id
+                          ? 'speaking'
+                          : msgFeedback
+                          ? resolveAiMascotMood({ feedback: msgFeedback, idleMood: 'headset' })
+                          : 'headset'
+                      }
+                      size={28}
+                      borderColor="rgba(167, 139, 250, 0.45)"
+                      borderWidth={1}
+                    />
+                  )}
                   <View
                     style={[styles.chatBubble, isUser ? styles.chatBubbleUser : styles.chatBubbleBot]}
                   >
@@ -586,6 +607,12 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           })}
           {isAwaitingReply && (
             <AnimatedChatBubble style={[styles.chatRow, styles.chatRowBot]}>
+              <MascotAvatar
+                mood={isProcessingAudio ? 'thinking' : 'typing'}
+                size={28}
+                borderColor="rgba(167, 139, 250, 0.45)"
+                borderWidth={1}
+              />
               <View style={[styles.chatBubble, styles.chatBubbleBot]}>
                 <TypingDots color="#C4B5FD" />
               </View>
@@ -631,10 +658,10 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
                   isUserSpeaking && styles.portraitRingListening,
                 ]}
               >
-                <Image
-                  source={SUPERNOVA_IMAGES.novaAvatar}
-                  style={styles.portraitImg}
-                  resizeMode="cover"
+                <MascotAvatar
+                  mood={liveMood}
+                  size={72}
+                  backgroundColor="transparent"
                 />
               </View>
             </View>
@@ -938,6 +965,8 @@ const styles = StyleSheet.create({
   },
   chatRow: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
   },
   chatRowUser: {
     justifyContent: 'flex-end',
@@ -1001,6 +1030,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(167, 139, 250, 0.45)',
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   portraitRingSpeaking: {
     borderColor: THEME.colors.primaryGlow,

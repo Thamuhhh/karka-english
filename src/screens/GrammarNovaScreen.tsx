@@ -7,12 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { MascotAvatar, resolveAiMascotMood } from '../components/MascotAvatar';
 import { GrammarCorrection, UserStats } from '../types';
 import { analyzeSentenceGrammar, isGeminiConfigured } from '../api/supernovaAi';
 import { speakText, speakTamil, stopAllAudio } from '../services/ttsService';
@@ -104,6 +103,12 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({
 
   const onlineMode = isGeminiConfigured();
   const hasInput = inputText.trim().length > 0;
+  const grammarMood = resolveAiMascotMood({
+    isProcessing: isAnalyzing,
+    isSpeaking: activeAudioField !== null,
+    feedback: result,
+    idleMood: hasInput ? 'reading' : 'wave',
+  });
 
   return (
     <ScrollView
@@ -115,19 +120,28 @@ export const GrammarNovaScreen: React.FC<GrammarNovaScreenProps> = ({
       <View style={[styles.headerRow, embedded && styles.headerRowEmbedded]}>
         {embedded ? (
           <View style={styles.embeddedIdentity}>
-            <Image
-              source={SUPERNOVA_IMAGES.novaAvatar}
-              style={styles.miniAvatar}
-              resizeMode="cover"
+            <MascotAvatar
+              mood={grammarMood}
+              size={38}
+              borderColor="rgba(167, 139, 250, 0.45)"
+              borderWidth={1.2}
             />
             <Text style={styles.embeddedSubnote} numberOfLines={1}>
               English polish &amp; Tamil clarity
             </Text>
           </View>
         ) : (
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>Ask Nila</Text>
-            <Text style={styles.subtitle}>Sentence polish &amp; Tamil breakdown</Text>
+          <View style={styles.standaloneIdentity}>
+            <MascotAvatar
+              mood={grammarMood}
+              size={44}
+              borderColor="rgba(167, 139, 250, 0.45)"
+              borderWidth={1.2}
+            />
+            <View style={styles.titleBlock}>
+              <Text style={styles.title}>Ask Nila</Text>
+              <Text style={styles.subtitle}>Sentence polish &amp; Tamil breakdown</Text>
+            </View>
           </View>
         )}
 
@@ -427,6 +441,13 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     flex: 1,
+    paddingRight: 10,
+  },
+  standaloneIdentity: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
     paddingRight: 10,
   },
   title: {
