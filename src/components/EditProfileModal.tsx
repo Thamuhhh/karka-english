@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -11,7 +11,6 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
@@ -30,9 +29,6 @@ interface EditProfileModalProps {
   onClose: () => void;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_ITEM_SIZE = (SCREEN_WIDTH - 64) / 4;
-
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   visible,
   authUser,
@@ -44,15 +40,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   );
   const [name, setName] = useState(authUser?.name || '');
   const [isSaving, setIsSaving] = useState(false);
+  const reelScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (visible) {
-      setSelectedAvatarId((authUser?.avatarId as AvatarPackId) || DEFAULT_AVATAR_ID);
+      const initialId = (authUser?.avatarId as AvatarPackId) || DEFAULT_AVATAR_ID;
+      setSelectedAvatarId(initialId);
       setName(authUser?.name || '');
     }
   }, [visible, authUser]);
 
+  const currentIndex = Math.max(
+    0,
+    AVATAR_PACK_ITEMS.findIndex((item) => item.id === selectedAvatarId)
+  );
   const activeAvatar = getAvatarPackItem(selectedAvatarId);
+
+  const handlePrev = () => {
+    const nextIdx = (currentIndex - 1 + AVATAR_PACK_ITEMS.length) % AVATAR_PACK_ITEMS.length;
+    const nextItem = AVATAR_PACK_ITEMS[nextIdx];
+    setSelectedAvatarId(nextItem.id);
+    reelScrollRef.current?.scrollTo({ x: Math.max(0, nextIdx * 58 - 80), animated: true });
+  };
+
+  const handleNext = () => {
+    const nextIdx = (currentIndex + 1) % AVATAR_PACK_ITEMS.length;
+    const nextItem = AVATAR_PACK_ITEMS[nextIdx];
+    setSelectedAvatarId(nextItem.id);
+    reelScrollRef.current?.scrollTo({ x: Math.max(0, nextIdx * 58 - 80), animated: true });
+  };
+
+  const handleSelect = (id: AvatarPackId, idx: number) => {
+    setSelectedAvatarId(id);
+    reelScrollRef.current?.scrollTo({ x: Math.max(0, idx * 58 - 80), animated: true });
+  };
 
   const handleSave = async () => {
     if (isSaving) return;
@@ -89,7 +110,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <View style={styles.headerTextGroup}>
                 <Text style={styles.superTitle}>ACCOUNT SETTINGS</Text>
                 <Text style={styles.mainTitle}>Edit Profile</Text>
-                <Text style={styles.subtitle}>Update your profile image and name</Text>
+                <Text style={styles.subtitle}>Swipe or tap arrows to pick your look</Text>
               </View>
               <TouchableOpacity
                 onPress={onClose}
@@ -106,77 +127,111 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Selected Avatar Preview */}
-              <View style={styles.previewContainer}>
-                <View
-                  style={[
-                    styles.previewRing,
-                    { borderColor: activeAvatar.accentColor },
-                  ]}
+              {/* Interactive Hero Stage Carousel */}
+              <View style={styles.heroStageContainer}>
+                {/* Left Arrow Button */}
+                <TouchableOpacity
+                  onPress={handlePrev}
+                  style={styles.arrowBtn}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous avatar"
                 >
-                  <Image
-                    source={activeAvatar.source}
-                    style={styles.previewImage}
-                    resizeMode="contain"
+                  <Ionicons name="chevron-back" size={22} color={THEME.colors.textWhite} />
+                </TouchableOpacity>
+
+                {/* Center Hero Spotlight */}
+                <View style={styles.spotlightWrapper}>
+                  <View
+                    style={[
+                      styles.spotlightAmbientGlow,
+                      { backgroundColor: `${activeAvatar.accentColor}28` },
+                    ]}
                   />
                   <View
                     style={[
-                      styles.cameraBadge,
+                      styles.heroRing,
+                      { borderColor: activeAvatar.accentColor },
+                    ]}
+                  >
+                    <Image
+                      source={activeAvatar.source}
+                      style={styles.heroImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.selectedBadge,
                       { backgroundColor: activeAvatar.accentColor },
                     ]}
                   >
                     <Ionicons name="checkmark" size={13} color="#FFFFFF" />
                   </View>
                 </View>
+
+                {/* Right Arrow Button */}
+                <TouchableOpacity
+                  onPress={handleNext}
+                  style={styles.arrowBtn}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next avatar"
+                >
+                  <Ionicons name="chevron-forward" size={22} color={THEME.colors.textWhite} />
+                </TouchableOpacity>
               </View>
 
-              {/* Profile Image Grid - Pure images, zero meaning/tagline clutter */}
-              <Text style={styles.sectionHeading}>CHOOSE PROFILE IMAGE</Text>
-              <View style={styles.avatarGrid}>
-                {AVATAR_PACK_ITEMS.map((item) => {
+              {/* Avatar Indicator Counter */}
+              <View style={styles.counterRow}>
+                <Text style={styles.counterText}>
+                  {currentIndex + 1} of {AVATAR_PACK_ITEMS.length}
+                </Text>
+              </View>
+
+              {/* Horizontal Thumbnail Reel (Filmstrip) */}
+              <ScrollView
+                ref={reelScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.reelContent}
+                style={styles.reelScroll}
+              >
+                {AVATAR_PACK_ITEMS.map((item, idx) => {
                   const isSelected = item.id === selectedAvatarId;
                   return (
                     <TouchableOpacity
                       key={item.id}
-                      onPress={() => setSelectedAvatarId(item.id)}
-                      activeOpacity={0.8}
+                      onPress={() => handleSelect(item.id, idx)}
+                      activeOpacity={0.75}
                       style={[
-                        styles.gridItem,
+                        styles.reelItem,
                         isSelected && {
                           borderColor: item.accentColor,
-                          backgroundColor: `${item.accentColor}18`,
+                          transform: [{ scale: 1.08 }],
                         },
                       ]}
                     >
-                      <View
-                        style={[
-                          styles.gridImageContainer,
-                          isSelected && { borderColor: item.accentColor },
-                        ]}
-                      >
-                        <Image
-                          source={item.source}
-                          style={styles.gridImage}
-                          resizeMode="contain"
+                      <Image
+                        source={item.source}
+                        style={styles.reelImage}
+                        resizeMode="contain"
+                      />
+                      {isSelected && (
+                        <View
+                          style={[
+                            styles.reelIndicatorDot,
+                            { backgroundColor: item.accentColor },
+                          ]}
                         />
-                        {isSelected && (
-                          <View
-                            style={[
-                              styles.checkmarkBadge,
-                              { backgroundColor: item.accentColor },
-                            ]}
-                          >
-                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
-                          </View>
-                        )}
-                      </View>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
-              </View>
+              </ScrollView>
 
               {/* Display Name Input */}
-              <Text style={[styles.sectionHeading, { marginTop: 22 }]}>DISPLAY NAME</Text>
+              <Text style={styles.sectionHeading}>DISPLAY NAME</Text>
               <View style={styles.inputCard}>
                 <Ionicons
                   name="person-outline"
@@ -302,35 +357,108 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 20,
   },
-  previewContainer: {
+  heroStageContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginVertical: 10,
+    gap: 20,
   },
-  previewRing: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    borderWidth: 3,
-    backgroundColor: THEME.colors.surfaceDark,
+  arrowBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  spotlightWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
+    width: 114,
+    height: 114,
   },
-  previewImage: {
+  spotlightAmbientGlow: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  heroRing: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    borderWidth: 3.5,
+    backgroundColor: THEME.colors.surfaceDark,
+    overflow: 'hidden',
+  },
+  heroImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 43,
+    borderRadius: 52,
   },
-  cameraBadge: {
+  selectedBadge: {
     position: 'absolute',
     bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    right: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: THEME.colors.backgroundSecondary,
+  },
+  counterRow: {
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 14,
+  },
+  counterText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 11.5,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  reelScroll: {
+    marginBottom: 20,
+  },
+  reelContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    gap: 10,
+  },
+  reelItem: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: THEME.colors.borderLight,
+    backgroundColor: THEME.colors.surfaceDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  reelImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
+  },
+  reelIndicatorDot: {
+    position: 'absolute',
+    bottom: -6,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   sectionHeading: {
     fontFamily: THEME.fonts.bold,
@@ -338,48 +466,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: THEME.colors.textMuted,
     marginBottom: 10,
-  },
-  avatarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  gridItem: {
-    width: GRID_ITEM_SIZE,
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 16,
-    backgroundColor: THEME.colors.surfaceDark,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  gridImageContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: THEME.colors.borderLight,
-    position: 'relative',
-    backgroundColor: THEME.colors.surface,
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 26,
-  },
-  checkmarkBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.colors.surfaceDark,
   },
   inputCard: {
     flexDirection: 'row',
@@ -444,4 +530,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
-
