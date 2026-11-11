@@ -21,10 +21,10 @@ import { SUPERNOVA_LEVELS, SupernovaClass } from '../constants/curriculum';
 import { UserStats } from '../types';
 import {
   SUPERNOVA_IMAGES,
-  getLessonNodeEmblem,
 } from '../constants/supernovaAssets';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
 import { KarkaWordmark } from '../components/KarkaBrand';
+import { LessonEmblemView } from '../components/LessonEmblemView';
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
@@ -378,7 +378,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
                   const isCurrent = cls.id === nextActiveClassId;
-                  const emblemSource = getLessonNodeEmblem(cls.id);
                   const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
                   const cx = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
                   const cy = MAP_TOP_CY + cIdx * MAP_STEP_Y;
@@ -409,13 +408,9 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                         onPress={() => setSelectedLesson(cls)}
                       >
                         <View style={styles.mapNodeImgClip}>
-                          <Image
-                            source={emblemSource}
-                            style={[
-                              styles.nodeImg,
-                              !isCompleted && !isCurrent && { opacity: 0.42 },
-                            ]}
-                            resizeMode="cover"
+                          <LessonEmblemView
+                            classId={cls.id}
+                            dimmed={!isCompleted && !isCurrent}
                           />
                         </View>
 
