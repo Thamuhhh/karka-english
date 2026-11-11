@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS } from '../constants/curriculum';
-import { MascotAvatar } from '../components/MascotAvatar';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
@@ -271,24 +270,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </View>
           <LiveStreakBadge streakDays={stats.streakDays} />
-        </View>
-
-        {/* Mascot Coach Companion Row */}
-        <View style={styles.coachCard}>
-          <MascotAvatar
-            mood={stats.streakDays >= 3 ? 'reward' : stats.conversationsDone > 0 ? 'love' : 'wave'}
-            size={40}
-            borderColor="rgba(167, 139, 250, 0.45)"
-            borderWidth={1.5}
-          />
-          <View style={styles.coachTextGroup}>
-            <Text style={styles.coachTitle}>AI Coach Nova</Text>
-            <Text style={styles.coachSubtitle}>
-              {stats.streakDays >= 3
-                ? 'Super streak! Keep this momentum burning!'
-                : 'Welcome back! Ready for today’s English session?'}
-            </Text>
-          </View>
         </View>
 
         {/* Open Course Fluency Line */}
@@ -706,35 +687,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: THEME.colors.textMuted,
     marginTop: 1,
-  },
-  coachCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(127, 67, 254, 0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 12,
-  },
-  coachTextGroup: {
-    flex: 1,
-  },
-  coachTitle: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 12,
-    color: THEME.colors.gold,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  coachSubtitle: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    lineHeight: 16,
-    marginTop: 2,
   },
 
   /* COURSE FLUENCY */
