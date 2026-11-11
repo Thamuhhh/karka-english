@@ -136,13 +136,13 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 <View
                   style={[
                     styles.spotlightAmbientGlow,
-                    { backgroundColor: `${activeAvatar.accentColor}28` },
+                    { backgroundColor: `${THEME.colors.primary}28` },
                   ]}
                 />
                 <View
                   style={[
                     styles.heroRing,
-                    { borderColor: activeAvatar.accentColor },
+                    { borderColor: THEME.colors.primary },
                   ]}
                 >
                   <Image
@@ -154,7 +154,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 <View
                   style={[
                     styles.selectedBadge,
-                    { backgroundColor: activeAvatar.accentColor },
+                    { backgroundColor: THEME.colors.primary },
                   ]}
                 >
                   <Ionicons name="checkmark" size={13} color="#FFFFFF" />
@@ -197,7 +197,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                     style={[
                       styles.reelItem,
                       isSelected && {
-                        borderColor: item.accentColor,
+                        borderColor: THEME.colors.primary,
                         transform: [{ scale: 1.08 }],
                       },
                     ]}
@@ -211,7 +211,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                       <View
                         style={[
                           styles.reelIndicatorDot,
-                          { backgroundColor: item.accentColor },
+                          { backgroundColor: THEME.colors.primary },
                         ]}
                       />
                     )}
@@ -229,15 +229,15 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
               activeOpacity={0.88}
               style={[
                 styles.confirmBtn,
-                { backgroundColor: activeAvatar.accentColor },
+                { backgroundColor: THEME.colors.primary },
               ]}
             >
               <Text style={styles.confirmBtnText}>
                 {isSubmitting
                   ? 'Saving...'
                   : isOnboarding
-                  ? 'Continue • தொடரவும்'
-                  : 'Confirm • உறுதிசெய்'}
+                  ? 'Continue'
+                  : 'Confirm'}
               </Text>
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </TouchableOpacity>
@@ -387,6 +387,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 4,
+    paddingVertical: 10,
     gap: 10,
   },
   reelItem: {

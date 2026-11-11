@@ -34,14 +34,61 @@ const STARTER_WORD_SET = new Set(STARTER_VOCABULARY.map((w) => w.word.toLowerCas
 
 let activeCloudUserCache: AuthUser | null = null;
 
-function getTodayIsoDate(): string {
-  return new Date().toISOString().split('T')[0];
+function getTodayIsoDate(now = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function daysBetween(dateA: string, dateB: string): number {
+  const toUtcDay = (dateKey: string) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtcDay(dateB) - toUtcDay(dateA)) / 86_400_000);
+}
+
+function secureStreakIfGoalReached(stats: UserStats): void {
+  if (stats.todayXp < stats.dailyGoalXp) return;
+
+  const today = getTodayIsoDate();
+  if (stats.lastActiveDate === today && stats.streakDays > 0) return;
+
+  const consecutiveDay =
+    stats.streakDays > 0 && daysBetween(stats.lastActiveDate, today) === 1;
+  stats.streakDays = consecutiveDay ? stats.streakDays + 1 : 1;
+  stats.lastActiveDate = today;
+
+  // Celebrate each full week with a small, repeatable gem reward.
+  if (stats.streakDays % 7 === 0) {
+    stats.gems += 30;
+  }
+}
+
+export function getStreakWeekActivity(stats: Pick<UserStats, 'streakDays' | 'lastActiveDate'>): boolean[] {
+  const today = new Date();
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const lastActiveDate = stats.lastActiveDate;
+
+  return Array.from({ length: 7 }, (_, index) => {
+    if (!lastActiveDate || stats.streakDays <= 0) return false;
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    const daysBeforeLastActive = daysBetween(getTodayIsoDate(date), lastActiveDate);
+    return daysBeforeLastActive >= 0 && daysBeforeLastActive < stats.streakDays;
+  });
+}
+
+export function hasSecuredStreakToday(stats: Pick<UserStats, 'todayXp' | 'dailyGoalXp' | 'lastActiveDate'>): boolean {
+  return stats.todayXp >= stats.dailyGoalXp && stats.lastActiveDate === getTodayIsoDate();
 }
 
 export function createDefaultStats(): UserStats {
   const today = getTodayIsoDate();
   return {
-    streakDays: 1,
+    streakDays: 0,
     lastActiveDate: today,
     stardustXp: 0,
     cosmicRank: computeLeagueRankName(0),
@@ -73,26 +120,19 @@ function normalizeStats(raw: Partial<UserStats>): UserStats {
     ? Array.from(new Set(raw.masteredWords))
     : [];
 
-  let streakDays = typeof raw.streakDays === 'number' && raw.streakDays >= 1 ? raw.streakDays : 1;
+  let streakDays =
+    typeof raw.streakDays === 'number' && raw.streakDays >= 0
+      ? raw.streakDays
+      : defaults.streakDays;
   const lastActiveDate = raw.lastActiveDate || today;
-
-  if (lastActiveDate !== today) {
-    const lastMs = new Date(lastActiveDate).getTime();
-    const currMs = new Date(today).getTime();
-    const diffDays = Math.round((currMs - lastMs) / (1000 * 3600 * 24));
-    if (diffDays === 1) {
-      streakDays += 1;
-    } else if (diffDays > 1) {
-      streakDays = 1;
-    }
-  }
+  if (streakDays > 0 && daysBetween(lastActiveDate, today) > 1) streakDays = 0;
 
   const sameToday = raw.todayDate === today;
   const todayXp = sameToday && typeof raw.todayXp === 'number' ? raw.todayXp : 0;
 
-  return {
+  const normalized: UserStats = {
     streakDays,
-    lastActiveDate: today,
+    lastActiveDate,
     stardustXp: xp,
     cosmicRank: computeLeagueRankName(xp),
     gems: typeof raw.gems === 'number' ? raw.gems : defaults.gems,
@@ -108,6 +148,8 @@ function normalizeStats(raw: Partial<UserStats>): UserStats {
     masteredWords,
     soundEnabled: typeof raw.soundEnabled === 'boolean' ? raw.soundEnabled : true,
   };
+  secureStreakIfGoalReached(normalized);
+  return normalized;
 }
 
 async function resolveCurrentAuthUser(): Promise<AuthUser | null> {
@@ -125,10 +167,12 @@ function mergeStats(remote: UserStats, local: UserStats): UserStats {
   const useLocalScalarSource = local.stardustXp > remote.stardustXp;
   const combinedXp = Math.max(remote.stardustXp, local.stardustXp);
 
+  const streakSource =
+    remote.lastActiveDate >= local.lastActiveDate ? remote : local;
+
   return normalizeStats({
-    streakDays: Math.max(remote.streakDays, local.streakDays),
-    lastActiveDate:
-      remote.lastActiveDate >= local.lastActiveDate ? remote.lastActiveDate : local.lastActiveDate,
+    streakDays: streakSource.streakDays,
+    lastActiveDate: streakSource.lastActiveDate,
     stardustXp: combinedXp,
     cosmicRank: computeLeagueRankName(combinedXp),
     gems: useLocalScalarSource ? local.gems : remote.gems,
@@ -266,6 +310,9 @@ export async function hydrateUserCloudSession(authUser: AuthUser): Promise<UserS
   let resolvedStats = localStats;
   if (cloudData.stats) {
     let normalizedCloud = normalizeStats(cloudData.stats);
+    const cloudStreakNeedsSync =
+      normalizedCloud.streakDays !== cloudData.stats.streakDays ||
+      normalizedCloud.lastActiveDate !== cloudData.stats.lastActiveDate;
     const isLegacyUntouchedSeed =
       normalizedCloud.completedClasses.length === 1 &&
       normalizedCloud.completedClasses[0] === 'sn-1-1' &&
@@ -295,7 +342,7 @@ export async function hydrateUserCloudSession(authUser: AuthUser): Promise<UserS
       ? mergeStats(normalizedCloud, localStats)
       : normalizedCloud;
 
-    if (shouldMergeLocal || isLegacyUntouchedSeed) {
+    if (shouldMergeLocal || isLegacyUntouchedSeed || cloudStreakNeedsSync) {
       void pushProgressAndLeaderboard(authUser, resolvedStats);
     }
   } else {
@@ -340,6 +387,7 @@ export async function addXp(amount: number, bonusGems = 0): Promise<UserStats> {
   stats.stardustXp += safeXp;
   stats.todayXp += safeXp;
   stats.gems += Math.max(0, bonusGems);
+  secureStreakIfGoalReached(stats);
   await saveUserStats(stats);
   return stats;
 }
@@ -360,6 +408,7 @@ export async function completeLessonSession(
   stats.stardustXp += awardedXp;
   stats.todayXp += awardedXp;
   stats.gems += awardedGems;
+  secureStreakIfGoalReached(stats);
 
   await saveUserStats(stats);
   return { stats, awardedXp, awardedGems, isFirstCompletion };
@@ -368,6 +417,13 @@ export async function completeLessonSession(
 export async function updateHearts(delta: number): Promise<UserStats> {
   const stats = await loadUserStats();
   stats.hearts = Math.max(0, Math.min(stats.maxHearts, stats.hearts + delta));
+  await saveUserStats(stats);
+  return stats;
+}
+
+export async function setHeartCount(hearts: number): Promise<UserStats> {
+  const stats = await loadUserStats();
+  stats.hearts = Math.max(0, Math.min(stats.maxHearts, Math.floor(hearts)));
   await saveUserStats(stats);
   return stats;
 }
@@ -391,6 +447,7 @@ export async function refillHeartsWithGems(
 export async function updateDailyGoal(dailyGoalXp: number): Promise<UserStats> {
   const stats = await loadUserStats();
   stats.dailyGoalXp = dailyGoalXp;
+  secureStreakIfGoalReached(stats);
   await saveUserStats(stats);
   return stats;
 }
@@ -412,6 +469,7 @@ export async function incrementMetric(
   const xpGain = amount * 15;
   stats.stardustXp += xpGain;
   stats.todayXp += xpGain;
+  secureStreakIfGoalReached(stats);
   await saveUserStats(stats);
   return stats;
 }
@@ -428,6 +486,7 @@ export async function markWordMastered(word: string): Promise<UserStats> {
     stats.stardustXp += 5;
     stats.todayXp += 5;
   }
+  secureStreakIfGoalReached(stats);
   await saveUserStats(stats);
 
   const words = await loadVocabularyList();
@@ -460,6 +519,7 @@ export async function toggleSavedWord(
   }
 
   stats.wordsMastered = stats.masteredWords.length;
+  secureStreakIfGoalReached(stats);
   await saveUserStats(stats);
 
   const words = await loadVocabularyList();
@@ -623,6 +683,7 @@ export async function saveAuthUser(user: AuthUser): Promise<void> {
 export async function updateAuthUserProfile(updates: {
   name?: string;
   avatarId?: string;
+  learningGoal?: string;
 }): Promise<AuthUser | null> {
   try {
     const current = await loadAuthUser();
@@ -632,6 +693,7 @@ export async function updateAuthUserProfile(updates: {
       ...current,
       ...(trimmedName ? { name: trimmedName } : {}),
       ...(updates.avatarId ? { avatarId: updates.avatarId } : {}),
+      ...(updates.learningGoal !== undefined ? { learningGoal: updates.learningGoal } : {}),
     };
     await saveAuthUser(updated);
     if (current.isCloudSession && current.id) {

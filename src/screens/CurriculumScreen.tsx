@@ -19,7 +19,6 @@ import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import {
   getNextUnlockedClassId,
-  getPreviousClassFor,
   isLessonUnlocked,
   SUPERNOVA_LEVELS,
   SupernovaClass,
@@ -31,12 +30,12 @@ import {
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
 import { ElvateWordmark } from '../components/ElvateBrand';
 import { LessonEmblemView } from '../components/LessonEmblemView';
+import { StreakScreen } from './StreakScreen';
 
 interface CurriculumScreenProps {
   onStartLesson: (lesson: SupernovaClass) => void;
   stats: UserStats;
   userRank: number;
-  onRefillHearts: () => void;
   onOpenLeague?: () => void;
   onTopColorChange?: (color: string) => void;
 }
@@ -74,6 +73,17 @@ function formatShortUnitTitle(fullName: string): string {
   return fullName.replace(/^Unit\s+\d+:\s*/i, '').trim();
 }
 
+const ALL_ORDERED_CLASSES = SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes);
+
+const LESSON_NUMBER_MAP: Record<string, number> = {};
+let runningNum = 0;
+for (const lvl of SUPERNOVA_LEVELS) {
+  for (const cls of lvl.classes) {
+    runningNum++;
+    LESSON_NUMBER_MAP[cls.id] = runningNum;
+  }
+}
+
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   stats,
@@ -81,6 +91,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
 }) => {
   const { width: windowWidth } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
+  const [showStreakScreen, setShowStreakScreen] = useState(false);
   const [activeUnitIdx, setActiveUnitIdx] = useState(0);
   const activeUnitIdxRef = useRef(0);
   const unitStartYRef = useRef<number[]>([]);
@@ -102,23 +113,28 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     : 0;
 
   const nextActiveClassId = getNextUnlockedClassId(completedClasses);
-  const allOrderedClasses = SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes);
-  const nextActiveLesson =
-    (nextActiveClassId
-      ? allOrderedClasses.find((cls) => cls.id === nextActiveClassId)
-      : null) || null;
   const isSelectedUnlocked = selectedLesson
     ? isLessonUnlocked(selectedLesson.id, completedClasses)
     : false;
-  const blockingLesson =
-    selectedLesson && !isSelectedUnlocked ? getPreviousClassFor(selectedLesson.id) : null;
 
   const activeLevel = SUPERNOVA_LEVELS[activeUnitIdx] || SUPERNOVA_LEVELS[0];
   const activeUnitTopColor = UNIT_TOP_COLORS[activeUnitIdx % UNIT_TOP_COLORS.length];
 
+  const prevTopColorRef = useRef<string | null>(null);
   useEffect(() => {
-    onTopColorChange?.(activeUnitTopColor);
+    if (prevTopColorRef.current !== activeUnitTopColor) {
+      prevTopColorRef.current = activeUnitTopColor;
+      onTopColorChange?.(activeUnitTopColor);
+    }
   }, [activeUnitTopColor, onTopColorChange]);
+  const openStreakScreen = () => {
+    onTopColorChange?.('#0E0D14');
+    setShowStreakScreen(true);
+  };
+  const closeStreakScreen = () => {
+    setShowStreakScreen(false);
+    onTopColorChange?.(activeUnitTopColor);
+  };
   const activeCompletedCount = activeLevel.classes.filter((c) =>
     completedClasses.includes(c.id)
   ).length;
@@ -126,7 +142,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     (activeCompletedCount / activeLevel.classes.length) * 100
   );
   const isActiveUnitDone = activeCompletedCount === activeLevel.classes.length;
-
   const handleMapScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollY = event.nativeEvent.contentOffset.y;
     let nextIdx = 0;
@@ -164,15 +179,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  // Precompute global sequential lesson number for each class ID
-  const lessonNumberMap: Record<string, number> = {};
-  let runningNum = 0;
-  for (const lvl of SUPERNOVA_LEVELS) {
-    for (const cls of lvl.classes) {
-      runningNum++;
-      lessonNumberMap[cls.id] = runningNum;
-    }
-  }
+  const lessonNumberMap = LESSON_NUMBER_MAP;
 
   const renderUnitBandContent = (
     levelNum: number,
@@ -228,7 +235,16 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
             <View style={styles.brandLogoWrap}>
               <ElvateWordmark width={74} height={22} />
             </View>
-            <LiveStreakBadge streakDays={stats.streakDays} />
+            <TouchableOpacity
+              onPress={openStreakScreen}
+              activeOpacity={0.75}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${stats.streakDays} day streak details`}
+              accessibilityHint="Opens your streak progress page"
+            >
+              <LiveStreakBadge streakDays={stats.streakDays} />
+            </TouchableOpacity>
           </View>
 
           <Animated.View
@@ -561,6 +577,15 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
         </Animated.View>
       </View>
 
+      <Modal
+        visible={showStreakScreen}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={closeStreakScreen}
+      >
+        <StreakScreen stats={stats} onClose={closeStreakScreen} />
+      </Modal>
+
       {/* Ultra-Minimal Quick Popover Lesson Card */}
       <Modal
         visible={!!selectedLesson}
@@ -629,27 +654,17 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                   <Text style={styles.popoverStartText}>
                     {isSelectedCompleted ? 'PRACTICE AGAIN' : 'START LESSON'}
                   </Text>
-                  <Ionicons name="arrow-forward" size={16} color="#141320" />
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={styles.popoverStartArrow} />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.popoverLockedFooter}>
                   <Text style={styles.popoverLockReason}>
-                    {blockingLesson
-                      ? `Complete Class ${String(lessonNumberMap[blockingLesson.id] || blockingLesson.classNumber).padStart(2, '0')} (${formatShortLessonTitle(blockingLesson.title)}) first to open this class.`
-                      : 'Complete the previous class first to unlock this lesson.'}
+                    Complete the previous class to unlock this lesson.
                   </Text>
-                  {nextActiveLesson && (
-                    <TouchableOpacity
-                      style={styles.popoverJumpBtn}
-                      activeOpacity={0.86}
-                      onPress={() => setSelectedLesson(nextActiveLesson)}
-                    >
-                      <Ionicons name="lock-open-outline" size={15} color="#FFFFFF" />
-                      <Text style={styles.popoverJumpText}>
-                        OPEN CLASS {String(lessonNumberMap[nextActiveLesson.id] || nextActiveLesson.classNumber).padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={styles.popoverLockedButton}>
+                    <Ionicons name="lock-closed" size={14} color={THEME.colors.textMuted} />
+                    <Text style={styles.popoverLockedButtonText}>LOCKED</Text>
+                  </View>
                 </View>
               )}
             </View>
@@ -973,7 +988,7 @@ const styles = StyleSheet.create({
   /* QUICK POPOVER MODAL */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(6, 6, 10, 0.72)',
+    backgroundColor: 'rgba(6, 6, 10, 0.64)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 22,
@@ -982,16 +997,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   popoverCard: {
-    backgroundColor: '#1B1633',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: 'rgba(127, 67, 254, 0.58)',
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 14,
+    backgroundColor: '#191722',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.2)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 8,
   },
   popoverMetaRow: {
     flexDirection: 'row',
@@ -1009,7 +1024,7 @@ const styles = StyleSheet.create({
   popoverEyebrow: {
     fontFamily: THEME.fonts.extraBold,
     fontSize: 10.5,
-    color: '#C4B5FD',
+    color: '#B9A6F5',
     letterSpacing: 0.8,
   },
   popoverXp: {
@@ -1039,14 +1054,17 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   popoverStartBtn: {
+    position: 'relative',
     marginTop: 16,
     height: 44,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
+    borderRadius: 12,
+    backgroundColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+  },
+  popoverStartArrow: {
+    position: 'absolute',
+    right: 15,
   },
   popoverCardLocked: {
     borderColor: 'rgba(130, 125, 160, 0.38)',
@@ -1075,31 +1093,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#D5CFE8',
     lineHeight: 17,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 10,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  popoverJumpBtn: {
+  popoverLockedButton: {
     height: 42,
     borderRadius: 12,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
   },
-  popoverJumpText: {
+  popoverLockedButtonText: {
     fontFamily: THEME.fonts.extraBold,
-    fontSize: 12.5,
-    color: '#FFFFFF',
+    fontSize: 11.5,
+    color: THEME.colors.textMuted,
     letterSpacing: 0.5,
   },
   popoverStartText: {
     fontFamily: THEME.fonts.extraBold,
     fontSize: 13,
-    color: '#141320',
+    color: '#FFFFFF',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   scrollTopWrap: {
     position: 'absolute',

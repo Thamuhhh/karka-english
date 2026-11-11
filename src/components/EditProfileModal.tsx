@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
@@ -97,9 +98,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       visible={visible}
       animationType="slide"
       transparent={true}
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.backdrop}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="transparent"
+          translucent
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoid}
@@ -145,13 +152,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   <View
                     style={[
                       styles.spotlightAmbientGlow,
-                      { backgroundColor: `${activeAvatar.accentColor}28` },
+                      { backgroundColor: `${THEME.colors.primary}28` },
                     ]}
                   />
                   <View
                     style={[
                       styles.heroRing,
-                      { borderColor: activeAvatar.accentColor },
+                      { borderColor: THEME.colors.primary },
                     ]}
                   >
                     <Image
@@ -163,7 +170,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   <View
                     style={[
                       styles.selectedBadge,
-                      { backgroundColor: activeAvatar.accentColor },
+                      { backgroundColor: THEME.colors.primary },
                     ]}
                   >
                     <Ionicons name="checkmark" size={13} color="#FFFFFF" />
@@ -207,7 +214,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                       style={[
                         styles.reelItem,
                         isSelected && {
-                          borderColor: item.accentColor,
+                          borderColor: THEME.colors.primary,
                           transform: [{ scale: 1.08 }],
                         },
                       ]}
@@ -221,7 +228,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                         <View
                           style={[
                             styles.reelIndicatorDot,
-                            { backgroundColor: item.accentColor },
+                            { backgroundColor: THEME.colors.primary },
                           ]}
                         />
                       )}
@@ -267,6 +274,42 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   </Text>
                 </View>
               )}
+
+              {/* Account Info */}
+              <View style={styles.contentDivider} />
+              <Text style={styles.sectionHeading}>ACCOUNT</Text>
+              <View style={styles.accountInfoCard}>
+                <View style={styles.accountInfoRow}>
+                  <Ionicons name="shield-checkmark-outline" size={15} color={THEME.colors.primaryGlow} />
+                  <Text style={styles.accountInfoLabel}>Provider</Text>
+                  <Text style={styles.accountInfoValue}>
+                    {authUser?.provider === 'google' ? 'Google' : authUser?.provider === 'email' ? 'Email' : 'Guest'}
+                  </Text>
+                </View>
+                <View style={styles.accountInfoDivider} />
+                <View style={styles.accountInfoRow}>
+                  <Ionicons name="calendar-outline" size={15} color={THEME.colors.primaryGlow} />
+                  <Text style={styles.accountInfoLabel}>Joined</Text>
+                  <Text style={styles.accountInfoValue}>
+                    {authUser?.createdAt
+                      ? new Date(authUser.createdAt).toLocaleDateString('en-IN', {
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : '—'}
+                  </Text>
+                </View>
+                {authUser?.isCloudSession && (
+                  <>
+                    <View style={styles.accountInfoDivider} />
+                    <View style={styles.accountInfoRow}>
+                      <Ionicons name="cloud-done-outline" size={15} color="#34D399" />
+                      <Text style={styles.accountInfoLabel}>Sync</Text>
+                      <Text style={[styles.accountInfoValue, { color: '#34D399' }]}>Cloud Synced</Text>
+                    </View>
+                  </>
+                )}
+              </View>
             </ScrollView>
 
             {/* Bottom Actions */}
@@ -281,7 +324,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 ]}
               >
                 <Text style={styles.saveBtnText}>
-                  {isSaving ? 'Saving Changes...' : 'Save Profile • சேமி'}
+                  {isSaving ? 'Saving Changes...' : 'Save Profile'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -361,7 +404,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 10,
+    paddingVertical: 8,
+    marginTop: 12,
+    marginBottom: 10,
     gap: 20,
   },
   arrowBtn: {
@@ -420,7 +465,7 @@ const styles = StyleSheet.create({
   counterRow: {
     alignItems: 'center',
     marginTop: 6,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   counterText: {
     fontFamily: THEME.fonts.medium,
@@ -429,13 +474,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   reelScroll: {
-    marginBottom: 20,
+    marginTop: 4,
+    marginBottom: 26,
   },
   reelContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    gap: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 12,
+    gap: 12,
   },
   reelItem: {
     width: 50,
@@ -500,6 +547,40 @@ const styles = StyleSheet.create({
     fontFamily: THEME.fonts.body,
     fontSize: 11.5,
     color: THEME.colors.textMuted,
+  },
+  contentDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginVertical: 18,
+  },
+  accountInfoCard: {
+    backgroundColor: THEME.colors.surfaceCard,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+  },
+  accountInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    gap: 10,
+  },
+  accountInfoLabel: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    flex: 1,
+  },
+  accountInfoValue: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 13,
+    color: THEME.colors.textWhite,
+  },
+  accountInfoDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   bottomBar: {
     paddingHorizontal: 20,

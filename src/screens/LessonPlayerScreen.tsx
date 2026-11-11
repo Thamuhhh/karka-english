@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,17 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Animated,
+  PanResponder,
+  StyleProp,
+  TextStyle,
+  ViewStyle,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { MascotAvatar, resolveAiMascotMood } from '../components/MascotAvatar';
+import { MascotAvatar } from '../components/MascotAvatar';
 import { SupernovaClass } from '../constants/curriculum';
 import { UserStats, GrammarCorrection, ChatMessage } from '../types';
 import {
@@ -34,6 +39,7 @@ import {
 } from '../api/supernovaAi';
 import { playSoundEffect } from '../services/soundEffectsService';
 import { AnimatedChatBubble, TypingDots, TypewriterText } from '../components/ChatAnimations';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface LessonPlayerProps {
   lesson: SupernovaClass;
@@ -57,6 +63,77 @@ type SlideType = 'rule' | 'jumble' | 'translation' | 'speaking' | 'victory';
 const LESSON_STEPS: Exclude<SlideType, 'victory'>[] = ['rule', 'jumble', 'translation', 'speaking'];
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 const MAX_LESSON_WIDTH = 500;
+
+interface WordChipRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface DraggableWordChipProps {
+  word: string;
+  chipStyle: StyleProp<ViewStyle>;
+  textStyle: StyleProp<TextStyle>;
+  disabled: boolean;
+  onPress: () => void;
+  onDrop: (x: number, y: number) => void;
+  onMeasure: (rect: WordChipRect) => void;
+  trailingIcon?: React.ReactNode;
+}
+
+const DraggableWordChip: React.FC<DraggableWordChipProps> = ({
+  word,
+  chipStyle,
+  textStyle,
+  disabled,
+  onPress,
+  onDrop,
+  onMeasure,
+  trailingIcon,
+}) => {
+  const position = useRef(new Animated.ValueXY()).current;
+  const chipRef = useRef<View>(null);
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          !disabled && (Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5),
+        onPanResponderMove: Animated.event([null, { dx: position.x, dy: position.y }], {
+          useNativeDriver: false,
+        }),
+        onPanResponderRelease: (_, gesture) => {
+          onDrop(gesture.moveX, gesture.moveY);
+          position.setValue({ x: 0, y: 0 });
+        },
+        onPanResponderTerminate: () => position.setValue({ x: 0, y: 0 }),
+      }),
+    [disabled, onDrop, position]
+  );
+
+  const measureChip = () => {
+    requestAnimationFrame(() => {
+      chipRef.current?.measureInWindow((x, y, width, height) =>
+        onMeasure({ x, y, width, height })
+      );
+    });
+  };
+
+  return (
+    <Animated.View
+      ref={chipRef}
+      onLayout={measureChip}
+      style={{ transform: position.getTranslateTransform() }}
+      {...panResponder.panHandlers}
+    >
+      <TouchableOpacity style={chipStyle} onPress={onPress} disabled={disabled} activeOpacity={0.8}>
+        <Text style={textStyle}>{word}</Text>
+        {trailingIcon}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 function formatShortLessonTitle(fullTitle: string): string {
   return fullTitle.replace(/^Class\s+\d+:\s*/i, '').trim();
@@ -120,11 +197,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   onTopColorChange,
   onComplete,
 }) => {
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const [currentSlide, setCurrentSlide] = useState<SlideType>('rule');
   const [hearts, setHearts] = useState(Math.max(0, initialHearts));
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [voiceMuted, setVoiceMuted] = useState(false);
   const slideScrollRef = useRef<ScrollView>(null);
+  const lectureFollowUpTokenRef = useRef(0);
 
   // Accuracy & Victory Tracking
   const [checksTotal, setChecksTotal] = useState(0);
@@ -145,6 +224,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [availableWords, setAvailableWords] = useState<string[]>([
     ...lesson.jumble.scrambledWords,
   ]);
+  const answerDropzoneRef = useRef<View>(null);
+  const answerDropzoneRectRef = useRef<WordChipRect | null>(null);
+  const answerSlotRectsRef = useRef<WordChipRect[]>([]);
   const [showJumbleHint, setShowJumbleHint] = useState(false);
   const [jumbleChecked, setJumbleChecked] = useState(false);
   const [isJumbleCorrect, setIsJumbleCorrect] = useState(false);
@@ -156,20 +238,33 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [isCheckingTrans, setIsCheckingTrans] = useState(false);
   const [transEval, setTransEval] = useState<TranslationEvalResult | null>(null);
 
-  // Slide 4: Conversational Real Talk State
-  const [realTalkMessages, setRealTalkMessages] = useState<ChatMessage[]>([
-    {
-      id: 'init-nila',
-      role: 'assistant',
-      content: lesson.speakingChallenge.missNovaQuestion,
-      timestamp: Date.now(),
-    },
-  ]);
-  const [replyDraft, setReplyDraft] = useState('');
-  const [isReplying, setIsReplying] = useState(false);
-  const [animatedBotMsgId, setAnimatedBotMsgId] = useState<string | null>(null);
+  // Slide 4: Supernova Spoken Audio Practice State (Reverse Engineered from Supernova APK)
+  const practicePhrases = useMemo(() => {
+    const list = [
+      lesson?.speakingChallenge?.sampleNativeResponse,
+      ...(lesson?.speakingChallenge?.suggestedAnswers || []),
+    ].filter(Boolean) as string[];
+    return Array.from(new Set(list));
+  }, [lesson]);
+
+  const [selectedPhraseIndex, setSelectedPhraseIndex] = useState(0);
+  const activeTargetPhrase =
+    practicePhrases[selectedPhraseIndex] ||
+    lesson?.speakingChallenge?.sampleNativeResponse ||
+    'Hello, I am excited to learn English!';
+
+  interface SpeakingAttemptResult {
+    transcript: string;
+    score: number;
+    matchedWords: string[];
+    missedWords: string[];
+    pronunciationTip?: string;
+    tamilExplanation?: string;
+  }
+
+  const [speakingAttempt, setSpeakingAttempt] = useState<SpeakingAttemptResult | null>(null);
   const [isRecordingTalk, setIsRecordingTalk] = useState(false);
-  const [lastTurnFeedback, setLastTurnFeedback] = useState<GrammarCorrection | null>(null);
+  const [isEvaluatingSpeech, setIsEvaluatingSpeech] = useState(false);
   const talkRecordingRef = useRef<Audio.Recording | null>(null);
 
   const handlePlayVoice = (
@@ -177,20 +272,53 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     id: string,
     rateOverride?: number,
     preferAiVoice = false,
-    assetKey?: string
+    assetKey?: string,
+    onDone?: () => void
   ) => {
+    if (!onDone) lectureFollowUpTokenRef.current += 1;
     setPlayingAudioId(id);
-    speakText(text, () => setPlayingAudioId(null), rateOverride, preferAiVoice, assetKey);
+    speakText(
+      text,
+      () => {
+        setPlayingAudioId(null);
+        onDone?.();
+      },
+      rateOverride,
+      preferAiVoice,
+      assetKey
+    );
   };
 
   const handlePlayTamilVoice = (text: string, id: string, assetKey?: string) => {
+    lectureFollowUpTokenRef.current += 1;
     setPlayingAudioId(id);
     speakTamil(text, () => setPlayingAudioId(null), assetKey);
   };
 
   const handleStopVoice = () => {
+    lectureFollowUpTokenRef.current += 1;
     stopAllAudio();
     setPlayingAudioId(null);
+  };
+
+  const playRightThenWhy = (rateOverride?: number, preferAiVoice = true) => {
+    const followUpToken = ++lectureFollowUpTokenRef.current;
+    handlePlayVoice(
+      lesson.rule.doAndDont.right,
+      'lecture-right',
+      rateOverride,
+      preferAiVoice,
+      `${lesson.id}-right`,
+      () => {
+        if (followUpToken === lectureFollowUpTokenRef.current) {
+          handlePlayTamilVoice(
+            lesson.rule.doAndDont.whyTamil,
+            'lecture-why',
+            `${lesson.id}-why`
+          );
+        }
+      }
+    );
   };
 
   // Auto-speak focused step cleanly without overwhelming lecture walls
@@ -204,19 +332,13 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           `${lesson.id}-tamil`
         );
       } else if (lectureStep === 1) {
-        handlePlayVoice(
-          lesson.rule.doAndDont.right,
-          'lecture-right',
-          undefined,
-          true,
-          `${lesson.id}-right`
-        );
+        playRightThenWhy();
       }
     } else if (currentSlide === 'speaking') {
-      const firstLine = lesson.speakingChallenge.missNovaQuestion;
-      handlePlayVoice(firstLine, 'init-nila');
+      // Audio match game - no auto-speak needed
     }
     return () => {
+      lectureFollowUpTokenRef.current += 1;
       stopAllAudio();
       setPlayingAudioId(null);
     };
@@ -241,21 +363,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   };
 
   const handleExit = () => {
-    Alert.alert(
-      'Leave Lesson?',
-      'Your current progress in this lesson will not be saved.',
-      [
-        { text: 'Keep Learning', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: () => {
-            stopAllAudio();
-            onClose();
-          },
-        },
-      ]
-    );
+    setShowExitDialog(true);
   };
 
   const loseOneHeart = () => {
@@ -270,19 +378,65 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const handleTapBankWord = (word: string, index: number) => {
     if (jumbleChecked) return;
     playSoundEffect('button');
-    setAssembledWords([...assembledWords, word]);
-    const updated = [...availableWords];
-    updated.splice(index, 1);
-    setAvailableWords(updated);
+    setAssembledWords((prev) => [...prev, word]);
+    setAvailableWords((prev) => prev.filter((_, wordIndex) => wordIndex !== index));
   };
 
   const handleTapSlotWord = (word: string, index: number) => {
     if (jumbleChecked) return;
     playSoundEffect('buttonV2');
-    const updated = [...assembledWords];
-    updated.splice(index, 1);
-    setAssembledWords(updated);
-    setAvailableWords([...availableWords, word]);
+    setAssembledWords((prev) => prev.filter((_, wordIndex) => wordIndex !== index));
+    setAvailableWords((prev) => [...prev, word]);
+  };
+
+  const getAnswerInsertionIndex = (x: number, y: number, wordCount: number) => {
+    const rects = answerSlotRectsRef.current;
+    for (let index = 0; index < wordCount; index += 1) {
+      const rect = rects[index];
+      if (!rect) continue;
+      const centerY = rect.y + rect.height / 2;
+      const centerX = rect.x + rect.width / 2;
+      if (y < centerY - rect.height * 0.35 || (Math.abs(y - centerY) <= rect.height * 0.65 && x < centerX)) {
+        return index;
+      }
+    }
+    return wordCount;
+  };
+
+  const isInsideAnswerDropzone = (x: number, y: number) => {
+    const rect = answerDropzoneRectRef.current;
+    return Boolean(
+      rect && x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
+    );
+  };
+
+  const handleDragBankWord = (word: string, fromIndex: number, x: number, y: number) => {
+    if (jumbleChecked || !isInsideAnswerDropzone(x, y)) return;
+    const insertionIndex = getAnswerInsertionIndex(x, y, assembledWords.length);
+    setAvailableWords((prev) => prev.filter((_, index) => index !== fromIndex));
+    setAssembledWords((prev) => {
+      const next = [...prev];
+      next.splice(Math.min(insertionIndex, next.length), 0, word);
+      return next;
+    });
+    playSoundEffect('button');
+  };
+
+  const handleDragSlotWord = (word: string, fromIndex: number, x: number, y: number) => {
+    if (jumbleChecked) return;
+    if (!isInsideAnswerDropzone(x, y)) {
+      handleTapSlotWord(word, fromIndex);
+      return;
+    }
+    const targetIndex = getAnswerInsertionIndex(x, y, assembledWords.length);
+    const insertionIndex = targetIndex > fromIndex ? targetIndex - 1 : targetIndex;
+    setAssembledWords((prev) => {
+      const next = [...prev];
+      const [movedWord] = next.splice(fromIndex, 1);
+      next.splice(Math.max(0, Math.min(insertionIndex, next.length)), 0, movedWord);
+      return next;
+    });
+    playSoundEffect('buttonV2');
   };
 
   const handleResetJumble = () => {
@@ -355,64 +509,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     }
   };
 
-  // Stage 4: Conversational Real Talk Handler
-  const handleSendRealTalk = async (overrideText?: string) => {
-    const text = (overrideText ?? replyDraft).trim();
-    if (!text || isReplying) return;
-
-    stopAllAudio();
-    setPlayingAudioId(null);
-    setReplyDraft('');
-
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: text,
-      timestamp: Date.now(),
-    };
-    const nextHistory = [...realTalkMessages, userMsg];
-    setRealTalkMessages(nextHistory);
-    setIsReplying(true);
-
-    setTimeout(() => {
-      slideScrollRef.current?.scrollToEnd({ animated: true });
-    }, 80);
-
-    try {
-      const { reply, feedback } = await sendLessonRealTalkReply(nextHistory, text, lesson);
-      setLastTurnFeedback(feedback);
-      setChecksTotal((prev) => prev + 1);
-      if (feedback.fluencyScore >= 70) {
-        setChecksCorrect((prev) => prev + 1);
-      }
-
-      const nilaMsgId = `nila-${Date.now()}`;
-      const nilaMsg: ChatMessage = {
-        id: nilaMsgId,
-        role: 'assistant',
-        content: reply,
-        timestamp: Date.now(),
-      };
-      setAnimatedBotMsgId(nilaMsgId);
-      setRealTalkMessages((prev) => [...prev, nilaMsg]);
-      if (!feedback.hasErrors) {
-        playSoundEffect('success');
-      }
-      if (!voiceMuted) {
-        handlePlayVoice(reply, nilaMsgId);
-      }
-      setTimeout(() => {
-        slideScrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    } catch (e) {
-      console.warn('Real talk error:', e);
-    } finally {
-      setIsReplying(false);
-    }
-  };
-
-  const handleRealTalkMicToggle = async () => {
-    if (isReplying) return;
+  // Stage 4: Supernova Spoken Audio Practice Handlers (Reverse Engineered from Supernova APK)
+  const handleToggleSpeakingMic = async () => {
+    if (isEvaluatingSpeech) return;
 
     if (!isRecordingTalk) {
       stopAllAudio();
@@ -422,13 +521,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         Alert.alert(
           started.reason === 'denied' ? 'Microphone Permission' : 'Microphone Error',
           started.reason === 'denied'
-            ? 'Please allow microphone access to practice Real Talk pronunciation with Nila.'
+            ? 'Please allow microphone access to practice pronunciation with Nova.'
             : 'Could not start microphone recording right now.'
         );
         return;
       }
       talkRecordingRef.current = started.recording;
       setIsRecordingTalk(true);
+      playSoundEffect('button');
       return;
     }
 
@@ -437,69 +537,85 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     setIsRecordingTalk(false);
     if (!activeRecording) return;
 
-    setIsReplying(true);
+    setIsEvaluatingSpeech(true);
     try {
       const encoded = await finishAudioCapture(activeRecording);
       if (!encoded) {
-        Alert.alert(
-          'Too Short',
-          'Tap the mic, speak clearly for 1–2 seconds, then tap again to send.'
-        );
+        Alert.alert('Too Short', 'Tap the mic, speak clearly for 1–2 seconds, then tap again to submit.');
         return;
       }
 
       const result = await analyzeAndReplySpokenAudio(
         encoded.base64,
         encoded.mimeType,
-        realTalkMessages,
+        [],
         { mode: 'lesson', lesson }
       );
 
-      if (!result.ok) {
-        const msg =
-          result.reason === 'no_key'
-            ? 'Add EXPO_PUBLIC_GEMINI_API_KEY in .env and restart with npx expo start -c.'
-            : result.reason === 'unintelligible'
-              ? 'Could not hear words clearly. Try speaking closer to the mic.'
-              : result.detail
-                ? `Gemini error: ${result.detail}`
-                : 'Could not reach Gemini right now. Check your network or API key.';
-        Alert.alert('Voice Check', msg);
-        return;
-      }
+      const transcript = (result.ok ? result.transcript : '').trim();
 
-      const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: result.transcript,
-        timestamp: Date.now(),
-      };
-      const nilaMsgId = `nila-${Date.now()}`;
-      const nilaMsg: ChatMessage = {
-        id: nilaMsgId,
-        role: 'assistant',
-        content: result.reply,
-        timestamp: Date.now(),
-      };
+      // Analyze word-by-word match against activeTargetPhrase
+      const cleanTargetWords = activeTargetPhrase
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, '')
+        .split(/\s+/)
+        .filter(Boolean);
 
-      setLastTurnFeedback(result.feedback);
+      const cleanSpokenWords = transcript
+        .toLowerCase()
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, '')
+        .split(/\s+/)
+        .filter(Boolean);
+
+      const matched: string[] = [];
+      const missed: string[] = [];
+
+      cleanTargetWords.forEach((targetWord) => {
+        const lower = targetWord.toLowerCase();
+        if (cleanSpokenWords.some((sw) => sw === lower || sw.includes(lower) || lower.includes(sw))) {
+          matched.push(targetWord);
+        } else {
+          missed.push(targetWord);
+        }
+      });
+
+      const wordMatchRatio = cleanTargetWords.length > 0 ? matched.length / cleanTargetWords.length : 1;
+      const apiScore = result.ok && result.feedback ? result.feedback.fluencyScore : 75;
+      const computedScore = Math.max(Math.round(wordMatchRatio * 100), Math.min(100, apiScore));
+
+      const feedback = result.ok ? result.feedback : null;
+
+      setSpeakingAttempt({
+        transcript: transcript || 'Spoken audio received',
+        score: computedScore,
+        matchedWords: matched,
+        missedWords: missed,
+        pronunciationTip: feedback?.pronunciationTip,
+        tamilExplanation: feedback?.tamilExplanation || 'நன்றாக பேசினீர்கள்! தொடர்ந்து பயிற்சி செய்யுங்கள்.',
+      });
+
       setChecksTotal((prev) => prev + 1);
-      if (result.feedback.fluencyScore >= 70) {
+      if (computedScore >= 60) {
         setChecksCorrect((prev) => prev + 1);
-      }
-      setAnimatedBotMsgId(nilaMsgId);
-      setRealTalkMessages((prev) => [...prev, userMsg, nilaMsg]);
-      if (!result.feedback.hasErrors) {
         playSoundEffect('success');
+      } else {
+        playSoundEffect('error');
       }
-      if (!voiceMuted) {
-        handlePlayVoice(result.reply, nilaMsgId);
-      }
-      setTimeout(() => {
-        slideScrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    } catch (e) {
+      console.warn('Speech evaluation error:', e);
+      Alert.alert('Voice Check', 'Could not evaluate voice recording. Please try speaking again.');
     } finally {
-      setIsReplying(false);
+      setIsEvaluatingSpeech(false);
+    }
+  };
+
+  const handleSelectPracticePhrase = (index: number) => {
+    playSoundEffect('button');
+    stopAllAudio();
+    setSelectedPhraseIndex(index);
+    setSpeakingAttempt(null);
+    const phrase = practicePhrases[index];
+    if (phrase && !voiceMuted) {
+      handlePlayVoice(phrase, `phrase-${index}`);
     }
   };
 
@@ -530,7 +646,6 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     currentSlide === 'victory' ? 'speaking' : currentSlide
   );
   const shortTitle = formatShortLessonTitle(lesson.title);
-  const userTalkTurns = realTalkMessages.filter((m) => m.role === 'user').length;
   const canCheckTranslation =
     transMode === 'type' ? typedAnswer.trim().length > 0 : selectedTransIdx !== null;
 
@@ -702,15 +817,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         styles.minimalAudioBtn,
                         playingAudioId === 'lecture-right' && styles.minimalAudioBtnActive,
                       ]}
-                      onPress={() =>
-                        handlePlayVoice(
-                          lesson.rule.doAndDont.right,
-                          'lecture-right',
-                          undefined,
-                          true,
-                          `${lesson.id}-right`
-                        )
-                      }
+                      onPress={() => playRightThenWhy()}
                       activeOpacity={0.8}
                     >
                       <Ionicons name="volume-high-outline" size={15} color="#FFFFFF" />
@@ -722,15 +829,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         styles.minimalAudioBtn,
                         playingAudioId === 'lecture-slow' && styles.minimalAudioBtnActive,
                       ]}
-                      onPress={() =>
-                        handlePlayVoice(
-                          lesson.rule.doAndDont.right,
-                          'lecture-slow',
-                          0.72,
-                          false,
-                          `${lesson.id}-right`
-                        )
-                      }
+                      onPress={() => playRightThenWhy(0.72, false)}
                       activeOpacity={0.8}
                     >
                       <Ionicons name="speedometer-outline" size={14} color="#C4B5FD" />
@@ -741,6 +840,34 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
 
                 <View style={styles.openQuoteStrip}>
                   <Text style={styles.lectureWhyText}>{lesson.rule.doAndDont.whyTamil}</Text>
+                  <TouchableOpacity
+                    style={styles.whyAudioButton}
+                    onPress={() =>
+                      playingAudioId === 'lecture-why'
+                        ? handleStopVoice()
+                        : handlePlayTamilVoice(
+                            lesson.rule.doAndDont.whyTamil,
+                            'lecture-why',
+                            `${lesson.id}-why`
+                          )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      playingAudioId === 'lecture-why'
+                        ? 'Stop Tamil explanation audio'
+                        : 'Play Tamil explanation audio'
+                    }
+                    activeOpacity={0.78}
+                  >
+                    <Ionicons
+                      name={playingAudioId === 'lecture-why' ? 'stop' : 'volume-high-outline'}
+                      size={15}
+                      color="#C4B5FD"
+                    />
+                    <Text style={styles.whyAudioButtonText}>
+                      {playingAudioId === 'lecture-why' ? 'Stop explanation' : 'Hear explanation'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -851,7 +978,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <Text style={styles.stepEyebrow}>STEP 02 · WORD MATCH</Text>
             <Text style={styles.slideTitle}>Match the Jumbled English</Text>
             <Text style={styles.slideSubtitle}>
-              Read the Tamil sentence and tap English words in the right order.
+              Drag words into the sentence, or tap to add them. Drop between words to reorder.
             </Text>
 
             <View style={styles.tamilPromptCard}>
@@ -891,7 +1018,17 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               {showJumbleHint && <Text style={styles.hintBody}>{lesson.jumble.hint}</Text>}
             </View>
 
-            <View style={styles.answerDropzone}>
+            <View
+              style={styles.answerDropzone}
+              onLayout={() => {
+                requestAnimationFrame(() => {
+                  answerDropzoneRef.current?.measureInWindow((x, y, width, height) => {
+                    answerDropzoneRectRef.current = { x, y, width, height };
+                  });
+                });
+              }}
+              ref={answerDropzoneRef}
+            >
               <View style={styles.dropzoneTopRow}>
                 <Text style={styles.dropzoneLabel}>YOUR ENGLISH MATCH</Text>
                 {assembledWords.length > 0 && !jumbleChecked && (
@@ -905,21 +1042,32 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               <View style={styles.wordsWrapRow}>
                 {assembledWords.length === 0 ? (
                   <Text style={styles.emptySlotPlaceholder}>
-                    Tap jumbled words below to form the sentence
+                    Drop words here or tap words below
                   </Text>
                 ) : (
                   assembledWords.map((word, wIdx) => (
-                    <TouchableOpacity
+                    <DraggableWordChip
                       key={`${word}-${wIdx}`}
-                      style={styles.selectedWordChip}
+                      word={word}
+                      chipStyle={styles.selectedWordChip}
+                      textStyle={styles.selectedWordText}
+                      disabled={jumbleChecked}
                       onPress={() => handleTapSlotWord(word, wIdx)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.selectedWordText}>{word}</Text>
-                      {!jumbleChecked && (
-                        <Ionicons name="close" size={12} color="#E9D5FF" style={{ marginLeft: 5 }} />
-                      )}
-                    </TouchableOpacity>
+                      onDrop={(x, y) => handleDragSlotWord(word, wIdx, x, y)}
+                      onMeasure={(rect) => {
+                        answerSlotRectsRef.current[wIdx] = rect;
+                      }}
+                      trailingIcon={
+                        !jumbleChecked ? (
+                          <Ionicons
+                            name="close"
+                            size={12}
+                            color="#E9D5FF"
+                            style={{ marginLeft: 5 }}
+                          />
+                        ) : undefined
+                      }
+                    />
                   ))
                 )}
               </View>
@@ -928,14 +1076,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             <View style={styles.wordBankArea}>
               <View style={styles.wordsWrapRow}>
                 {availableWords.map((word, bIdx) => (
-                  <TouchableOpacity
+                  <DraggableWordChip
                     key={`${word}-${bIdx}`}
-                    style={styles.bankWordChip}
+                    word={word}
+                    chipStyle={styles.bankWordChip}
+                    textStyle={styles.bankWordText}
+                    disabled={jumbleChecked}
                     onPress={() => handleTapBankWord(word, bIdx)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.bankWordText}>{word}</Text>
-                  </TouchableOpacity>
+                    onDrop={(x, y) => handleDragBankWord(word, bIdx, x, y)}
+                    onMeasure={() => {}}
+                  />
                 ))}
               </View>
             </View>
@@ -1054,214 +1204,286 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         )}
 
         {/* ============================================================ */}
-        {/* STAGE 4: CONVERSATIONAL REAL TALK (Live multi-turn dialogue) */}
+        {/* STAGE 4: SUPERNOVA AUDIO PRACTICE (Now say sentence aloud)   */}
         {/* ============================================================ */}
         {currentSlide === 'speaking' && (
           <View style={styles.slideBody}>
+            {/* Header: Step 04 & Score badge */}
             <View style={styles.stepHeaderRow}>
-              <Text style={styles.stepEyebrow}>STEP 04 · REAL TALK</Text>
-              <View style={styles.turnPill}>
+              <Text style={styles.stepEyebrow}>STEP 04 · SPEAKING</Text>
+              <View
+                style={[
+                  styles.turnPill,
+                  speakingAttempt
+                    ? speakingAttempt.score >= 60
+                      ? styles.turnPillSuccess
+                      : styles.turnPillWarning
+                    : undefined,
+                ]}
+              >
+                <Ionicons
+                  name={
+                    speakingAttempt
+                      ? speakingAttempt.score >= 60
+                        ? 'checkmark-circle'
+                        : 'alert-circle'
+                      : 'mic'
+                  }
+                  size={12}
+                  color={
+                    speakingAttempt
+                      ? speakingAttempt.score >= 60
+                        ? '#4ADE80'
+                        : '#FBBF24'
+                      : '#C4B5FD'
+                  }
+                  style={{ marginRight: 4 }}
+                />
                 <Text style={styles.turnPillText}>
-                  {userTalkTurns === 0 ? 'Reply to start' : `${userTalkTurns} Turn${userTalkTurns > 1 ? 's' : ''}`}
+                  {speakingAttempt ? `${speakingAttempt.score}% Match` : 'Tap to Speak'}
                 </Text>
               </View>
             </View>
 
-            <Text style={styles.slideTitle}>Talk with Nila</Text>
-            <Text style={styles.slideSubtitle}>{lesson.speakingChallenge.prompt}</Text>
-
-            {/* Conversational Dialogue Thread */}
-            <View style={styles.chatThreadCard}>
-              {realTalkMessages.map((msg, idx) => {
-                const isNila = msg.role === 'assistant';
-                const isLatestMsg = idx === realTalkMessages.length - 1;
-                const msgMood =
-                  playingAudioId === msg.id
-                    ? 'speaking'
-                    : isLatestMsg
-                    ? resolveAiMascotMood({
-                        isListening: isRecordingTalk,
-                        isTyping: isReplying,
-                        isSpeaking: playingAudioId !== null,
-                        feedback: lastTurnFeedback,
-                        idleMood: replyDraft.trim().length > 0 ? 'reading' : 'headset',
-                      })
-                    : 'wave';
-
-                return (
-                  <AnimatedChatBubble
-                    key={msg.id}
-                    style={[styles.chatRow, isNila ? styles.chatRowLeft : styles.chatRowRight]}
-                  >
-                    {isNila && (
-                      <MascotAvatar
-                        mood={msgMood}
-                        size={30}
-                        borderColor="rgba(167, 139, 250, 0.5)"
-                        borderWidth={1}
-                        style={{ marginRight: 8 }}
-                      />
-                    )}
-
-                    <View
-                      style={[
-                        styles.chatBubble,
-                        isNila ? styles.nilaBubble : styles.userBubble,
-                      ]}
-                    >
-                      <TypewriterText
-                        text={msg.content}
-                        animate={isNila && msg.id === animatedBotMsgId}
-                        style={styles.chatBubbleText}
-                      />
-                      {isNila && (
-                        <TouchableOpacity
-                          onPress={() => handlePlayVoice(msg.content, msg.id)}
-                          style={styles.bubbleAudioRow}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        >
-                          <Ionicons
-                            name={
-                              playingAudioId === msg.id ? 'volume-high' : 'volume-medium-outline'
-                            }
-                            size={14}
-                            color="#C4B5FD"
-                          />
-                          <Text style={styles.bubbleAudioText}>Listen</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </AnimatedChatBubble>
-                );
-              })}
-
-              {isReplying && (
-                <AnimatedChatBubble style={[styles.chatRow, styles.chatRowLeft]}>
-                  <MascotAvatar
-                    mood="typing"
-                    size={30}
-                    borderColor="rgba(167, 139, 250, 0.5)"
-                    borderWidth={1}
-                    style={{ marginRight: 8 }}
-                  />
-                  <View style={[styles.chatBubble, styles.nilaBubble]}>
-                    <TypingDots
-                      color="#C4B5FD"
-                      label="Nila is typing..."
-                      labelStyle={styles.typingText}
-                    />
-                  </View>
-                </AnimatedChatBubble>
-              )}
+            {/* Prompt context from Nova */}
+            <View style={styles.spokenCoachPromptCard}>
+              <View style={styles.spokenCoachAvatarWrap}>
+                <MascotAvatar
+                  mood={
+                    isRecordingTalk
+                      ? 'listening'
+                      : isEvaluatingSpeech
+                      ? 'typing'
+                      : playingAudioId !== null
+                      ? 'speaking'
+                      : Boolean(speakingAttempt && speakingAttempt.score >= 70)
+                      ? 'reward'
+                      : 'wave'
+                  }
+                  size={46}
+                  borderColor="rgba(167, 139, 250, 0.4)"
+                  borderWidth={1.5}
+                />
+              </View>
+              <View style={styles.spokenCoachTextCol}>
+                <Text style={styles.spokenCoachTitle}>Coach Nila</Text>
+                <Text style={styles.spokenCoachSubtitle}>
+                  {lesson?.speakingChallenge?.prompt || 'Now practice saying this sentence aloud:'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() =>
+                  handlePlayTamilVoice(
+                    lesson?.speakingChallenge?.prompt || activeTargetPhrase,
+                    'prompt-tamil'
+                  )
+                }
+                style={styles.spokenPromptAudioBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={playingAudioId === 'prompt-tamil' ? 'volume-high' : 'volume-medium-outline'}
+                  size={16}
+                  color="#A78BFA"
+                />
+              </TouchableOpacity>
             </View>
 
-            {/* Inline Coach Feedback on Latest User Turn */}
-            {lastTurnFeedback && (
-              <View style={styles.realTalkCoachCard}>
-                <View style={styles.feedbackTopBar}>
-                  <Text style={styles.feedbackTitle}>Nila Tamil Coach</Text>
-                  <View style={styles.promptActionGroup}>
-                    <TouchableOpacity
-                      style={styles.audioIconBtn}
-                      onPress={() =>
-                        handlePlayTamilVoice(lastTurnFeedback.tamilExplanation, 'realtalk-tamil')
-                      }
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Ionicons
-                        name={
-                          playingAudioId === 'realtalk-tamil'
-                            ? 'volume-high'
-                            : 'volume-medium-outline'
-                        }
-                        size={17}
-                        color={THEME.colors.primaryGlow}
-                      />
-                    </TouchableOpacity>
-                    <View style={styles.scoreBadge}>
-                      <Text style={styles.scoreBadgeText}>{lastTurnFeedback.fluencyScore}/100</Text>
-                    </View>
-                  </View>
+            {/* Target Sentence Card ("Now say this sentence aloud") */}
+            <View style={styles.targetSentenceCard}>
+              <View style={styles.targetSentenceHeaderRow}>
+                <Text style={styles.targetSentenceBadge}>🗣️ NOW SAY THIS SENTENCE ALOUD</Text>
+                {/* Audio Listen Buttons: Normal 🔊 + Snail 🐌 */}
+                <View style={styles.dualSpeedRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.speedPillBtn,
+                      playingAudioId === 'target-normal' && styles.speedPillBtnActive,
+                    ]}
+                    onPress={() => handlePlayVoice(activeTargetPhrase, 'target-normal', 1.0)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={playingAudioId === 'target-normal' ? 'volume-high' : 'volume-medium'}
+                      size={14}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.speedPillText}>Normal</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.speedPillBtn,
+                      styles.speedPillBtnSnail,
+                      playingAudioId === 'target-snail' && styles.speedPillBtnActive,
+                    ]}
+                    onPress={() => handlePlayVoice(activeTargetPhrase, 'target-snail', 0.65)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="timer-outline" size={14} color="#FBBF24" />
+                    <Text style={[styles.speedPillText, { color: '#FDE68A' }]}>Slow 0.65x</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.feedbackTamil}>{lastTurnFeedback.tamilExplanation}</Text>
-                {lastTurnFeedback.pronunciationTip && (
-                  <Text style={styles.feedbackPronunciation}>
-                    Pronunciation: {lastTurnFeedback.pronunciationTip}
-                  </Text>
-                )}
-                <Text style={styles.feedbackEnglish}>{lastTurnFeedback.explanation}</Text>
+              </View>
+
+              {/* The English Target Sentence Text */}
+              <Text style={styles.targetSentenceText}>"{activeTargetPhrase}"</Text>
+            </View>
+
+            {/* Suggested Alternative Phrases (Horizontal Selector) */}
+            {practicePhrases.length > 1 && (
+              <View style={styles.phraseSelectorContainer}>
+                <Text style={styles.phraseSelectorLabel}>TRY ANOTHER RESPONSE:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.phraseScroll}>
+                  <View style={styles.phraseChipRow}>
+                    {practicePhrases.map((phrase, pIdx) => {
+                      const isSelected = selectedPhraseIndex === pIdx;
+                      return (
+                        <TouchableOpacity
+                          key={pIdx}
+                          style={[
+                            styles.phraseChip,
+                            isSelected && styles.phraseChipSelected,
+                          ]}
+                          onPress={() => handleSelectPracticePhrase(pIdx)}
+                          activeOpacity={0.8}
+                        >
+                          <Text
+                            style={[
+                              styles.phraseChipText,
+                              isSelected && styles.phraseChipTextSelected,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {phrase}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
               </View>
             )}
 
-            {/* Quick Idea Starters */}
-            <View style={styles.sampleBlock}>
-              <Text style={styles.sampleSectionLabel}>CONVERSATION IDEAS</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.sampleChipsRow}>
-                  {lesson.speakingChallenge.suggestedAnswers.map((ans, aIdx) => (
-                    <TouchableOpacity
-                      key={aIdx}
-                      style={styles.sampleChip}
-                      onPress={() => setReplyDraft(ans)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.sampleChipText}>"{ans}"</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
-            {/* Chat Reply Composer + Real Voice Mic */}
-            <View style={styles.talkComposerRow}>
-              <TextInput
-                style={styles.talkInput}
-                placeholder={isRecordingTalk ? 'Listening... tap mic to send' : 'Reply or tap mic to speak...'}
-                placeholderTextColor={THEME.colors.textMuted}
-                value={replyDraft}
-                onChangeText={setReplyDraft}
-                multiline
-                maxLength={240}
-              />
-              {replyDraft.trim().length > 0 ? (
-                <TouchableOpacity
-                  style={[
-                    styles.talkSendBtn,
-                    isReplying && styles.talkSendBtnDisabled,
-                  ]}
-                  onPress={() => handleSendRealTalk()}
-                  disabled={isReplying}
-                  activeOpacity={0.85}
+            {/* Microphone Action Area (Tap to Speak) */}
+            <View style={styles.micStageContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.micPulsingRing,
+                  isRecordingTalk && styles.micPulsingRingRecording,
+                  isEvaluatingSpeech && styles.micPulsingRingEvaluating,
+                ]}
+                onPress={handleToggleSpeakingMic}
+                disabled={isEvaluatingSpeech}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={
+                    isRecordingTalk
+                      ? ['#EF4444', '#DC2626']
+                      : isEvaluatingSpeech
+                      ? ['#6366F1', '#4F46E5']
+                      : ['#8B5CF6', '#6D28D9']
+                  }
+                  style={styles.micCircleBtn}
                 >
-                  {isReplying ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="send" size={16} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[
-                    styles.talkSendBtn,
-                    isRecordingTalk && styles.talkMicListeningBtn,
-                    isReplying && styles.talkSendBtnDisabled,
-                  ]}
-                  onPress={handleRealTalkMicToggle}
-                  disabled={isReplying}
-                  activeOpacity={0.85}
-                >
-                  {isReplying ? (
+                  {isEvaluatingSpeech ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Ionicons
                       name={isRecordingTalk ? 'stop' : 'mic'}
-                      size={17}
+                      size={28}
                       color="#FFFFFF"
                     />
                   )}
-                </TouchableOpacity>
-              )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <Text style={styles.micInstructionText}>
+                {isRecordingTalk
+                  ? 'Listening... tap again to stop & evaluate'
+                  : isEvaluatingSpeech
+                  ? 'Analyzing pronunciation with Nova AI...'
+                  : 'Tap and speak into the mic'}
+              </Text>
             </View>
+
+            {/* Pronunciation & Word Match Result Card */}
+            {speakingAttempt && (
+              <View
+                style={[
+                  styles.feedbackResultCard,
+                  speakingAttempt.score >= 60
+                    ? styles.feedbackResultCardSuccess
+                    : styles.feedbackResultCardWarning,
+                ]}
+              >
+                <View style={styles.feedbackResultHeader}>
+                  <View style={styles.feedbackScoreBadge}>
+                    <Ionicons
+                      name={speakingAttempt.score >= 60 ? 'trophy' : 'refresh-circle'}
+                      size={18}
+                      color={speakingAttempt.score >= 60 ? '#4ADE80' : '#FBBF24'}
+                    />
+                    <Text style={styles.feedbackScoreText}>{speakingAttempt.score}% Match</Text>
+                  </View>
+                  <Text style={styles.feedbackStarRating}>
+                    {speakingAttempt.score >= 85
+                      ? '⭐⭐⭐'
+                      : speakingAttempt.score >= 60
+                      ? '⭐⭐'
+                      : '⭐'}
+                  </Text>
+                </View>
+
+                {/* You said transcript */}
+                <View style={styles.spokenTranscriptBox}>
+                  <Text style={styles.spokenTranscriptLabel}>YOU SPOKE:</Text>
+                  <Text style={styles.spokenTranscriptText}>"{speakingAttempt.transcript}"</Text>
+                </View>
+
+                {/* Word Match Chips */}
+                <View style={styles.wordMatchGrid}>
+                  <Text style={styles.wordMatchGridLabel}>WORD ACCURACY:</Text>
+                  <View style={styles.wordChipsWrap}>
+                    {speakingAttempt.matchedWords.map((word, wIdx) => (
+                      <View key={`match-${wIdx}`} style={styles.wordChipGreen}>
+                        <Ionicons
+                          name="checkmark"
+                          size={11}
+                          color="#4ADE80"
+                          style={{ marginRight: 3 }}
+                        />
+                        <Text style={styles.wordChipTextGreen}>{word}</Text>
+                      </View>
+                    ))}
+                    {speakingAttempt.missedWords.map((word, wIdx) => (
+                      <View key={`miss-${wIdx}`} style={styles.wordChipRed}>
+                        <Ionicons
+                          name="close"
+                          size={11}
+                          color="#F87171"
+                          style={{ marginRight: 3 }}
+                        />
+                        <Text style={styles.wordChipTextRed}>{word}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Coach Tip & Tamil Explanation */}
+                {speakingAttempt.pronunciationTip && (
+                  <Text style={styles.feedbackTipText}>
+                    💡 {speakingAttempt.pronunciationTip}
+                  </Text>
+                )}
+                {speakingAttempt.tamilExplanation && (
+                  <Text style={styles.feedbackTamilText}>
+                    {speakingAttempt.tamilExplanation}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -1541,18 +1763,37 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
             {currentSlide === 'speaking' && (
               <ActionButton
                 label={
-                  userTalkTurns === 0
-                    ? 'Reply to Nila First'
+                  !speakingAttempt
+                    ? isRecordingTalk
+                      ? 'Listening... Tap Mic in Card'
+                      : isEvaluatingSpeech
+                      ? 'Evaluating Voice...'
+                      : 'Tap Mic & Speak Aloud'
                     : `Complete Class (+${lesson.xpReward} XP)`
                 }
-                iconLeft={userTalkTurns > 0 ? 'checkmark-done' : 'chatbubble-ellipses-outline'}
-                disabled={userTalkTurns === 0}
+                iconLeft={speakingAttempt ? 'checkmark-done' : 'mic'}
+                disabled={!speakingAttempt}
                 onPress={handleFinishLesson}
               />
             )}
           </View>
         </View>
       )}
+      <ConfirmDialog
+        visible={showExitDialog}
+        title="Leave lesson?"
+        message="Your progress in this lesson will not be saved. Are you sure you want to leave?"
+        icon="exit-outline"
+        confirmLabel="Leave"
+        cancelLabel="Keep Learning"
+        destructive
+        onCancel={() => setShowExitDialog(false)}
+        onConfirm={() => {
+          setShowExitDialog(false);
+          stopAllAudio();
+          onClose();
+        }}
+      />
     </View>
   );
 };
@@ -1800,6 +2041,19 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     color: '#C7C2DE',
     lineHeight: 22,
+  },
+  whyAudioButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 9,
+    paddingVertical: 5,
+  },
+  whyAudioButtonText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#C4B5FD',
   },
   minimalOptionsCol: {
     gap: 12,
@@ -2081,14 +2335,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  /* STAGE 4: REAL TALK CONVERSATION */
+  /* STAGE 4: SUPERNOVA AUTHENTIC SPOKEN PRACTICE */
   turnPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 8,
     backgroundColor: '#1B192B',
     borderWidth: 1,
     borderColor: '#302C4A',
+  },
+  turnPillSuccess: {
+    backgroundColor: 'rgba(74, 222, 128, 0.12)',
+    borderColor: 'rgba(74, 222, 128, 0.4)',
+  },
+  turnPillWarning: {
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   turnPillText: {
     fontFamily: THEME.fonts.semiBold,
@@ -2275,6 +2539,294 @@ const styles = StyleSheet.create({
     color: '#FDE68A',
     marginTop: 4,
     lineHeight: 18,
+  },
+
+  /* SUPERNOVA AUTHENTIC SPOKEN PRACTICE (STEP 4) */
+  spokenCoachPromptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#181628',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2D2845',
+    gap: 12,
+  },
+  spokenCoachAvatarWrap: {
+    position: 'relative',
+  },
+  spokenCoachTextCol: {
+    flex: 1,
+  },
+  spokenCoachTitle: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 13,
+    color: '#A78BFA',
+    marginBottom: 2,
+  },
+  spokenCoachSubtitle: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 13,
+    color: '#E2E8F0',
+    lineHeight: 18,
+  },
+  spokenPromptAudioBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  targetSentenceCard: {
+    backgroundColor: '#1C1930',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+    padding: 16,
+    gap: 12,
+  },
+  targetSentenceHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  targetSentenceBadge: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#A78BFA',
+    letterSpacing: 0.8,
+  },
+  dualSpeedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  speedPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#2A244D',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3D3470',
+  },
+  speedPillBtnActive: {
+    borderColor: '#A78BFA',
+    backgroundColor: '#3E3478',
+  },
+  speedPillBtnSnail: {
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
+  speedPillText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  targetSentenceText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 18,
+    color: '#FFFFFF',
+    lineHeight: 25,
+    letterSpacing: 0.2,
+  },
+
+  phraseSelectorContainer: {
+    gap: 6,
+    marginTop: 2,
+  },
+  phraseSelectorLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10.5,
+    color: '#94A3B8',
+    letterSpacing: 0.7,
+  },
+  phraseScroll: {
+    flexGrow: 0,
+  },
+  phraseChipRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  phraseChip: {
+    backgroundColor: '#181628',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2E284A',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    maxWidth: 240,
+  },
+  phraseChipSelected: {
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+    borderColor: '#A78BFA',
+  },
+  phraseChipText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  phraseChipTextSelected: {
+    color: '#FFFFFF',
+    fontFamily: THEME.fonts.semiBold,
+  },
+
+  micStageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 12,
+  },
+  micPulsingRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+  },
+  micPulsingRingRecording: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: '#EF4444',
+  },
+  micPulsingRingEvaluating: {
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    borderColor: '#6366F1',
+  },
+  micCircleBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  micInstructionText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 13,
+    color: '#C4B5FD',
+    textAlign: 'center',
+  },
+
+  feedbackResultCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  feedbackResultCardSuccess: {
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderColor: 'rgba(74, 222, 128, 0.35)',
+  },
+  feedbackResultCardWarning: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: 'rgba(251, 191, 36, 0.35)',
+  },
+  feedbackResultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  feedbackScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  feedbackScoreText: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  feedbackStarRating: {
+    fontSize: 14,
+    letterSpacing: 2,
+  },
+  spokenTranscriptBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 10,
+    padding: 10,
+    gap: 2,
+  },
+  spokenTranscriptLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
+    color: '#A5B4FC',
+    letterSpacing: 0.6,
+  },
+  spokenTranscriptText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 14,
+    color: '#F8FAFC',
+    lineHeight: 20,
+  },
+  wordMatchGrid: {
+    gap: 6,
+  },
+  wordMatchGridLabel: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 10,
+    color: '#94A3B8',
+    letterSpacing: 0.6,
+  },
+  wordChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  wordChipGreen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.4)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  wordChipTextGreen: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
+    color: '#4ADE80',
+  },
+  wordChipRed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  wordChipTextRed: {
+    fontFamily: THEME.fonts.bold,
+    fontSize: 12,
+    color: '#F87171',
+    textDecorationLine: 'line-through',
+  },
+  feedbackTipText: {
+    fontFamily: THEME.fonts.medium,
+    fontSize: 12.5,
+    color: '#FDE68A',
+    lineHeight: 18,
+  },
+  feedbackTamilText: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12.5,
+    color: '#E2E8F0',
+    lineHeight: 19,
   },
 
   /* VICTORY SUMMARY */

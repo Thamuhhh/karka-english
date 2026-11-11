@@ -85,4 +85,5 @@ export interface AuthUser {
   isCloudSession?: boolean;
   isAnonymous?: boolean;
   avatarId?: string;
+  learningGoal?: string;
 }

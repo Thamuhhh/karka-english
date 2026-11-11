@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
-  Switch,
   Modal,
   Image,
   useWindowDimensions,
@@ -18,24 +16,20 @@ import { SUPERNOVA_LEVELS } from '../constants/curriculum';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
-import {
-  loadPreferredAccent,
-  savePreferredAccent,
-  savePreferredSpeechRate,
-  updateSoundSetting,
-  resetAllUserProgress,
-  updateAuthUserProfile,
-} from '../services/storageService';
-import { EnglishAccent, getSpeechRate } from '../services/ttsService';
+import { updateAuthUserProfile } from '../services/storageService';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
 import { ElvateWordmark } from '../components/ElvateBrand';
+import { SettingsScreen } from './SettingsScreen';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface ProfileScreenProps {
   stats: UserStats;
   authUser?: AuthUser | null;
   onStatsUpdate: (stats: UserStats) => void;
   onSignOut?: () => void;
+  onRefillHearts?: () => Promise<boolean>;
   onAuthUserUpdate?: (user: AuthUser) => void;
+  onTopColorChange?: (color: string) => void;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -43,14 +37,6 @@ const TOTAL_CURRICULUM_CLASSES = SUPERNOVA_LEVELS.reduce(
   (sum, lvl) => sum + lvl.classes.length,
   0
 );
-
-const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
-const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
-  { id: 'en-US', shortLabel: 'US' },
-  { id: 'en-GB', shortLabel: 'UK' },
-  { id: 'en-AU', shortLabel: 'AU' },
-];
 
 type LegalDocKey = 'privacy' | 'terms' | 'licenses';
 
@@ -86,7 +72,7 @@ const LEGAL_DOCS: Record<
       },
       {
         heading: 'Data Control',
-        body: 'You can clear all stored learning history, vocabulary bookmarks, and streak data anytime via Reset Progress in Preferences.',
+        body: 'You can clear all stored learning history, vocabulary bookmarks, and streak data anytime via Reset Progress in Settings.',
       },
     ],
   },
@@ -124,32 +110,30 @@ const LEGAL_DOCS: Record<
   },
 };
 
-function getLearnerTierLabel(completedCount: number): string {
-  if (completedCount >= 17) return 'B2–C1 Fluent';
-  if (completedCount >= 11) return 'B1 Career';
-  if (completedCount >= 6) return 'A2 Builder';
-  return 'A1 Foundation';
-}
-
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   stats,
   authUser,
   onStatsUpdate,
   onSignOut,
+  onRefillHearts,
   onAuthUserUpdate,
+  onTopColorChange,
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
-  const [isSlowSpeech, setIsSlowSpeech] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocKey | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [showHeartDialog, setShowHeartDialog] = useState(false);
+  const [isRefillingHearts, setIsRefillingHearts] = useState(false);
 
   const playerAvatar = getAvatarPackItem(authUser?.avatarId);
 
   useEffect(() => {
-    loadPreferredAccent().then(setSelectedAccent);
-    setIsSlowSpeech(getSpeechRate() < 0.9);
-  }, []);
+    if (onTopColorChange) {
+      onTopColorChange('#201639');
+    }
+  }, [onTopColorChange]);
 
   const handleSaveProfile = async (updates: { name: string; avatarId: AvatarPackId }) => {
     const updated = await updateAuthUserProfile(updates);
@@ -158,37 +142,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   };
 
-  const handleAccentChange = async (acc: EnglishAccent) => {
-    setSelectedAccent(acc);
-    await savePreferredAccent(acc);
+  const handleSignOut = () => {
+    if (!onSignOut) return;
+    setShowSignOutDialog(true);
   };
 
-  const handleSpeechSpeedChange = async (enabledSlow: boolean) => {
-    setIsSlowSpeech(enabledSlow);
-    await savePreferredSpeechRate(enabledSlow ? 0.75 : 0.95);
-  };
-
-  const handleToggleSound = async (enabled: boolean) => {
-    const updated = await updateSoundSetting(enabled);
-    onStatsUpdate(updated);
-  };
-
-  const handleResetProgress = () => {
-    Alert.alert(
-      'Reset Learning Progress?',
-      'This clears your completed lessons, XP, saved vocabulary, and daily streak.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            const fresh = await resetAllUserProgress();
-            onStatsUpdate(fresh);
-          },
-        },
-      ]
-    );
+  const handleHeartRefill = async () => {
+    if (isRefillingHearts || !onRefillHearts) return;
+    if (stats.hearts >= stats.maxHearts || stats.gems < 25) {
+      setShowHeartDialog(false);
+      return;
+    }
+    setIsRefillingHearts(true);
+    try {
+      if (await onRefillHearts()) setShowHeartDialog(false);
+    } finally {
+      setIsRefillingHearts(false);
+    }
   };
 
   const completedCount = stats.completedClasses.length;
@@ -196,9 +166,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     TOTAL_CURRICULUM_CLASSES > 0
       ? Math.round((completedCount / TOTAL_CURRICULUM_CLASSES) * 100)
       : 0;
-  const todayMonIdx = (new Date().getDay() + 6) % 7;
-  const tierLabel = getLearnerTierLabel(completedCount);
-
   return (
     <View style={styles.container}>
       {/* Subtle Top Ambient Glow */}
@@ -226,7 +193,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <View
                 style={[
                   styles.avatarRing,
-                  { borderColor: playerAvatar.accentColor },
+                  { borderColor: THEME.colors.primaryGlow },
                 ]}
               >
                 <Image
@@ -238,7 +205,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <View
                 style={[
                   styles.editBadge,
-                  { backgroundColor: playerAvatar.accentColor },
+                  { backgroundColor: THEME.colors.primary },
                 ]}
               >
                 <Ionicons name="camera-outline" size={10} color="#FFFFFF" />
@@ -246,21 +213,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </TouchableOpacity>
 
             <View style={styles.identityText}>
-              <View style={styles.nameRow}>
+              <TouchableOpacity
+                onPress={() => setShowEditProfile(true)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Edit profile"
+              >
                 <Text style={styles.userName}>{authUser?.name || 'Elvate Learner'}</Text>
-                <TouchableOpacity
-                  onPress={() => setShowEditProfile(true)}
-                  style={styles.editPill}
-                  activeOpacity={0.75}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit profile"
-                >
-                  <Ionicons name="create-outline" size={11} color="#C4B5FD" />
-                  <Text style={styles.editPillText}>Edit</Text>
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
               <Text style={styles.tierMeta}>
-                {tierLabel} · {stats.cosmicRank}
+                {stats.cosmicRank}
               </Text>
               {!!authUser?.email && (
                 <Text style={styles.emailSubText} numberOfLines={1}>
@@ -314,204 +276,141 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
         </View>
 
-        <View style={styles.sectionDivider} />
-
-        {/* Open Weekly Streak Row */}
-        <View style={styles.openSection}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.eyebrow}>THIS WEEK</Text>
-            <Text style={styles.streakSubText}>
-              {stats.streakDays} {stats.streakDays === 1 ? 'day' : 'days'} active
-            </Text>
-          </View>
-
-          <View style={styles.weekRow}>
-            {WEEK_DAYS.map((dayLetter, idx) => {
-              const isToday = idx === todayMonIdx;
-              const daysAgo = todayMonIdx - idx;
-              const isActiveDay = daysAgo >= 0 && daysAgo < stats.streakDays;
-
-              return (
-                <View key={idx} style={styles.dayItem}>
-                  <View
-                    style={[
-                      styles.dayDotWrap,
-                      isActiveDay && styles.dayDotWrapActive,
-                      isToday && styles.dayDotWrapToday,
-                    ]}
-                  >
-                    {isActiveDay ? (
-                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
-                    ) : (
-                      <View style={styles.dayDotIdle} />
-                    )}
-                  </View>
-                  <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
-                    {dayLetter}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        {/* Open Borderless Settings List */}
-        <View style={styles.openSection}>
-          <Text style={[styles.eyebrow, { marginBottom: 6 }]}>PREFERENCES</Text>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingLead}>
-              <Ionicons name="globe-outline" size={18} color={THEME.colors.primaryGlow} />
-              <Text style={styles.settingTitle}>Voice Accent</Text>
-            </View>
-            <View style={styles.inlineSegmented}>
-              {ACCENT_OPTIONS.map((acc) => {
-                const active = selectedAccent === acc.id;
-                return (
-                  <TouchableOpacity
-                    key={acc.id}
-                    style={[styles.accentChip, active && styles.accentChipActive]}
-                    onPress={() => handleAccentChange(acc.id)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.accentChipText, active && styles.accentChipTextActive]}>
-                      {acc.shortLabel}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.rowDivider} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingLead}>
-              <Ionicons name="speedometer-outline" size={18} color={THEME.colors.primaryGlow} />
-              <View style={styles.settingTextCol}>
-                <Text style={styles.settingTitle}>Slow Speech</Text>
-                <Text style={styles.settingSub}>0.75x clearer pronunciation</Text>
+        {onRefillHearts && (
+          <TouchableOpacity
+            style={styles.heartHealthRow}
+            onPress={() => setShowHeartDialog(true)}
+            activeOpacity={0.78}
+            accessibilityRole="button"
+            accessibilityLabel={`${stats.hearts} of ${stats.maxHearts} hearts. Tap to manage heart health.`}
+          >
+            <View style={styles.heartHealthLead}>
+              <Ionicons name="heart" size={17} color={THEME.colors.primaryGlow} />
+              <View>
+                <Text style={styles.heartHealthTitle}>Heart Health</Text>
+                <Text style={styles.heartHealthSubtitle}>
+                  {stats.hearts >= stats.maxHearts ? 'All hearts ready' : 'Tap to refill for 25 Gems'}
+                </Text>
               </View>
             </View>
-            <Switch
-              value={isSlowSpeech}
-              onValueChange={handleSpeechSpeedChange}
-              trackColor={{ false: '#26233B', true: THEME.colors.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor="#26233B"
-            />
-          </View>
-
-          <View style={styles.rowDivider} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingLead}>
-              <Ionicons name="volume-medium-outline" size={18} color={THEME.colors.primaryGlow} />
-              <Text style={styles.settingTitle}>Sound Effects</Text>
+            <View style={styles.heartHealthCountPill}>
+              {Array.from({ length: stats.maxHearts }, (_, index) => (
+                <Ionicons
+                  key={index}
+                  name={index < stats.hearts ? 'heart' : 'heart-outline'}
+                  size={13}
+                  color={index < stats.hearts ? THEME.colors.primaryGlow : THEME.colors.textMuted}
+                />
+              ))}
             </View>
-            <Switch
-              value={stats.soundEnabled}
-              onValueChange={handleToggleSound}
-              trackColor={{ false: '#26233B', true: THEME.colors.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor="#26233B"
-            />
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.sectionDivider} />
+        <TouchableOpacity
+          style={styles.profileUtilityRow}
+          onPress={() => setShowSettings(true)}
+          activeOpacity={0.82}
+          accessibilityRole="button"
+          accessibilityLabel="Open Settings"
+        >
+          <View style={styles.utilityLead}>
+            <Ionicons name="settings-outline" size={19} color={THEME.colors.primaryGlow} />
+            <Text style={styles.utilityTitle}>Settings</Text>
           </View>
-
+          <Ionicons name="chevron-forward" size={17} color={THEME.colors.textMuted} />
+        </TouchableOpacity>
+        {onSignOut && (
+          <>
           <View style={styles.rowDivider} />
-
           <TouchableOpacity
-            style={styles.settingRow}
-            onPress={handleResetProgress}
-            activeOpacity={0.78}
+            style={styles.profileUtilityRow}
+            onPress={handleSignOut}
+            activeOpacity={0.8}
           >
-            <View style={styles.settingLead}>
-              <Ionicons name="refresh-outline" size={18} color={THEME.colors.textSecondary} />
-              <Text style={styles.settingTitle}>Reset Progress</Text>
+            <View style={styles.utilityLead}>
+              <Ionicons name="log-out-outline" size={18} color={THEME.colors.primaryGlow} />
+              <Text style={styles.utilityTitle}>Sign Out</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
           </TouchableOpacity>
-
-          {onSignOut && (
-            <>
-              <View style={styles.rowDivider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() =>
-                  Alert.alert(
-                    'Sign Out?',
-                    authUser?.isCloudSession
-                      ? 'Your learning progress is synced to your cloud account.'
-                      : 'Your learning progress stays saved on this device.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Sign Out', onPress: onSignOut },
-                    ]
-                  )
-                }
-                activeOpacity={0.78}
-              >
-                <View style={styles.settingLead}>
-                  <Ionicons name="log-out-outline" size={18} color={THEME.colors.primaryGlow} />
-                  <Text style={styles.settingTitle}>Sign Out</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        {/* Open Borderless Legal Links */}
-        <View style={styles.openSection}>
-          <Text style={[styles.eyebrow, { marginBottom: 6 }]}>LEGAL</Text>
-          {LEGAL_LINKS.map((item, idx) => (
+          </>
+        )}
+        <View style={styles.profileLegalSection}>
+          <Text style={styles.profileLegalLabel}>LEGAL</Text>
+          {LEGAL_LINKS.map((item, index) => (
             <React.Fragment key={item.key}>
-              {idx > 0 && <View style={styles.rowDivider} />}
+              {index > 0 && <View style={styles.rowDivider} />}
               <TouchableOpacity
-                style={styles.settingRow}
+                style={styles.profileUtilityRow}
                 onPress={() => setActiveLegalDoc(item.key)}
-                activeOpacity={0.78}
+                activeOpacity={0.8}
               >
-                <View style={styles.settingLead}>
+                <View style={styles.utilityLead}>
                   <Ionicons name={item.icon} size={18} color={THEME.colors.textSecondary} />
-                  <Text style={styles.settingTitle}>{item.label}</Text>
+                  <Text style={styles.utilityTitle}>{item.label}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
               </TouchableOpacity>
             </React.Fragment>
           ))}
         </View>
-
         <View style={styles.sectionDivider} />
-
         {/* Production App Footer */}
         <View style={styles.appFooter}>
           <ElvateWordmark width={82} height={24} showIcon iconSize={20} style={styles.footerLogoWrap} />
           <Text style={styles.footerSub}>Tamil-to-English Fluency Studio</Text>
-
-          <View style={styles.footerLegalLinks}>
-            <TouchableOpacity onPress={() => setActiveLegalDoc('privacy')} activeOpacity={0.75}>
-              <Text style={styles.footerLinkText}>Privacy</Text>
-            </TouchableOpacity>
-            <Text style={styles.footerDot}>·</Text>
-            <TouchableOpacity onPress={() => setActiveLegalDoc('terms')} activeOpacity={0.75}>
-              <Text style={styles.footerLinkText}>Terms</Text>
-            </TouchableOpacity>
-            <Text style={styles.footerDot}>·</Text>
-            <TouchableOpacity onPress={() => setActiveLegalDoc('licenses')} activeOpacity={0.75}>
-              <Text style={styles.footerLinkText}>Open Source</Text>
-            </TouchableOpacity>
-          </View>
-
           <Text style={styles.footerVersion}>Version 1.0.0 · © 2026 Elvate</Text>
         </View>
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      <Modal
+        visible={showSettings}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setShowSettings(false)}
+      >
+        <SettingsScreen
+          stats={stats}
+          onStatsUpdate={onStatsUpdate}
+          onClose={() => setShowSettings(false)}
+        />
+      </Modal>
+
+      <ConfirmDialog
+        visible={showSignOutDialog}
+        title="Sign out?"
+        message={authUser?.isCloudSession
+          ? 'Your learning progress is synced to your cloud account.'
+          : 'Your learning progress stays saved on this device.'}
+        icon="log-out-outline"
+        confirmLabel="Sign Out"
+        destructive
+        onCancel={() => setShowSignOutDialog(false)}
+        onConfirm={() => {
+          setShowSignOutDialog(false);
+          onSignOut?.();
+        }}
+      />
+
+      <ConfirmDialog
+        visible={showHeartDialog}
+        title={stats.hearts >= stats.maxHearts ? 'Hearts are full' : 'Refill your hearts?'}
+        message={stats.hearts >= stats.maxHearts
+          ? `You have all ${stats.maxHearts} hearts ready for lessons.`
+          : stats.gems >= 25
+            ? `Restore all ${stats.maxHearts} hearts for 25 Gems. You have ${stats.gems} Gems.`
+            : `You have ${stats.hearts} of ${stats.maxHearts} hearts, but need 25 Gems to refill. Earn Gems by completing lessons.`}
+        icon="heart"
+        confirmLabel={stats.hearts >= stats.maxHearts || stats.gems < 25
+          ? 'Got it'
+          : isRefillingHearts ? 'Refilling...' : 'Refill - 25 Gems'}
+        cancelLabel="Close"
+        onCancel={() => setShowHeartDialog(false)}
+        onConfirm={handleHeartRefill}
+      />
 
       {/* In-App Legal Document Reader Modal */}
       <Modal
@@ -608,7 +507,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    paddingTop: 10,
+    paddingBottom: 16,
+    marginBottom: 12,
   },
   identityLeft: {
     flexDirection: 'row',
@@ -649,32 +550,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 13,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
   userName: {
     fontFamily: THEME.fonts.bold,
     fontSize: 19,
     color: '#FFFFFF',
-  },
-  editPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: 'rgba(127, 67, 254, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(127, 67, 254, 0.35)',
-  },
-  editPillText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
-    color: '#C4B5FD',
   },
   tierMeta: {
     fontFamily: THEME.fonts.medium,
@@ -726,6 +605,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginVertical: 18,
   },
+  profileUtilityRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  utilityLead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  utilityTitle: {
+    fontFamily: THEME.fonts.semiBold,
+    color: THEME.colors.textWhite,
+    fontSize: 13,
+  },
+  profileLegalSection: { marginTop: 10 },
+  profileLegalLabel: {
+    marginBottom: 4,
+    fontFamily: THEME.fonts.bold,
+    color: THEME.colors.textMuted,
+    fontSize: 9,
+    letterSpacing: 1.1,
+  },
+  rowDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.055)' },
 
   /* OPEN STATS ROW */
   openStatsRow: {
@@ -748,117 +649,38 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
-
-  /* OPEN SECTIONS */
-  openSection: {
-    width: '100%',
-  },
-  sectionHeaderRow: {
+  heartHealthRow: {
+    minHeight: 58,
+    marginTop: 16,
+    paddingHorizontal: 4,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 13,
+    justifyContent: 'space-between',
   },
-  streakSubText: {
+  heartHealthLead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  heartHealthTitle: {
     fontFamily: THEME.fonts.semiBold,
-    fontSize: 11.5,
-    color: '#C4B5FD',
+    color: THEME.colors.textWhite,
+    fontSize: 12.5,
   },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dayItem: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  dayDotWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayDotWrapActive: {
-    backgroundColor: THEME.colors.primary,
-  },
-  dayDotWrapToday: {
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  dayDotIdle: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#4E496B',
-  },
-  dayText: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-  },
-  dayTextToday: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
-  },
-
-  /* PREFERENCES ROWS */
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    gap: 10,
-  },
-  settingLead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  settingTextCol: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
-  settingSub: {
+  heartHealthSubtitle: {
+    marginTop: 3,
     fontFamily: THEME.fonts.body,
-    fontSize: 11.5,
-    color: THEME.colors.textSecondary,
-    marginTop: 1,
-  },
-  rowDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  inlineSegmented: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 9,
-    padding: 2,
-    gap: 2,
-  },
-  accentChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 7,
-  },
-  accentChipActive: {
-    backgroundColor: THEME.colors.primary,
-  },
-  accentChipText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11,
     color: THEME.colors.textMuted,
+    fontSize: 10.5,
   },
-  accentChipTextActive: {
-    fontFamily: THEME.fonts.bold,
-    color: '#FFFFFF',
+  heartHealthCountPill: {
+    minWidth: 78,
+    height: 30,
+    paddingHorizontal: 9,
+    borderRadius: 15,
+    backgroundColor: 'rgba(127,67,254,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
   },
 
   /* APP FOOTER */
@@ -875,22 +697,6 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: THEME.colors.textSecondary,
     marginTop: 2,
-  },
-  footerLegalLinks: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-  },
-  footerLinkText: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 11.5,
-    color: '#A78BFA',
-  },
-  footerDot: {
-    fontFamily: THEME.fonts.medium,
-    fontSize: 11.5,
-    color: THEME.colors.textMuted,
   },
   footerVersion: {
     fontFamily: THEME.fonts.body,

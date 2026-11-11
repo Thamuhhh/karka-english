@@ -52,7 +52,7 @@ import {
   hydrateUserCloudSession,
   loadUserStats,
   completeLessonSession,
-  updateHearts,
+  setHeartCount,
   refillHeartsWithGems,
   loadAuthUser,
   signOutAuthUser,
@@ -65,6 +65,7 @@ import {
   subscribeToSupabaseAuth,
 } from './src/services/authService';
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
+import { stopAllAudio } from './src/services/ttsService';
 
 type TabType = 'learn' | 'call' | 'league' | 'profile';
 
@@ -102,6 +103,7 @@ function AppContent() {
   });
 
   const [stats, setStats] = useState<UserStats>(createDefaultStats);
+  const heartUpdateQueue = useRef(Promise.resolve());
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [splashVisible, setSplashVisible] = useState(true);
@@ -112,6 +114,7 @@ function AppContent() {
   const [courseTopColor, setCourseTopColor] = useState('#1E1438');
   const [speakTopColor, setSpeakTopColor] = useState('#1E143A');
   const [lessonTopColor, setLessonTopColor] = useState('#1B1535');
+  const [profileTopColor, setProfileTopColor] = useState('#201639');
   const [authInitialError, setAuthInitialError] = useState<string | null>(null);
   const [showOnboardingAvatarPicker, setShowOnboardingAvatarPicker] = useState(false);
   const activeAuthKeyRef = useRef<string | null>(null);
@@ -255,13 +258,21 @@ function AppContent() {
           : activeTab === 'league'
             ? '#251842'
             : activeTab === 'profile'
-              ? '#201639'
+              ? profileTopColor
               : THEME.colors.background;
 
   const topSurfaceColor =
     !isAppReady || (splashVisible && !splashExiting)
       ? THEME.colors.background
       : activeScreenTopColor;
+
+  const handleTabChange = (tabId: TabType) => {
+    if (tabId === activeTab) return;
+    if (activeTab === 'call') {
+      void stopAllAudio();
+    }
+    setActiveTab(tabId);
+  };
 
   const handleAuthenticated = async (user: AuthUser) => {
     activeAuthKeyRef.current =
@@ -316,35 +327,16 @@ function AppContent() {
   };
 
   const handleHeartsChange = async (newHearts: number) => {
-    const delta = newHearts - stats.hearts;
-    if (delta !== 0) {
-      const updated = await updateHearts(delta);
-      setStats(updated);
-    }
+    const updateTask = heartUpdateQueue.current.then(() => setHeartCount(newHearts));
+    heartUpdateQueue.current = updateTask.then(() => undefined, () => undefined);
+    const updated = await updateTask;
+    setStats(updated);
   };
 
-  const handleRefillHearts = () => {
-    if (stats.hearts >= stats.maxHearts) {
-      Alert.alert('Full Hearts', 'You already have all 5 hearts ready for lessons.');
-      return;
-    }
-    Alert.alert(
-      'Refill Hearts?',
-      `Restore all 5 hearts using 25 Gems? (Current Gems: ${stats.gems})`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Refill (25 Gems)',
-          onPress: async () => {
-            const res = await refillHeartsWithGems(25);
-            setStats(res.stats);
-            if (!res.success) {
-              Alert.alert('Not Enough Gems', 'Complete lessons to earn more Gems first!');
-            }
-          },
-        },
-      ]
-    );
+  const handleRefillHearts = async (): Promise<boolean> => {
+    const res = await refillHeartsWithGems(25);
+    setStats(res.stats);
+    return res.success;
   };
 
   return (
@@ -385,39 +377,61 @@ function AppContent() {
         <>
           {/* Screen Container */}
           <View style={styles.screenContainer}>
-            {activeTab === 'learn' && (
+            {/* Course Screen stays mounted so switching back to Course has 0ms delay */}
+            <View
+              style={[
+                styles.screenTab,
+                activeTab === 'learn' ? styles.screenActive : styles.screenHidden,
+              ]}
+            >
               <CurriculumScreen
                 onStartLesson={handleStartLesson}
                 stats={stats}
                 userRank={userRank}
-                onRefillHearts={handleRefillHearts}
                 onOpenLeague={() => setActiveTab('league')}
                 onTopColorChange={setCourseTopColor}
               />
-            )}
+            </View>
+
+            {/* Speak screen only mounts when user actually taps Speak so audio never auto-plays */}
             {activeTab === 'call' && (
-              <SpeakHubScreen
-                stats={stats}
-                onStatsUpdate={setStats}
-                onTopColorChange={setSpeakTopColor}
-              />
+              <View style={styles.screenTab}>
+                <SpeakHubScreen
+                  stats={stats}
+                  onStatsUpdate={setStats}
+                  onTopColorChange={setSpeakTopColor}
+                />
+              </View>
             )}
+
+            {/* League screen only mounts when active */}
             {activeTab === 'league' && (
-              <LeaderboardScreen
-                stats={stats}
-                authUser={authUser}
-                onBack={() => setActiveTab('learn')}
-              />
+              <View style={styles.screenTab}>
+                <LeaderboardScreen
+                  stats={stats}
+                  authUser={authUser}
+                  onBack={() => setActiveTab('learn')}
+                />
+              </View>
             )}
-            {activeTab === 'profile' && (
+
+            {/* Profile screen stays mounted for instant tab switching */}
+            <View
+              style={[
+                styles.screenTab,
+                activeTab === 'profile' ? styles.screenActive : styles.screenHidden,
+              ]}
+            >
               <ProfileScreen
                 stats={stats}
                 authUser={authUser}
                 onStatsUpdate={setStats}
                 onSignOut={handleSignOut}
+                onRefillHearts={handleRefillHearts}
                 onAuthUserUpdate={setAuthUser}
+                onTopColorChange={setProfileTopColor}
               />
-            )}
+            </View>
           </View>
 
           {/* Unified Bottom Navigation Bar (Extends smoothly under gesture inset) */}
@@ -433,7 +447,7 @@ function AppContent() {
                       <TouchableOpacity
                         key={tab.id}
                         style={styles.centerCallWrapper}
-                        onPress={() => setActiveTab(tab.id)}
+                        onPress={() => handleTabChange(tab.id)}
                         activeOpacity={0.85}
                       >
                         <LinearGradient
@@ -455,7 +469,7 @@ function AppContent() {
                     <TouchableOpacity
                       key={tab.id}
                       style={styles.navItem}
-                      onPress={() => setActiveTab(tab.id)}
+                      onPress={() => handleTabChange(tab.id)}
                       activeOpacity={0.75}
                     >
                       <View style={styles.navIconWrap}>
@@ -514,6 +528,15 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  screenTab: {
+    flex: 1,
+  },
+  screenActive: {
+    display: 'flex',
+  },
+  screenHidden: {
+    display: 'none',
   },
   bottomNavWrapper: {
     backgroundColor: THEME.colors.surfaceDark,

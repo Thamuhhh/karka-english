@@ -24,7 +24,7 @@ create table if not exists public.profiles (
 -- 2. Study Progress (Owner-only XP, streak, hearts, gems, completed lessons)
 create table if not exists public.user_progress (
   user_id uuid primary key references auth.users (id) on delete cascade,
-  streak_days integer not null default 1 check (streak_days >= 1),
+  streak_days integer not null default 0 check (streak_days >= 0),
   last_active_date date not null default current_date,
   stardust_xp integer not null default 0 check (stardust_xp >= 0),
   cosmic_rank text not null default 'Bronze League',
@@ -42,6 +42,15 @@ create table if not exists public.user_progress (
   sound_enabled boolean not null default true,
   updated_at timestamptz not null default now()
 );
+
+-- Existing installations used a minimum one-day seed. Streaks now begin only
+-- after the learner completes the daily XP goal, so allow a true zero state.
+alter table public.user_progress
+  drop constraint if exists user_progress_streak_days_check;
+alter table public.user_progress
+  add constraint user_progress_streak_days_check check (streak_days >= 0);
+alter table public.user_progress
+  alter column streak_days set default 0;
 
 -- 3. Saved & Custom Vocabulary (Owner-only Corporate Lexicon entries)
 create table if not exists public.user_vocabulary (
@@ -70,7 +79,7 @@ create table if not exists public.leaderboard_entries (
   avatar_color text not null default '#7F43FE',
   avatar_id text default 'lion',
   stardust_xp integer not null default 120 check (stardust_xp >= 0),
-  streak_days integer not null default 1 check (streak_days >= 0),
+  streak_days integer not null default 0 check (streak_days >= 0),
   cosmic_rank text not null default 'Bronze League',
   updated_at timestamptz not null default now()
 );
