@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS } from '../constants/curriculum';
 import { MascotAvatar } from '../components/MascotAvatar';
-import { AvatarPickerModal } from '../components/AvatarPickerModal';
+import { EditProfileModal } from '../components/EditProfileModal';
 import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
 import {
@@ -25,7 +25,7 @@ import {
   savePreferredSpeechRate,
   updateSoundSetting,
   resetAllUserProgress,
-  updateAuthUserAvatar,
+  updateAuthUserProfile,
 } from '../services/storageService';
 import { EnglishAccent, getSpeechRate } from '../services/ttsService';
 import { LiveStreakBadge } from '../components/LiveStreakBadge';
@@ -143,7 +143,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocKey | null>(null);
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const playerAvatar = getAvatarPackItem(authUser?.avatarId);
 
@@ -152,12 +152,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setIsSlowSpeech(getSpeechRate() < 0.9);
   }, []);
 
-  const handleSelectAvatar = async (avatarId: AvatarPackId) => {
-    const updated = await updateAuthUserAvatar(avatarId);
+  const handleSaveProfile = async (updates: { name: string; avatarId: AvatarPackId }) => {
+    const updated = await updateAuthUserProfile(updates);
     if (updated && onAuthUserUpdate) {
       onAuthUserUpdate(updated);
     }
-    setShowAvatarPicker(false);
   };
 
   const handleAccentChange = async (acc: EnglishAccent) => {
@@ -215,14 +214,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Open Account Identity Row (Zero Boxes) */}
+        {/* Open Account Identity Row */}
         <View style={styles.identityHeader}>
           <View style={styles.identityLeft}>
             <TouchableOpacity
-              onPress={() => setShowAvatarPicker(true)}
+              onPress={() => setShowEditProfile(true)}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Change avatar"
+              accessibilityLabel="Edit profile"
               style={styles.avatarTouchable}
             >
               <View
@@ -243,7 +242,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   { backgroundColor: playerAvatar.accentColor },
                 ]}
               >
-                <Ionicons name="pencil" size={10} color="#FFFFFF" />
+                <Ionicons name="camera-outline" size={10} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
@@ -251,20 +250,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <View style={styles.nameRow}>
                 <Text style={styles.userName}>{authUser?.name || 'Elvate Learner'}</Text>
                 <TouchableOpacity
-                  onPress={() => setShowAvatarPicker(true)}
-                  style={[
-                    styles.avatarTag,
-                    { backgroundColor: `${playerAvatar.accentColor}25` },
-                  ]}
+                  onPress={() => setShowEditProfile(true)}
+                  style={styles.editPill}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit profile"
                 >
-                  <Text
-                    style={[
-                      styles.avatarTagText,
-                      { color: playerAvatar.accentColor },
-                    ]}
-                  >
-                    {playerAvatar.tamilName}
-                  </Text>
+                  <Ionicons name="create-outline" size={11} color="#C4B5FD" />
+                  <Text style={styles.editPillText}>Edit</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.tierMeta}>
@@ -592,13 +585,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </View>
       </Modal>
 
-      {/* Avatar Pack Customizer Modal */}
-      <AvatarPickerModal
-        visible={showAvatarPicker}
-        currentAvatarId={authUser?.avatarId}
-        onSelectAvatar={handleSelectAvatar}
-        onClose={() => setShowAvatarPicker(false)}
-        isOnboarding={false}
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        visible={showEditProfile}
+        authUser={authUser}
+        onSave={handleSaveProfile}
+        onClose={() => setShowEditProfile(false)}
       />
     </View>
   );
@@ -687,14 +679,21 @@ const styles = StyleSheet.create({
     fontSize: 19,
     color: '#FFFFFF',
   },
-  avatarTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
+  editPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(127, 67, 254, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(127, 67, 254, 0.35)',
   },
-  avatarTagText: {
-    fontFamily: THEME.fonts.tamilBold,
-    fontSize: 10,
+  editPillText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11,
+    color: '#C4B5FD',
   },
   tierMeta: {
     fontFamily: THEME.fonts.medium,

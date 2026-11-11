@@ -620,13 +620,18 @@ export async function saveAuthUser(user: AuthUser): Promise<void> {
   }
 }
 
-export async function updateAuthUserAvatar(avatarId: string): Promise<AuthUser | null> {
+export async function updateAuthUserProfile(updates: {
+  name?: string;
+  avatarId?: string;
+}): Promise<AuthUser | null> {
   try {
     const current = await loadAuthUser();
     if (!current) return null;
+    const trimmedName = updates.name?.trim();
     const updated: AuthUser = {
       ...current,
-      avatarId,
+      ...(trimmedName ? { name: trimmedName } : {}),
+      ...(updates.avatarId ? { avatarId: updates.avatarId } : {}),
     };
     await saveAuthUser(updated);
     if (current.isCloudSession && current.id) {
@@ -635,9 +640,13 @@ export async function updateAuthUserAvatar(avatarId: string): Promise<AuthUser |
     }
     return updated;
   } catch (e) {
-    console.warn('Failed to update user avatar:', e);
+    console.warn('Failed to update user profile:', e);
     return null;
   }
+}
+
+export async function updateAuthUserAvatar(avatarId: string): Promise<AuthUser | null> {
+  return updateAuthUserProfile({ avatarId });
 }
 
 export async function signOutAuthUser(): Promise<void> {

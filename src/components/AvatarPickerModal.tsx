@@ -77,15 +77,11 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
           <View style={styles.headerRow}>
             <View style={styles.headerTextGroup}>
               <Text style={styles.superTitle}>
-                {isOnboarding ? 'WELCOME TO ELVATE' : 'CHARACTER ROSTER'}
+                {isOnboarding ? 'WELCOME TO ELVATE' : 'PROFILE IMAGE'}
               </Text>
-              <Text style={styles.mainTitle}>
-                {isOnboarding ? 'Choose Your Avatar' : 'Switch Your Avatar'}
-              </Text>
-              <Text style={styles.tamilSubtitle}>
-                {isOnboarding
-                  ? 'உங்கள் கற்றல் அடையாளத்தைத் தேர்ந்தெடுக்கவும்'
-                  : 'புதிய அவதாரைத் தேர்வு செய்யவும்'}
+              <Text style={styles.mainTitle}>Choose Profile Picture</Text>
+              <Text style={styles.subtitle}>
+                Select an avatar for your Elvate learning journey
               </Text>
             </View>
             {!isOnboarding && onClose && (
@@ -93,9 +89,9 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 onPress={onClose}
                 style={styles.closeBtn}
                 accessibilityRole="button"
-                accessibilityLabel="Close avatar picker"
+                accessibilityLabel="Close"
               >
-                <Ionicons name="close" size={22} color={THEME.colors.textSecondary} />
+                <Ionicons name="close" size={20} color={THEME.colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -104,61 +100,24 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* Active Avatar Spotlight Card */}
-            <View
-              style={[
-                styles.spotlightCard,
-                { borderColor: `${activeAvatar.accentColor}55` },
-              ]}
-            >
+            {/* Active Preview */}
+            <View style={styles.previewContainer}>
               <View
                 style={[
-                  styles.spotlightAvatarGlow,
-                  { backgroundColor: `${activeAvatar.accentColor}22` },
+                  styles.previewRing,
+                  { borderColor: activeAvatar.accentColor },
                 ]}
               >
-                <View
-                  style={[
-                    styles.spotlightRing,
-                    { borderColor: activeAvatar.accentColor },
-                  ]}
-                >
-                  <Image
-                    source={activeAvatar.source}
-                    style={styles.spotlightImage}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.spotlightInfo}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.spotlightName}>{activeAvatar.name}</Text>
-                  <View
-                    style={[
-                      styles.accentBadge,
-                      { backgroundColor: `${activeAvatar.accentColor}25` },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.accentBadgeText,
-                        { color: activeAvatar.accentColor },
-                      ]}
-                    >
-                      {activeAvatar.tamilName}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.spotlightTagline}>{activeAvatar.tagline}</Text>
-                <Text style={styles.spotlightDesc}>{activeAvatar.description}</Text>
+                <Image
+                  source={activeAvatar.source}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
               </View>
             </View>
 
-            {/* Avatar Grid */}
-            <Text style={styles.sectionHeading}>
-              SELECT YOUR IDENTITY ({AVATAR_PACK_ITEMS.length})
-            </Text>
+            {/* Avatar Grid - Pure images, no text/meaning */}
+            <Text style={styles.sectionHeading}>SELECT AVATAR</Text>
             <View style={styles.avatarGrid}>
               {AVATAR_PACK_ITEMS.map((item) => {
                 const isSelected = item.id === selectedId;
@@ -193,19 +152,10 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                             { backgroundColor: item.accentColor },
                           ]}
                         >
-                          <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                          <Ionicons name="checkmark" size={10} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
-                    <Text
-                      style={[
-                        styles.gridNameText,
-                        isSelected && { color: item.accentColor },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.tamilName}
-                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -227,8 +177,8 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 {isSubmitting
                   ? 'Saving...'
                   : isOnboarding
-                  ? 'Confirm & Start Learning • தொடங்கு'
-                  : 'Save Avatar • சேமி'}
+                  ? 'Continue • தொடரவும்'
+                  : 'Confirm • உறுதிசெய்'}
               </Text>
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </TouchableOpacity>
@@ -247,7 +197,7 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     flex: 1,
-    maxHeight: '92%',
+    maxHeight: '85%',
     backgroundColor: THEME.colors.backgroundSecondary,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -280,8 +230,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: THEME.colors.textWhite,
   },
-  tamilSubtitle: {
-    fontFamily: THEME.fonts.tamilMedium,
+  subtitle: {
+    fontFamily: THEME.fonts.body,
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -298,129 +248,73 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
-  spotlightCard: {
-    backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1.5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  spotlightAvatarGlow: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  previewContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 20,
   },
-  spotlightRing: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+  previewRing: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     borderWidth: 3,
-    overflow: 'hidden',
     backgroundColor: THEME.colors.surfaceDark,
   },
-  spotlightImage: {
+  previewImage: {
     width: '100%',
     height: '100%',
-  },
-  spotlightInfo: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  spotlightName: {
-    fontFamily: THEME.fonts.bold,
-    fontSize: 18,
-    color: THEME.colors.textWhite,
-  },
-  accentBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  accentBadgeText: {
-    fontFamily: THEME.fonts.tamilBold,
-    fontSize: 11,
-  },
-  spotlightTagline: {
-    fontFamily: THEME.fonts.semiBold,
-    fontSize: 12,
-    color: THEME.colors.gold,
-    marginTop: 3,
-  },
-  spotlightDesc: {
-    fontFamily: THEME.fonts.body,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    lineHeight: 16,
-    marginTop: 4,
+    borderRadius: 45,
   },
   sectionHeading: {
     fontFamily: THEME.fonts.bold,
     fontSize: 11,
     letterSpacing: 1.2,
     color: THEME.colors.textMuted,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   avatarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     justifyContent: 'space-between',
   },
   gridItem: {
     width: GRID_ITEM_SIZE,
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: 16,
     backgroundColor: THEME.colors.surfaceDark,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   gridImageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 2,
     borderColor: THEME.colors.borderLight,
     position: 'relative',
-    overflow: 'visible',
     backgroundColor: THEME.colors.surface,
   },
   gridImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 30,
+    borderRadius: 26,
   },
   checkmarkBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: THEME.colors.surfaceDark,
-  },
-  gridNameText: {
-    fontFamily: THEME.fonts.tamilMedium,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-    marginTop: 6,
-    textAlign: 'center',
   },
   bottomBar: {
     paddingHorizontal: 20,
@@ -430,8 +324,8 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surfaceDark,
   },
   confirmBtn: {
-    height: 52,
-    borderRadius: 16,
+    height: 50,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -449,4 +343,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
-

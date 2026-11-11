@@ -322,6 +322,7 @@ export async function pushProgressAndLeaderboard(
       supabase
         .from('profiles')
         .update({
+          display_name: displayName,
           daily_goal_xp: Math.max(10, stats.dailyGoalXp),
           sound_enabled: stats.soundEnabled,
           avatar_id: authUser.avatarId || 'lion',
