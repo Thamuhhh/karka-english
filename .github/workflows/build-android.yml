@@ -41,6 +41,15 @@ jobs:
           EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}
         run: npx expo prebuild --platform android --non-interactive
 
+      - name: Target real phone ARM architectures to shrink APK
+        run: |
+          if grep -q '^reactNativeArchitectures=' android/gradle.properties; then
+            sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=armeabi-v7a,arm64-v8a/' android/gradle.properties
+          else
+            echo 'reactNativeArchitectures=armeabi-v7a,arm64-v8a' >> android/gradle.properties
+          fi
+          grep '^reactNativeArchitectures=' android/gradle.properties
+
       - name: Build release APK
         env:
           EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}

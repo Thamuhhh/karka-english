@@ -6,9 +6,6 @@ export const SUPERNOVA_IMAGES = {
 
   // Bespoke 3D Coach & Milestone Artwork
   novaAvatar: require('../../assets/generated/nova_studio_portrait.jpg'),
-  novaPortraitLegacy: require('../../assets/supernova/nova_avatar_card.png'),
-  novaBw: require('../../assets/supernova/nova_bw.png'),
-  streakNova: require('../../assets/generated/nova_studio_portrait.jpg'),
   trophyNova: require('../../assets/generated/map_trophy_crest.jpg'),
 
   // Bespoke 3D Map World Assets
@@ -34,32 +31,6 @@ export const SUPERNOVA_IMAGES = {
     delay: require('../../assets/generated/node_emblem_3_1.jpg'),
     health: require('../../assets/generated/node_emblem_3_2.jpg'),
   },
-
-  // Utility Icons from APK
-  bubbleMic: require('../../assets/supernova/bubble_mic.png'),
-  endCall: require('../../assets/supernova/end_call.png'),
-  translate: require('../../assets/supernova/translate.png'),
-  askDoubt: require('../../assets/supernova/ask_doubt.png'),
-  continueArrow: require('../../assets/supernova/continue_arrow.png'),
-  levelOverview1: require('../../assets/supernova/gemstore_levels_1_overview.png'),
-  levelTitle1: require('../../assets/supernova/gemstore_levels_1_title.png'),
-  levelTitleWon1: require('../../assets/supernova/gemstore_levels_1_titlewon.png'),
-  superChallengeBanner: require('../../assets/supernova/gemstore_superchallengestartwidgetbanner.png'),
-  storeBanner: require('../../assets/supernova/gemstore_gemstorestorebanner.png'),
-  levelTitles: {
-    1: require('../../assets/generated/map_unit1_foundation.jpg'),
-    2: require('../../assets/generated/map_unit2_daily.jpg'),
-    3: require('../../assets/generated/map_unit3_career.jpg'),
-    4: require('../../assets/generated/map_unit4_mastery.jpg'),
-  } as { [key: number]: any },
-  levelOverviews: {
-    1: require('../../assets/supernova/gemstore_levels_1_overview.png'),
-    2: require('../../assets/supernova/gemstore_levels_2_overview.png'),
-    3: require('../../assets/supernova/gemstore_levels_3_overview.png'),
-    4: require('../../assets/supernova/gemstore_levels_4_overview.png'),
-    5: require('../../assets/supernova/gemstore_levels_5_overview.png'),
-    6: require('../../assets/supernova/gemstore_levels_6_overview.png'),
-  } as { [key: number]: any },
 };
 
 const LESSON_EMBLEM_CATEGORY: Record<string, keyof typeof SUPERNOVA_IMAGES.nodeEmblems> = {
@@ -95,22 +66,3 @@ export function getLessonNodeEmblem(classId: string) {
 export function getUnitBanner(levelNumber: number) {
   return SUPERNOVA_IMAGES.unitBanners[levelNumber] || SUPERNOVA_IMAGES.unitBanners[1];
 }
-
-export const COURSE_NODE_IMAGES: { [key: number]: { colored: any; grayscale: any } } = {
-  1: {
-    colored: SUPERNOVA_IMAGES.nodeEmblems.speak,
-    grayscale: SUPERNOVA_IMAGES.nodeEmblems.speak,
-  },
-  2: {
-    colored: SUPERNOVA_IMAGES.nodeEmblems.grammar,
-    grayscale: SUPERNOVA_IMAGES.nodeEmblems.grammar,
-  },
-  3: {
-    colored: SUPERNOVA_IMAGES.nodeEmblems.daily,
-    grayscale: SUPERNOVA_IMAGES.nodeEmblems.daily,
-  },
-  4: {
-    colored: SUPERNOVA_IMAGES.nodeEmblems.career,
-    grayscale: SUPERNOVA_IMAGES.nodeEmblems.career,
-  },
-};
