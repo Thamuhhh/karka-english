@@ -20,7 +20,15 @@ import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
 import { AuthUser } from '../types';
-import { saveAuthUser } from '../services/storageService';
+import { hydrateUserCloudSession } from '../services/storageService';
+import {
+  resendVerificationEmail,
+  sendPasswordReset,
+  signInAsGuest,
+  signInWithEmail,
+  signInWithGoogleOAuth,
+  signUpWithEmail,
+} from '../services/authService';
 import { playSoundEffect } from '../services/soundEffectsService';
 import { KarkaWordmark } from '../components/KarkaBrand';
 
@@ -46,22 +54,6 @@ const AUTH_TOP_COLORS: Record<AuthMode, string> = {
   login: '#20163B',
   signup: '#27194A',
 };
-
-function extractDisplayNameFromEmail(identifier: string): string {
-  const cleaned = identifier.trim();
-  if (!cleaned) return 'Learner';
-  if (cleaned.includes('@')) {
-    const prefix = cleaned.split('@')[0].replace(/[._-]+/g, ' ').trim();
-    if (prefix) {
-      return prefix
-        .split(' ')
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
-    }
-  }
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-}
 
 function getPasswordStrength(password: string): {
   bars: number;
@@ -217,14 +209,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   };
 
   const completeAuth = async (user: AuthUser) => {
-    setIsSubmitting(true);
-    try {
-      await saveAuthUser(user);
-      playSoundEffect('success');
-      onAuthenticated(user);
-    } finally {
-      setIsSubmitting(false);
-    }
+    await hydrateUserCloudSession(user);
+    playSoundEffect('success');
+    onAuthenticated(user);
   };
 
   const handleLoginSubmit = async () => {
@@ -237,14 +224,43 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setErrorMsg('Password must be at least 4 characters.');
       return;
     }
+
     setErrorMsg(null);
-    const derivedName = extractDisplayNameFromEmail(id);
-    await completeAuth({
-      name: derivedName,
-      email: id.includes('@') ? id.toLowerCase() : `${id.toLowerCase()}@karka.app`,
-      provider: 'email',
-      createdAt: new Date().toISOString(),
-    });
+    setIsSubmitting(true);
+    try {
+      const result = await signInWithEmail(id, loginPassword);
+      if (result.needsEmailVerification) {
+        const cleanEmail = id.trim().toLowerCase();
+        setErrorMsg(result.error || 'Verify your email before signing in.');
+        Alert.alert(
+          'Email Not Verified',
+          `Check ${cleanEmail} for the verification link, then try signing in again.`,
+          [
+            {
+              text: 'Resend Link',
+              onPress: async () => {
+                const resend = await resendVerificationEmail(cleanEmail);
+                Alert.alert(
+                  resend.error ? 'Resend Failed' : 'Verification Sent',
+                  resend.error || `Sent a fresh confirmation link to ${cleanEmail}.`
+                );
+              },
+            },
+            { text: 'OK' },
+          ]
+        );
+        return;
+      }
+
+      if (result.error || !result.user) {
+        setErrorMsg(result.error || 'Could not sign in. Please try again.');
+        return;
+      }
+
+      await completeAuth(result.user);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSignupSubmit = async () => {
@@ -262,40 +278,86 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setErrorMsg('Create a password with at least 6 characters.');
       return;
     }
+
     setErrorMsg(null);
-    await completeAuth({
-      name,
-      email: email.toLowerCase(),
-      provider: 'email',
-      createdAt: new Date().toISOString(),
-    });
+    setIsSubmitting(true);
+    try {
+      const result = await signUpWithEmail(name, email, signupPassword);
+      if (result.error) {
+        setErrorMsg(result.error);
+        return;
+      }
+
+      if (result.needsEmailVerification) {
+        const cleanEmail = email.toLowerCase();
+        Alert.alert(
+          'Verify Your Email',
+          `We sent a confirmation link to ${cleanEmail}. Open that link first, then sign in with your password.`,
+          [
+            {
+              text: 'Go to Sign In',
+              onPress: () => {
+                setLoginIdentifier(cleanEmail);
+                switchMode('login');
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      if (result.user) {
+        await completeAuth(result.user);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleQuickSocialAuth = async (provider: 'google' | 'guest') => {
     setErrorMsg(null);
     playSoundEffect('button');
-    if (provider === 'google') {
-      await completeAuth({
-        name: signupName.trim() || 'Alex',
-        email: 'alex@gmail.com',
-        provider: 'google',
-        createdAt: new Date().toISOString(),
-      });
-      return;
+    setIsSubmitting(true);
+    try {
+      if (provider === 'google') {
+        const result = await signInWithGoogleOAuth();
+        if (result.error) {
+          setErrorMsg(result.error);
+        }
+        return;
+      }
+
+      const result = await signInAsGuest(signupName.trim() || 'Guest Learner');
+      if (result.error || !result.user) {
+        setErrorMsg(result.error || 'Guest sign-in unavailable right now.');
+        return;
+      }
+      await completeAuth(result.user);
+    } finally {
+      setIsSubmitting(false);
     }
-    await completeAuth({
-      name: signupName.trim() || 'Guest Learner',
-      email: '',
-      provider: 'guest',
-      createdAt: new Date().toISOString(),
-    });
   };
 
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
+    const id = loginIdentifier.trim();
+    if (!id || !/\S+@\S+\.\S+/.test(id)) {
+      Alert.alert(
+        'Reset Password',
+        'Enter your registered email address in the email field above, then tap Forgot Password again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const res = await sendPasswordReset(id);
+    if (res.error) {
+      setErrorMsg(res.error);
+      return;
+    }
     Alert.alert(
-      'Reset Password',
-      'Since Karka stores your study progress on this device, you can sign in with any password or continue with Google or Guest access.',
-      [{ text: 'Got it' }]
+      'Reset Link Sent',
+      `We sent a password recovery link to ${id.toLowerCase()}. Check your inbox and spam folder.`,
+      [{ text: 'OK' }]
     );
   };
 

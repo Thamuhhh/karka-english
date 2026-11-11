@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -45,12 +45,15 @@ import { AuthUser, UserStats } from './src/types';
 import {
   createDefaultStats,
   hydrateAppPreferences,
+  hydrateUserCloudSession,
+  loadUserStats,
   completeLessonSession,
   updateHearts,
   refillHeartsWithGems,
   loadAuthUser,
   signOutAuthUser,
 } from './src/services/storageService';
+import { getVerifiedAuthUser, subscribeToSupabaseAuth } from './src/services/authService';
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 
 type TabType = 'learn' | 'call' | 'league' | 'profile';
@@ -99,16 +102,79 @@ function AppContent() {
   const [courseTopColor, setCourseTopColor] = useState('#1E1438');
   const [speakTopColor, setSpeakTopColor] = useState('#1E143A');
   const [lessonTopColor, setLessonTopColor] = useState('#1B1535');
+  const activeAuthKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    Promise.all([hydrateAppPreferences(), loadAuthUser()])
-      .then(([loadedStats, loadedAuth]) => {
+    let mounted = true;
+
+    const bootstrapSession = async () => {
+      try {
+        const [loadedStats, loadedAuth] = await Promise.all([
+          hydrateAppPreferences(),
+          loadAuthUser(),
+        ]);
+        if (!mounted) return;
         setStats(loadedStats);
-        setAuthUser(loadedAuth);
-      })
-      .finally(() => {
-        setHydrated(true);
-      });
+
+        const verifiedUser = await getVerifiedAuthUser(loadedAuth);
+        if (!mounted) return;
+
+        if (verifiedUser) {
+          activeAuthKeyRef.current =
+            verifiedUser.id ||
+            (verifiedUser.provider === 'guest'
+              ? `local-guest:${verifiedUser.name}`
+              : verifiedUser.name);
+          const cloudStats = await hydrateUserCloudSession(verifiedUser);
+          if (!mounted) return;
+          setStats(cloudStats);
+          setAuthUser(verifiedUser);
+        } else {
+          if (loadedAuth) {
+            await signOutAuthUser();
+          }
+          activeAuthKeyRef.current = null;
+          setAuthUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setHydrated(true);
+        }
+      }
+    };
+
+    bootstrapSession();
+
+    const unsubscribe = subscribeToSupabaseAuth(async (event, nextUser) => {
+      if (!mounted) return;
+      if (event === 'SIGNED_OUT' || !nextUser) {
+        if (activeAuthKeyRef.current && !activeAuthKeyRef.current.startsWith('local-guest:')) {
+          activeAuthKeyRef.current = null;
+          setCurrentLesson(null);
+          setActiveTab('learn');
+          setStats(createDefaultStats());
+          setAuthUser(null);
+        }
+        return;
+      }
+
+      const nextKey = nextUser.id || nextUser.name;
+      if (activeAuthKeyRef.current !== nextKey) {
+        activeAuthKeyRef.current = nextKey;
+        const cloudStats = await hydrateUserCloudSession(nextUser);
+        if (!mounted) return;
+        setStats(cloudStats);
+        setAuthUser(nextUser);
+        setActiveTab('learn');
+      } else if (event === 'USER_UPDATED') {
+        setAuthUser(nextUser);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const isAppReady = fontsLoaded && hydrated;
@@ -132,15 +198,21 @@ function AppContent() {
       ? THEME.colors.background
       : activeScreenTopColor;
 
-  const handleAuthenticated = (user: AuthUser) => {
+  const handleAuthenticated = async (user: AuthUser) => {
+    activeAuthKeyRef.current =
+      user.id || (user.provider === 'guest' ? `local-guest:${user.name}` : user.name);
+    const latestStats = await loadUserStats();
+    setStats(latestStats);
     setAuthUser(user);
     setActiveTab('learn');
   };
 
   const handleSignOut = async () => {
+    activeAuthKeyRef.current = null;
     await signOutAuthUser();
     setCurrentLesson(null);
     setActiveTab('learn');
+    setStats(createDefaultStats());
     setAuthUser(null);
   };
 
@@ -247,7 +319,11 @@ function AppContent() {
               />
             )}
             {activeTab === 'league' && (
-              <LeaderboardScreen stats={stats} onBack={() => setActiveTab('learn')} />
+              <LeaderboardScreen
+                stats={stats}
+                authUser={authUser}
+                onBack={() => setActiveTab('learn')}
+              />
             )}
             {activeTab === 'profile' && (
               <ProfileScreen

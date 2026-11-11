@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,19 +11,44 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
-import { UserStats } from '../types';
+import { AuthUser, LeaderboardEntry, UserStats } from '../types';
 import {
   getRankedLeaderboard,
   PROMOTION_CUTOFF_RANK,
 } from '../services/leaderboardService';
+import { fetchCloudLeaderboard } from '../services/cloudSyncService';
 
 interface LeaderboardScreenProps {
   stats: UserStats;
+  authUser?: AuthUser | null;
   onBack?: () => void;
 }
 
-export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ stats, onBack }) => {
-  const rankedUsers = getRankedLeaderboard(stats);
+export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
+  stats,
+  authUser = null,
+  onBack,
+}) => {
+  const [rankedUsers, setRankedUsers] = useState<LeaderboardEntry[]>(() =>
+    getRankedLeaderboard(stats)
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setRankedUsers(getRankedLeaderboard(stats));
+
+    if (authUser?.isCloudSession) {
+      fetchCloudLeaderboard(stats, authUser).then((cloudEntries) => {
+        if (!cancelled && cloudEntries && cloudEntries.length > 0) {
+          setRankedUsers(cloudEntries);
+        }
+      });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser, stats.stardustXp, stats.streakDays]);
   const top3 = rankedUsers.slice(0, 3);
   const rest = rankedUsers.slice(3);
   const me = rankedUsers.find((u) => u.isCurrentUser);

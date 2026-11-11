@@ -5,19 +5,34 @@ import {
   setPreferredAccent,
   EnglishAccent,
   setSpeechRate,
+  getSpeechRate,
 } from './ttsService';
 import { setSoundEffectsEnabled } from './soundEffectsService';
 import { computeLeagueRankName } from './leaderboardService';
 import { STARTER_VOCABULARY } from '../api/dictionary';
+import { signOutSupabase } from './authService';
+import {
+  ensureCloudProvisioned,
+  pullCloudUserData,
+  pushPreferencesToCloud,
+  pushProgressAndLeaderboard,
+  pushVocabularyToCloud,
+  resetCloudUserData,
+} from './cloudSyncService';
 
 const KEYS = {
   USER_STATS: 'nova_user_stats',
   AUTH_USER: 'nova_auth_user',
+  ACTIVE_USER_ID: 'nova_active_user_id',
   GEMINI_API_KEY: 'nova_gemini_key',
   SAVED_WORDS: 'nova_saved_words',
   PREFERRED_ACCENT: 'nova_preferred_accent',
   SPEECH_RATE: 'nova_speech_rate',
 };
+
+const STARTER_WORD_SET = new Set(STARTER_VOCABULARY.map((w) => w.word.toLowerCase()));
+
+let activeCloudUserCache: AuthUser | null = null;
 
 function getTodayIsoDate(): string {
   return new Date().toISOString().split('T')[0];
@@ -51,9 +66,10 @@ function normalizeStats(raw: Partial<UserStats>): UserStats {
   const xp = typeof raw.stardustXp === 'number' ? raw.stardustXp : defaults.stardustXp;
   const maxHearts = typeof raw.maxHearts === 'number' ? raw.maxHearts : 5;
   const rawHearts = typeof raw.hearts === 'number' ? raw.hearts : maxHearts;
-  const completedClasses = Array.isArray(raw.completedClasses) && raw.completedClasses.length > 0
-    ? Array.from(new Set(raw.completedClasses))
-    : defaults.completedClasses;
+  const completedClasses =
+    Array.isArray(raw.completedClasses) && raw.completedClasses.length > 0
+      ? Array.from(new Set(raw.completedClasses))
+      : defaults.completedClasses;
   const masteredWords = Array.isArray(raw.masteredWords)
     ? Array.from(new Set(raw.masteredWords))
     : [];
@@ -95,24 +111,82 @@ function normalizeStats(raw: Partial<UserStats>): UserStats {
   };
 }
 
+async function resolveCurrentAuthUser(): Promise<AuthUser | null> {
+  if (activeCloudUserCache) return activeCloudUserCache;
+  const loaded = await loadAuthUser();
+  activeCloudUserCache = loaded;
+  return loaded;
+}
+
+function mergeStats(remote: UserStats, local: UserStats): UserStats {
+  const completedClasses = Array.from(
+    new Set([...remote.completedClasses, ...local.completedClasses])
+  );
+  const masteredWords = Array.from(new Set([...remote.masteredWords, ...local.masteredWords]));
+  const useLocalScalarSource = local.stardustXp > remote.stardustXp;
+  const combinedXp = Math.max(remote.stardustXp, local.stardustXp);
+
+  return normalizeStats({
+    streakDays: Math.max(remote.streakDays, local.streakDays),
+    lastActiveDate:
+      remote.lastActiveDate >= local.lastActiveDate ? remote.lastActiveDate : local.lastActiveDate,
+    stardustXp: combinedXp,
+    cosmicRank: computeLeagueRankName(combinedXp),
+    gems: useLocalScalarSource ? local.gems : remote.gems,
+    hearts: useLocalScalarSource ? local.hearts : remote.hearts,
+    maxHearts: Math.max(remote.maxHearts, local.maxHearts),
+    todayXp: Math.max(remote.todayXp, local.todayXp),
+    todayDate: remote.todayDate >= local.todayDate ? remote.todayDate : local.todayDate,
+    dailyGoalXp: remote.dailyGoalXp,
+    wordsMastered: Math.max(masteredWords.length, remote.wordsMastered, local.wordsMastered),
+    conversationsDone: Math.max(remote.conversationsDone, local.conversationsDone),
+    sentencesChecked: Math.max(remote.sentencesChecked, local.sentencesChecked),
+    completedClasses,
+    masteredWords,
+    soundEnabled: remote.soundEnabled,
+  });
+}
+
+function mergeVocabulary(
+  cloudWords: WordDefinition[] | null,
+  localWords: WordDefinition[],
+  masteredWords: string[]
+): WordDefinition[] {
+  const masteredSet = new Set(masteredWords.map((w) => w.toLowerCase()));
+  const byWord = new Map<string, WordDefinition>();
+
+  for (const item of [...(cloudWords || []), ...localWords, ...STARTER_VOCABULARY]) {
+    const key = item.word.trim().toLowerCase();
+    const existing = byWord.get(key);
+    const isMemorized = masteredSet.has(key) || Boolean(item.memorized) || Boolean(existing?.memorized);
+    if (!existing) {
+      byWord.set(key, { ...item, memorized: isMemorized });
+    } else if (isMemorized && !existing.memorized) {
+      byWord.set(key, { ...existing, memorized: true });
+    }
+  }
+
+  return Array.from(byWord.values()).slice(0, 60);
+}
+
 export async function loadUserStats(): Promise<UserStats> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.USER_STATS);
     if (!raw) {
       const defaults = createDefaultStats();
-      await saveUserStats(defaults);
+      await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(defaults));
       return defaults;
     }
     const parsed: Partial<UserStats> = JSON.parse(raw);
     const normalized = normalizeStats(parsed);
-    await saveUserStats(normalized);
+    await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(normalized));
     return normalized;
-  } catch (e) {
+  } catch {
     return createDefaultStats();
   }
 }
 
-export async function saveUserStats(stats: UserStats): Promise<void> {
+export async function saveUserStats(stats: UserStats, skipCloudPush = false): Promise<void> {
   try {
     const cleanStats: UserStats = {
       ...stats,
@@ -121,6 +195,13 @@ export async function saveUserStats(stats: UserStats): Promise<void> {
     };
     setSoundEffectsEnabled(cleanStats.soundEnabled);
     await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(cleanStats));
+
+    if (!skipCloudPush) {
+      const user = await resolveCurrentAuthUser();
+      if (user?.isCloudSession) {
+        void pushProgressAndLeaderboard(user, cleanStats);
+      }
+    }
   } catch (e) {
     console.warn('Failed to save stats:', e);
   }
@@ -146,6 +227,89 @@ export async function hydrateAppPreferences(): Promise<UserStats> {
   }
 
   return stats;
+}
+
+export async function hydrateUserCloudSession(authUser: AuthUser): Promise<UserStats> {
+  activeCloudUserCache = authUser;
+  await saveAuthUser(authUser);
+
+  const nextUserKey = authUser.id || `local:${authUser.provider}:${authUser.name}`;
+  const prevUserKey = await AsyncStorage.getItem(KEYS.ACTIVE_USER_ID).catch(() => null);
+  const isSwitchingAccounts = Boolean(prevUserKey && prevUserKey !== nextUserKey);
+  const canMergeLocalProgress = !prevUserKey || prevUserKey === nextUserKey;
+
+  if (isSwitchingAccounts) {
+    await AsyncStorage.multiRemove([KEYS.USER_STATS, KEYS.SAVED_WORDS]).catch(() => {});
+  }
+  await AsyncStorage.setItem(KEYS.ACTIVE_USER_ID, nextUserKey).catch(() => {});
+
+  const localStats = await loadUserStats();
+  const [localAccent, localVocab] = await Promise.all([
+    loadPreferredAccent(),
+    loadVocabularyList(),
+  ]);
+  const localRate = getSpeechRate();
+
+  if (!authUser.isCloudSession || !authUser.id) {
+    return localStats;
+  }
+
+  await ensureCloudProvisioned(authUser, localStats, {
+    accent: localAccent,
+    speechRate: localRate,
+  });
+
+  const cloudData = await pullCloudUserData(authUser);
+  if (!cloudData) {
+    return localStats;
+  }
+
+  let resolvedStats = localStats;
+  if (cloudData.stats) {
+    const normalizedCloud = normalizeStats(cloudData.stats);
+    const shouldMergeLocal =
+      canMergeLocalProgress &&
+      (localStats.stardustXp > normalizedCloud.stardustXp ||
+        localStats.completedClasses.length > normalizedCloud.completedClasses.length ||
+        localStats.masteredWords.length > normalizedCloud.masteredWords.length);
+
+    resolvedStats = shouldMergeLocal
+      ? mergeStats(normalizedCloud, localStats)
+      : normalizedCloud;
+
+    if (shouldMergeLocal) {
+      void pushProgressAndLeaderboard(authUser, resolvedStats);
+    }
+  } else {
+    void pushProgressAndLeaderboard(authUser, resolvedStats);
+  }
+
+  if (cloudData.accent) {
+    setPreferredAccent(cloudData.accent);
+    await AsyncStorage.setItem(KEYS.PREFERRED_ACCENT, cloudData.accent).catch(() => {});
+  }
+  if (typeof cloudData.speechRate === 'number') {
+    setSpeechRate(cloudData.speechRate);
+    await AsyncStorage.setItem(KEYS.SPEECH_RATE, String(cloudData.speechRate)).catch(() => {});
+  }
+
+  const effectiveVocabSource = isSwitchingAccounts ? STARTER_VOCABULARY : localVocab;
+  const mergedVocab = mergeVocabulary(
+    cloudData.vocabulary,
+    effectiveVocabSource,
+    resolvedStats.masteredWords
+  );
+  await AsyncStorage.setItem(KEYS.SAVED_WORDS, JSON.stringify(mergedVocab)).catch(() => {});
+
+  const syncCandidates = mergedVocab.filter(
+    (w) => w.memorized || !STARTER_WORD_SET.has(w.word.toLowerCase())
+  );
+  if (syncCandidates.length > 0 && (!cloudData.vocabulary || cloudData.vocabulary.length === 0)) {
+    void pushVocabularyToCloud(authUser, syncCandidates);
+  }
+
+  await saveUserStats(resolvedStats, true);
+  return resolvedStats;
 }
 
 export async function addXp(amount: number, bonusGems = 0): Promise<UserStats> {
@@ -186,7 +350,9 @@ export async function updateHearts(delta: number): Promise<UserStats> {
   return stats;
 }
 
-export async function refillHeartsWithGems(cost = 25): Promise<{ success: boolean; stats: UserStats }> {
+export async function refillHeartsWithGems(
+  cost = 25
+): Promise<{ success: boolean; stats: UserStats }> {
   const stats = await loadUserStats();
   if (stats.hearts >= stats.maxHearts) {
     return { success: true, stats };
@@ -242,12 +408,14 @@ export async function markWordMastered(word: string): Promise<UserStats> {
   }
   await saveUserStats(stats);
 
-  // Also sync flag into saved vocab cache
   const words = await loadVocabularyList();
   const updatedWords = words.map((w) =>
     w.word.toLowerCase() === clean ? { ...w, memorized: true } : w
   );
-  await saveVocabularyList(updatedWords);
+  await saveVocabularyList(
+    updatedWords,
+    updatedWords.filter((w) => w.word.toLowerCase() === clean)
+  );
   return stats;
 }
 
@@ -276,7 +444,9 @@ export async function toggleSavedWord(
   const updatedWords = words.map((w) =>
     w.word.toLowerCase() === clean ? { ...w, memorized: saved } : w
   );
-  await saveVocabularyList(updatedWords);
+  await saveVocabularyList(updatedWords, [
+    ...updatedWords.filter((w) => w.word.toLowerCase() === clean),
+  ]);
 
   return { stats, saved };
 }
@@ -287,14 +457,31 @@ export async function loadVocabularyList(): Promise<WordDefinition[]> {
     if (!raw) return STARTER_VOCABULARY;
     const parsed: WordDefinition[] = JSON.parse(raw);
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : STARTER_VOCABULARY;
-  } catch (e) {
+  } catch {
     return STARTER_VOCABULARY;
   }
 }
 
-export async function saveVocabularyList(words: WordDefinition[]): Promise<void> {
+export async function saveVocabularyList(
+  words: WordDefinition[],
+  changedWords?: WordDefinition[]
+): Promise<void> {
   try {
-    await AsyncStorage.setItem(KEYS.SAVED_WORDS, JSON.stringify(words.slice(0, 60)));
+    const trimmed = words.slice(0, 60);
+    await AsyncStorage.setItem(KEYS.SAVED_WORDS, JSON.stringify(trimmed));
+
+    const user = await resolveCurrentAuthUser();
+    if (user?.isCloudSession) {
+      const toSync =
+        changedWords && changedWords.length > 0
+          ? changedWords
+          : trimmed.filter(
+              (w) => w.memorized || !STARTER_WORD_SET.has(w.word.toLowerCase())
+            );
+      if (toSync.length > 0) {
+        void pushVocabularyToCloud(user, toSync);
+      }
+    }
   } catch (e) {
     console.warn('Failed to save vocabulary list:', e);
   }
@@ -307,7 +494,7 @@ export async function loadSavedApiKey(): Promise<string | null> {
       setGeminiApiKey(key);
     }
     return key;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -334,7 +521,7 @@ export async function loadPreferredAccent(): Promise<EnglishAccent> {
       setPreferredAccent(accent);
       return accent;
     }
-  } catch (e) {}
+  } catch {}
   return 'en-US';
 }
 
@@ -342,14 +529,22 @@ export async function savePreferredAccent(accent: EnglishAccent): Promise<void> 
   try {
     await AsyncStorage.setItem(KEYS.PREFERRED_ACCENT, accent);
     setPreferredAccent(accent);
-  } catch (e) {}
+    const user = await resolveCurrentAuthUser();
+    if (user?.isCloudSession) {
+      void pushPreferencesToCloud(user, { accent });
+    }
+  } catch {}
 }
 
 export async function savePreferredSpeechRate(rate: number): Promise<void> {
   try {
     setSpeechRate(rate);
     await AsyncStorage.setItem(KEYS.SPEECH_RATE, String(rate));
-  } catch (e) {}
+    const user = await resolveCurrentAuthUser();
+    if (user?.isCloudSession) {
+      void pushPreferencesToCloud(user, { speechRate: rate });
+    }
+  } catch {}
 }
 
 export async function resetAllUserProgress(): Promise<UserStats> {
@@ -359,6 +554,12 @@ export async function resetAllUserProgress(): Promise<UserStats> {
     AsyncStorage.removeItem(KEYS.SAVED_WORDS),
   ]);
   setSoundEffectsEnabled(fresh.soundEnabled);
+
+  const user = await resolveCurrentAuthUser();
+  if (user?.isCloudSession) {
+    void resetCloudUserData(user, fresh);
+  }
+
   return fresh;
 }
 
@@ -369,6 +570,7 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
     const parsed = JSON.parse(raw) as Partial<AuthUser>;
     if (parsed && typeof parsed.name === 'string' && parsed.name.trim()) {
       return {
+        id: typeof parsed.id === 'string' ? parsed.id : undefined,
         name: parsed.name.trim(),
         email: typeof parsed.email === 'string' ? parsed.email : '',
         provider:
@@ -376,6 +578,8 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
             ? parsed.provider
             : 'email',
         createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : new Date().toISOString(),
+        isCloudSession: Boolean(parsed.isCloudSession),
+        isAnonymous: Boolean(parsed.isAnonymous),
       };
     }
     return null;
@@ -386,6 +590,7 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
 
 export async function saveAuthUser(user: AuthUser): Promise<void> {
   try {
+    activeCloudUserCache = user;
     await AsyncStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
   } catch (e) {
     console.warn('Failed to save auth user:', e);
@@ -394,7 +599,14 @@ export async function saveAuthUser(user: AuthUser): Promise<void> {
 
 export async function signOutAuthUser(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(KEYS.AUTH_USER);
+    activeCloudUserCache = null;
+    await signOutSupabase();
+    await AsyncStorage.multiRemove([
+      KEYS.AUTH_USER,
+      KEYS.USER_STATS,
+      KEYS.SAVED_WORDS,
+      KEYS.ACTIVE_USER_ID,
+    ]);
   } catch (e) {
     console.warn('Failed to sign out user:', e);
   }

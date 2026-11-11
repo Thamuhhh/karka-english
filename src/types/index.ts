@@ -76,8 +76,11 @@ export interface LeaderboardEntry {
 }
 
 export interface AuthUser {
+  id?: string;
   name: string;
   email: string;
   provider: 'email' | 'google' | 'guest';
   createdAt: string;
+  isCloudSession?: boolean;
+  isAnonymous?: boolean;
 }

@@ -392,10 +392,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() =>
-                  Alert.alert('Sign Out?', 'Your learning progress stays saved on this device.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Sign Out', onPress: onSignOut },
-                  ])
+                  Alert.alert(
+                    'Sign Out?',
+                    authUser?.isCloudSession
+                      ? 'Your learning progress is synced to your cloud account.'
+                      : 'Your learning progress stays saved on this device.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Sign Out', onPress: onSignOut },
+                    ]
+                  )
                 }
                 activeOpacity={0.78}
               >
