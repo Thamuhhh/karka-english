@@ -82,6 +82,44 @@ function isNetworkOrOfflineError(err: unknown): boolean {
   );
 }
 
+function isFatalSessionRevokedError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { status?: number; code?: string; name?: string; message?: string };
+  if (e.name === 'AuthSessionMissingError') return true;
+  const code = (e.code || '').toLowerCase();
+  const msg = (e.message || '').toLowerCase();
+  if (
+    code === 'user_not_found' ||
+    code === 'session_not_found' ||
+    code === 'bad_jwt' ||
+    msg.includes('user from sub claim') ||
+    msg.includes('does not exist') ||
+    msg.includes('invalid jwt')
+  ) {
+    return true;
+  }
+  return (e.status === 401 || e.status === 403) && !isNetworkOrOfflineError(err);
+}
+
+export function extractOAuthUrlError(url: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const queryParams = parsed.searchParams;
+    const hashRaw = parsed.hash.startsWith('#') ? parsed.hash.slice(1) : parsed.hash;
+    const hashParams = new URLSearchParams(hashRaw);
+    const rawErr =
+      hashParams.get('error_description') ||
+      queryParams.get('error_description') ||
+      hashParams.get('error') ||
+      queryParams.get('error');
+    if (!rawErr) return null;
+    return rawErr.replace(/\+/g, ' ').trim();
+  } catch {
+    return null;
+  }
+}
+
 export async function getVerifiedAuthUser(
   localFallbackUser: AuthUser | null
 ): Promise<AuthUser | null> {
@@ -112,11 +150,15 @@ export async function getVerifiedAuthUser(
       return mapSupabaseUserToAuthUser(userData.user);
     }
 
-    if (userError && isNetworkOrOfflineError(userError) && session.user) {
+    if (userError && isFatalSessionRevokedError(userError)) {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      return null;
+    }
+
+    if (session.user) {
       return mapSupabaseUserToAuthUser(session.user);
     }
 
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     return null;
   } catch (err) {
     if (isNetworkOrOfflineError(err) && localFallbackUser) {

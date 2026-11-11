@@ -44,6 +44,7 @@ type FocusField =
 interface AuthScreenProps {
   onAuthenticated: (user: AuthUser) => void;
   onTopColorChange?: (color: string) => void;
+  initialError?: string | null;
 }
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
@@ -142,8 +143,9 @@ const SocialQuickAuth: React.FC<SocialQuickAuthProps> = ({
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   onAuthenticated,
   onTopColorChange,
+  initialError = null,
 }) => {
-  const [mode, setMode] = useState<AuthMode>('welcome');
+  const [mode, setMode] = useState<AuthMode>(initialError ? 'login' : 'welcome');
   const [focusedField, setFocusedField] = useState<FocusField>(null);
 
   // Form states
@@ -154,7 +156,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [signupPassword, setSignupPassword] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialError);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loginPassRef = useRef<TextInput>(null);
@@ -167,6 +169,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   useEffect(() => {
     onTopColorChange?.(AUTH_TOP_COLORS[mode]);
   }, [mode, onTopColorChange]);
+
+  useEffect(() => {
+    if (initialError) {
+      setMode('login');
+      setErrorMsg(initialError);
+    }
+  }, [initialError]);
 
   useEffect(() => {
     const bobLoop = Animated.loop(

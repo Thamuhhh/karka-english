@@ -57,6 +57,7 @@ import {
 } from './src/services/storageService';
 import {
   completeAuthSessionFromUrl,
+  extractOAuthUrlError,
   getVerifiedAuthUser,
   subscribeToSupabaseAuth,
 } from './src/services/authService';
@@ -108,6 +109,7 @@ function AppContent() {
   const [courseTopColor, setCourseTopColor] = useState('#1E1438');
   const [speakTopColor, setSpeakTopColor] = useState('#1E143A');
   const [lessonTopColor, setLessonTopColor] = useState('#1B1535');
+  const [authInitialError, setAuthInitialError] = useState<string | null>(null);
   const activeAuthKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -115,6 +117,14 @@ function AppContent() {
 
     const bootstrapSession = async () => {
       try {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          const urlErr = extractOAuthUrlError(window.location.href);
+          if (urlErr && mounted) {
+            setAuthInitialError(urlErr);
+            window.history.replaceState(null, '', window.location.pathname || '/');
+          }
+        }
+
         const [loadedStats, loadedAuth] = await Promise.all([
           hydrateAppPreferences(),
           loadAuthUser(),
@@ -122,8 +132,24 @@ function AppContent() {
         if (!mounted) return;
         setStats(loadedStats);
 
-        const verifiedUser = await getVerifiedAuthUser(loadedAuth);
+        let verifiedUser = await getVerifiedAuthUser(loadedAuth);
         if (!mounted) return;
+
+        if (
+          !verifiedUser &&
+          Platform.OS === 'web' &&
+          typeof window !== 'undefined' &&
+          (window.location.href.includes('access_token=') || window.location.href.includes('code='))
+        ) {
+          const fallbackRes = await completeAuthSessionFromUrl(window.location.href);
+          if (!mounted) return;
+          if (fallbackRes.error) {
+            setAuthInitialError(fallbackRes.error);
+          } else if (fallbackRes.user) {
+            verifiedUser = fallbackRes.user;
+          }
+          window.history.replaceState(null, '', window.location.pathname || '/');
+        }
 
         if (verifiedUser) {
           activeAuthKeyRef.current =
@@ -133,6 +159,7 @@ function AppContent() {
               : verifiedUser.name);
           const cloudStats = await hydrateUserCloudSession(verifiedUser);
           if (!mounted) return;
+          setAuthInitialError(null);
           setStats(cloudStats);
           setAuthUser(verifiedUser);
         } else {
@@ -142,6 +169,8 @@ function AppContent() {
           activeAuthKeyRef.current = null;
           setAuthUser(null);
         }
+      } catch (err) {
+        console.warn('Bootstrap session error:', err);
       } finally {
         if (mounted) {
           setHydrated(true);
@@ -313,6 +342,7 @@ function AppContent() {
           <AuthScreen
             onAuthenticated={handleAuthenticated}
             onTopColorChange={setAuthTopColor}
+            initialError={authInitialError}
           />
         </View>
       ) : currentLesson ? (

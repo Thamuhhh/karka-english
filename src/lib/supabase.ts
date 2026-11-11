@@ -40,16 +40,22 @@ if (
   });
 }
 
+function getWebNormalizedRedirectUrl(): string {
+  const path = window.location.pathname || '/';
+  const normalizedPath = path === '/karka-english' ? '/karka-english/' : path;
+  return `${window.location.origin}${normalizedPath}`;
+}
+
 export function getAuthRedirectUrl(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    return `${window.location.origin}${window.location.pathname}`;
+    return getWebNormalizedRedirectUrl();
   }
   return 'https://thamuhhh.github.io/karka-english/';
 }
 
 export function getOAuthRedirectUrl(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    return `${window.location.origin}${window.location.pathname}`;
+    return getWebNormalizedRedirectUrl();
   }
   return 'karka://auth/callback';
 }
