@@ -9,7 +9,7 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS, SupernovaLevel } from '../constants/curriculum';
@@ -17,7 +17,6 @@ import { EditProfileModal } from '../components/EditProfileModal';
 import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
 import { updateAuthUserProfile } from '../services/storageService';
-import { LiveStreakBadge } from '../components/LiveStreakBadge';
 import { ElvateWordmark } from '../components/ElvateBrand';
 import { SettingsScreen } from './SettingsScreen';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -233,7 +232,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </View>
           </View>
-          <LiveStreakBadge streakDays={stats.streakDays} />
+          <View style={styles.profileStreakBadge} accessibilityLabel={`${stats.streakDays} day streak`}>
+            <MaterialCommunityIcons name="fire" size={23} color={THEME.colors.gold} />
+            <Text style={styles.profileStreakCount}>{stats.streakDays}</Text>
+          </View>
         </View>
 
         {/* Open Course Fluency Line */}
@@ -512,6 +514,25 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 16,
     marginBottom: 12,
+  },
+  profileStreakBadge: {
+    minWidth: 54,
+    height: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  profileStreakCount: {
+    fontFamily: THEME.fonts.extraBold,
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontVariant: ['tabular-nums'],
   },
   identityLeft: {
     flexDirection: 'row',
