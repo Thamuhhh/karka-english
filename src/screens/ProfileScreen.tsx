@@ -9,7 +9,7 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SUPERNOVA_LEVELS, SupernovaLevel } from '../constants/curriculum';
@@ -17,6 +17,7 @@ import { EditProfileModal } from '../components/EditProfileModal';
 import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
 import { updateAuthUserProfile } from '../services/storageService';
+import { LiveStreakBadge } from '../components/LiveStreakBadge';
 import { ElvateWordmark } from '../components/ElvateBrand';
 import { SettingsScreen } from './SettingsScreen';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -232,10 +233,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </View>
           </View>
-          <View style={styles.profileStreakBadge} accessibilityLabel={`${stats.streakDays} day streak`}>
-            <MaterialCommunityIcons name="fire" size={20} color={THEME.colors.gold} />
-            <Text style={styles.profileStreakCount}>{stats.streakDays} Day Streak</Text>
-          </View>
+          <LiveStreakBadge streakDays={stats.streakDays} />
         </View>
 
         {/* Open Course Fluency Line */}
@@ -514,22 +512,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 16,
     marginBottom: 12,
-  },
-  profileStreakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceCard,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  profileStreakCount: {
-    fontFamily: THEME.fonts.bold,
-    color: THEME.colors.gold,
-    fontSize: 13,
-    marginLeft: 4,
   },
   identityLeft: {
     flexDirection: 'row',
