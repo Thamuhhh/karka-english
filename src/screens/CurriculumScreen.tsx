@@ -18,10 +18,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { THEME } from '../constants/theme';
 import {
-  getNextUnlockedClassId,
-  isLessonUnlocked,
   SUPERNOVA_LEVELS,
   SupernovaClass,
+  SupernovaLevel,
 } from '../constants/curriculum';
 import { UserStats } from '../types';
 import {
@@ -38,6 +37,7 @@ interface CurriculumScreenProps {
   userRank: number;
   onOpenLeague?: () => void;
   onTopColorChange?: (color: string) => void;
+  extraLevels?: SupernovaLevel[];
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -73,22 +73,13 @@ function formatShortUnitTitle(fullName: string): string {
   return fullName.replace(/^Unit\s+\d+:\s*/i, '').trim();
 }
 
-const ALL_ORDERED_CLASSES = SUPERNOVA_LEVELS.flatMap((lvl) => lvl.classes);
-
-const LESSON_NUMBER_MAP: Record<string, number> = {};
-let runningNum = 0;
-for (const lvl of SUPERNOVA_LEVELS) {
-  for (const cls of lvl.classes) {
-    runningNum++;
-    LESSON_NUMBER_MAP[cls.id] = runningNum;
-  }
-}
-
 export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onStartLesson,
   stats,
   onTopColorChange,
+  extraLevels = [],
 }) => {
+  const levels = [...SUPERNOVA_LEVELS, ...extraLevels];
   const { width: windowWidth } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
   const [showStreakScreen, setShowStreakScreen] = useState(false);
@@ -112,12 +103,23 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
       : selectedLesson.xpReward
     : 0;
 
-  const nextActiveClassId = getNextUnlockedClassId(completedClasses);
+  const orderedClasses = levels.flatMap((level) => level.classes);
+  const nextActiveClassId = orderedClasses.find((cls) => !completedClasses.includes(cls.id))?.id ?? null;
+  const lessonNumberMap = Object.fromEntries(orderedClasses.map((cls, index) => [cls.id, index + 1]));
+  const lessonUnlocked = (id: string) => {
+    if (completedClasses.includes(id)) return true;
+    const customLevel = extraLevels.find((level) => level.classes.some((lesson) => lesson.id === id));
+    if (customLevel) {
+      const index = customLevel.classes.findIndex((lesson) => lesson.id === id);
+      return index === 0 || completedClasses.includes(customLevel.classes[index - 1].id);
+    }
+    return nextActiveClassId === id;
+  };
   const isSelectedUnlocked = selectedLesson
-    ? isLessonUnlocked(selectedLesson.id, completedClasses)
+    ? lessonUnlocked(selectedLesson.id)
     : false;
 
-  const activeLevel = SUPERNOVA_LEVELS[activeUnitIdx] || SUPERNOVA_LEVELS[0];
+  const activeLevel = levels[activeUnitIdx] || levels[0];
   const activeUnitTopColor = UNIT_TOP_COLORS[activeUnitIdx % UNIT_TOP_COLORS.length];
 
   const prevTopColorRef = useRef<string | null>(null);
@@ -145,7 +147,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   const handleMapScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollY = event.nativeEvent.contentOffset.y;
     let nextIdx = 0;
-    for (let i = SUPERNOVA_LEVELS.length - 1; i >= 1; i--) {
+    for (let i = levels.length - 1; i >= 1; i--) {
       const unitY = unitStartYRef.current[i];
       if (typeof unitY === 'number' && scrollY >= unitY - 24) {
         nextIdx = i;
@@ -179,7 +181,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const lessonNumberMap = LESSON_NUMBER_MAP;
 
   const renderUnitBandContent = (
     levelNum: number,
@@ -299,7 +300,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         >
-        {SUPERNOVA_LEVELS.map((level, levelIdx) => {
+        {levels.map((level, levelIdx) => {
           const completedInLevel = level.classes.filter((c) =>
             completedClasses.includes(c.id)
           ).length;
@@ -406,8 +407,10 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 {/* Zig-Zag Lesson Stop Nodes */}
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
-                  const isCurrent = cls.id === nextActiveClassId;
-                  const isLocked = !isLessonUnlocked(cls.id, completedClasses);
+                  const isCurrent = cls.id === nextActiveClassId || extraLevels.some(
+                    (course) => course.classes.find((item) => !completedClasses.includes(item.id))?.id === cls.id
+                  );
+                  const isLocked = !lessonUnlocked(cls.id);
                   const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
                   const cx = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
                   const cy = MAP_TOP_CY + cIdx * MAP_STEP_Y;

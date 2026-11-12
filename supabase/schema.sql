@@ -391,3 +391,47 @@ revoke all on function public.admin_get_overview() from public, anon, authentica
 revoke all on function public.admin_list_learners(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.admin_get_overview() to authenticated;
 grant execute on function public.admin_list_learners(text, integer, integer) to authenticated;
+
+-- Admin authored courses. Learners can read published units; only admin RPCs write.
+create table if not exists public.custom_courses (
+  id text primary key,
+  level_data jsonb not null,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+alter table public.custom_courses enable row level security;
+revoke all on public.custom_courses from anon, authenticated;
+grant select (id, level_data, status, updated_at, created_at) on public.custom_courses to anon, authenticated;
+drop policy if exists published_custom_courses_read on public.custom_courses;
+create policy published_custom_courses_read on public.custom_courses
+  for select to anon, authenticated using (status = 'published');
+
+create or replace function public.admin_save_course(p_level_data jsonb, p_status text default 'draft')
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare saved public.custom_courses;
+begin
+  perform private.require_admin();
+  if p_status not in ('draft', 'published') then raise exception 'Invalid course status'; end if;
+  if jsonb_typeof(p_level_data) <> 'object' or jsonb_typeof(p_level_data -> 'classes') <> 'array' then
+    raise exception 'Invalid course content';
+  end if;
+  insert into public.custom_courses(id, level_data, status, updated_at)
+  values (p_level_data ->> 'id', p_level_data, p_status, now())
+  on conflict (id) do update set level_data = excluded.level_data, status = excluded.status, updated_at = now()
+  returning * into saved;
+  return jsonb_build_object('id', saved.id, 'level_data', saved.level_data, 'status', saved.status, 'updated_at', saved.updated_at);
+end; $$;
+
+create or replace function public.admin_list_courses()
+returns setof jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  perform private.require_admin();
+  return query select jsonb_build_object('id', c.id, 'level_data', c.level_data, 'status', c.status, 'updated_at', c.updated_at)
+    from public.custom_courses c order by c.updated_at desc;
+end; $$;
+
+revoke all on function public.admin_save_course(jsonb, text) from public, anon, authenticated;
+revoke all on function public.admin_list_courses() from public, anon, authenticated;
+grant execute on function public.admin_save_course(jsonb, text) to authenticated;
+grant execute on function public.admin_list_courses() to authenticated;

@@ -42,7 +42,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
-import { isLessonUnlocked, SupernovaClass } from './src/constants/curriculum';
+import { SupernovaClass, SupernovaLevel, SUPERNOVA_LEVELS } from './src/constants/curriculum';
 import { AuthUser, UserStats } from './src/types';
 import { AvatarPickerModal } from './src/components/AvatarPickerModal';
 import { AvatarPackId } from './src/constants/avatarPack';
@@ -66,6 +66,7 @@ import {
 } from './src/services/authService';
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 import { stopAllAudio } from './src/services/ttsService';
+import { loadPublishedCourses } from './src/services/courseService';
 
 type TabType = 'learn' | 'call' | 'league' | 'profile';
 
@@ -103,6 +104,7 @@ function AppContent() {
   });
 
   const [stats, setStats] = useState<UserStats>(createDefaultStats);
+  const [publishedCourses, setPublishedCourses] = useState<SupernovaLevel[]>([]);
   const heartUpdateQueue = useRef(Promise.resolve());
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -118,6 +120,12 @@ function AppContent() {
   const [authInitialError, setAuthInitialError] = useState<string | null>(null);
   const [showOnboardingAvatarPicker, setShowOnboardingAvatarPicker] = useState(false);
   const activeAuthKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadPublishedCourses().then((courses) => { if (active) setPublishedCourses(courses); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -310,8 +318,15 @@ function AppContent() {
   const userRank = getUserLeaderboardRank(stats);
 
   const handleStartLesson = (lesson: SupernovaClass) => {
-    if (!isLessonUnlocked(lesson.id, stats.completedClasses)) {
-      return;
+    if (!stats.completedClasses.includes(lesson.id)) {
+      const customLevel = publishedCourses.find((level) => level.classes.some((item) => item.id === lesson.id));
+      if (customLevel) {
+        const index = customLevel.classes.findIndex((item) => item.id === lesson.id);
+        if (index > 0 && !stats.completedClasses.includes(customLevel.classes[index - 1].id)) return;
+      } else {
+        const nextClass = SUPERNOVA_LEVELS.flatMap((level) => level.classes).find((item) => !stats.completedClasses.includes(item.id));
+        if (nextClass?.id !== lesson.id) return;
+      }
     }
     setCurrentLesson(lesson);
   };
@@ -390,6 +405,7 @@ function AppContent() {
                 userRank={userRank}
                 onOpenLeague={() => setActiveTab('league')}
                 onTopColorChange={setCourseTopColor}
+                extraLevels={publishedCourses}
               />
             </View>
 

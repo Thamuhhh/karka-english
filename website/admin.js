@@ -18,6 +18,7 @@
   let session = readSession();
   let currentOffset = 0;
   let visibleRows = 0;
+  let editingCourse = null;
 
   function readSession() {
     try {
@@ -188,6 +189,11 @@
     try {
       const overview = await rpc('admin_get_overview');
       await loadLearners();
+      await loadCourses().catch((error) => {
+        const target = document.querySelector('#saved-courses');
+        target.textContent = 'Apply the latest Supabase schema to enable course management.';
+        console.warn('Course management schema is not ready:', error.message);
+      });
       document.querySelector('#metric-accounts').textContent = formatNumber(overview.total_accounts);
       document.querySelector('#metric-new').textContent = formatNumber(overview.new_accounts_7d);
       document.querySelector('#metric-active').textContent = formatNumber(overview.active_today);
@@ -201,6 +207,54 @@
     } finally {
       document.querySelector('#refresh-button').disabled = false;
     }
+  }
+
+  async function loadCourses() {
+    const target = document.querySelector('#saved-courses');
+    const courses = await rpc('admin_list_courses');
+    target.replaceChildren();
+    if (!Array.isArray(courses) || !courses.length) {
+      target.textContent = 'No courses saved yet.';
+      return;
+    }
+    courses.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'saved-course';
+      const title = document.createElement('b');
+      title.textContent = entry.level_data?.levelName || entry.id;
+      const detail = document.createElement('span');
+      detail.textContent = `${entry.status} · ${entry.level_data?.classes?.length || 0} classes`;
+      row.append(title, detail);
+      target.append(row);
+    });
+  }
+
+  function showCoursePreview(course) {
+    editingCourse = course;
+    document.querySelector('#course-editor').hidden = false;
+    document.querySelector('#course-preview-title').textContent = course.levelName;
+    document.querySelector('#course-description').value = course.description || '';
+    document.querySelector('#course-count').textContent = `${course.classes.length} classes`;
+    const list = document.querySelector('#generated-lessons');
+    list.replaceChildren();
+    course.classes.forEach((lesson, index) => {
+      const item = document.createElement('div');
+      item.className = 'generated-lesson';
+      const title = document.createElement('b');
+      title.textContent = `Class ${index + 1} · ${lesson.title}`;
+      const meta = document.createElement('span');
+      meta.textContent = `${lesson.grammarTopic} · ${lesson.duration}`;
+      item.append(title, meta);
+      list.append(item);
+    });
+  }
+
+  async function saveCourse(status) {
+    if (!editingCourse) return;
+    const course = { ...editingCourse, description: document.querySelector('#course-description').value.trim() };
+    await rpc('admin_save_course', { p_level_data: course, p_status: status });
+    showMessage(document.querySelector('#course-message'), status === 'published' ? 'Course published to the app.' : 'Draft saved.', false);
+    await loadCourses();
   }
 
   function showDashboard(isVisible) {
@@ -259,6 +313,31 @@
   });
 
   document.querySelector('#refresh-button').addEventListener('click', loadDashboard);
+  document.querySelector('#course-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = document.querySelector('#generate-course');
+    const values = new FormData(event.currentTarget);
+    showMessage(document.querySelector('#course-message'), 'Generating five classes. This may take a minute...', false);
+    button.disabled = true;
+    try {
+      if (session.expiresAt && Date.now() > session.expiresAt - 60000) await refreshSession();
+      const response = await fetch(`${apiUrl}/functions/v1/admin-generate-course`, {
+        method: 'POST',
+        headers: { apikey: publishableKey, Authorization: `Bearer ${session.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: values.get('topic'), levelName: values.get('levelName'), cefrTag: values.get('cefrTag') }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not generate the course.');
+      showCoursePreview(result.course);
+      showMessage(document.querySelector('#course-message'), 'Review the generated unit, then save it as a draft or publish it.', false);
+    } catch (error) {
+      showMessage(document.querySelector('#course-message'), error.message || 'Course generation failed.');
+    } finally {
+      button.disabled = false;
+    }
+  });
+  document.querySelector('#save-draft').addEventListener('click', () => saveCourse('draft').catch((error) => showMessage(document.querySelector('#course-message'), error.message)));
+  document.querySelector('#publish-course').addEventListener('click', () => saveCourse('published').catch((error) => showMessage(document.querySelector('#course-message'), error.message)));
   document.querySelector('#signout-button').addEventListener('click', signOut);
   document.querySelector('#search-form').addEventListener('submit', async (event) => {
     event.preventDefault();

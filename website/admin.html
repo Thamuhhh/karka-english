@@ -42,6 +42,7 @@
         <div class="sidebar-label">WORKSPACE</div>
         <a class="side-link side-link-active" href="#overview"><span class="side-icon">⌂</span>Overview</a>
         <a class="side-link" href="#learners"><span class="side-icon">♙</span>Learners</a>
+        <a class="side-link" href="#courses"><span class="side-icon">✦</span>Courses</a>
         <div class="sidebar-bottom">
           <span class="admin-avatar">A</span>
           <span class="admin-identity"><b id="admin-name">Administrator</b><small>Admin account</small></span>
@@ -90,6 +91,23 @@
             </table>
           </div>
           <div class="table-footer"><span id="result-count">—</span><div><button id="previous-page" class="page-button" type="button" disabled>Previous</button><button id="next-page" class="page-button" type="button" disabled>Next</button></div></div>
+        </section>
+        <section id="courses" class="learners-panel courses-panel">
+          <div class="panel-heading"><div><h2>Course studio</h2><p>Generate a five-class unit with AI, review it, then publish it to the app.</p></div></div>
+          <form id="course-form" class="course-form">
+            <label>Unit name<input name="levelName" required maxlength="100" placeholder="Unit 1: Everyday conversations" /></label>
+            <label>Topic<input name="topic" required maxlength="180" placeholder="Introducing yourself at work" /></label>
+            <label>CEFR level<select name="cefrTag"><option>CEFR A1</option><option>CEFR A2</option><option>CEFR B1</option><option>CEFR B2</option></select></label>
+            <button id="generate-course" class="primary-button" type="submit">✦ Generate course</button>
+          </form>
+          <p id="course-message" class="feedback" role="status" aria-live="polite"></p>
+          <div id="course-editor" class="course-editor" hidden>
+            <div class="course-editor-heading"><h3 id="course-preview-title">Generated course</h3><span id="course-count"></span></div>
+            <label>Course description<textarea id="course-description" rows="2"></textarea></label>
+            <div id="generated-lessons" class="generated-lessons"></div>
+            <div class="course-actions"><button id="save-draft" class="secondary-button" type="button">Save draft</button><button id="publish-course" class="primary-button" type="button">Publish course</button></div>
+          </div>
+          <div class="courses-list"><h3>Saved courses</h3><div id="saved-courses"><p class="table-message">Sign in to load courses.</p></div></div>
         </section>
         <p id="dashboard-error" class="dashboard-error" role="status" aria-live="polite"></p>
         <footer class="dashboard-footer">Elvate Admin · Learner data is visible to authorized administrators only.</footer>
