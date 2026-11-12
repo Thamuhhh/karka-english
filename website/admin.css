@@ -106,6 +106,8 @@ tbody tr:hover { background:rgba(180,146,227,.035); }
 .course-editor-heading span { color:#9b91a7; font-size:9px; }
 .generated-lessons { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:11px; }
 .generated-lesson,.saved-course { display:flex; min-width:0; flex-direction:column; gap:4px; padding:10px; border:1px solid var(--line); border-radius:7px; background:#17141d; }
+.tamil-audio-preview { align-self:flex-start; margin-top:4px; padding:5px 8px; border:1px solid rgba(127,67,254,.38); border-radius:6px; background:rgba(127,67,254,.1); color:#d6baff; font:inherit; font-size:10px; cursor:pointer; }
+.tamil-audio-preview:hover { border-color:#a976eb; background:rgba(127,67,254,.18); color:#fff; }
 .saved-course { position:relative; padding-right:118px; }
 .edit-course-button { position:absolute; top:9px; right:62px; padding:4px 8px; border:1px solid rgba(190,157,236,.2); border-radius:5px; background:rgba(141,97,197,.1); color:#d9c3f3; font:inherit; font-size:9px; cursor:pointer; }
 .edit-course-button:hover:not(:disabled) { border-color:#a976eb; color:#fff; }

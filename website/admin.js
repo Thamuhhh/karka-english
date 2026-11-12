@@ -23,6 +23,8 @@
   let manualAudioBusy = false;
   let audioAbortController = null;
   let audioStopRequested = false;
+  let tamilPreviewAudio = null;
+  let activeTamilPreviewButton = null;
   let editingCourseStatus = 'draft';
 
   function readSession() {
@@ -311,6 +313,7 @@
       const meta = document.createElement('span');
       meta.textContent = `${lesson.grammarTopic} · ${lesson.duration}`;
       item.append(title, meta);
+      addTamilAudioPreview(item, lesson);
       list.append(item);
     });
   }
@@ -365,8 +368,47 @@
         const input = card.querySelector(`[name="class${index}${field}"]`);
         if (input) input.value = value;
       });
+      addTamilAudioPreview(card, lesson);
       target.append(card);
     }
+  }
+
+  function addTamilAudioPreview(container, lesson) {
+    const clip = lesson?.lectureAudio?.tamil;
+    if (!clip?.url || !clip?.text) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'tamil-audio-preview';
+    button.textContent = '▶ Play Tamil audio';
+    button.addEventListener('click', async () => {
+      if (activeTamilPreviewButton === button && tamilPreviewAudio && !tamilPreviewAudio.paused) {
+        tamilPreviewAudio.pause();
+        tamilPreviewAudio.currentTime = 0;
+        button.textContent = '▶ Play Tamil audio';
+        activeTamilPreviewButton = null;
+        return;
+      }
+      if (tamilPreviewAudio) tamilPreviewAudio.pause();
+      if (activeTamilPreviewButton) activeTamilPreviewButton.textContent = '▶ Play Tamil audio';
+      tamilPreviewAudio = new Audio(clip.url);
+      activeTamilPreviewButton = button;
+      button.textContent = '⏸ Stop Tamil audio';
+      tamilPreviewAudio.addEventListener('ended', () => {
+        button.textContent = '▶ Play Tamil audio';
+        if (activeTamilPreviewButton === button) activeTamilPreviewButton = null;
+      }, { once: true });
+      tamilPreviewAudio.addEventListener('error', () => {
+        button.textContent = 'Audio unavailable';
+        if (activeTamilPreviewButton === button) activeTamilPreviewButton = null;
+      }, { once: true });
+      try {
+        await tamilPreviewAudio.play();
+      } catch {
+        button.textContent = 'Could not play audio';
+        activeTamilPreviewButton = null;
+      }
+    });
+    container.append(button);
   }
 
   function shuffleWords(words) {
@@ -533,6 +575,11 @@
           if (!response.ok) throw new Error(result.error || `Could not generate ${clip.kind} audio for Class ${lessonIndex + 1}.`);
           const currentLesson = editingCourse.classes[lessonIndex];
           currentLesson.lectureAudio = { ...currentLesson.lectureAudio, ...result.audioClips };
+          const lessonCard = document.querySelector(manualMode
+            ? `#manual-class-fields .manual-class-card:nth-child(${lessonIndex + 1})`
+            : `#generated-lessons .generated-lesson:nth-child(${lessonIndex + 1})`);
+          lessonCard?.querySelector('.tamil-audio-preview')?.remove();
+          if (lessonCard) addTamilAudioPreview(lessonCard, currentLesson);
           const persisted = await rpc('admin_save_course', {
             p_level_data: editingCourse,
             p_status: editingCourseStatus,
