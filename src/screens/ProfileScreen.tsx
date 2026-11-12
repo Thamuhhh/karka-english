@@ -233,8 +233,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </View>
           <View style={styles.profileStreakBadge} accessibilityLabel={`${stats.streakDays} day streak`}>
-            <MaterialCommunityIcons name="fire" size={23} color={THEME.colors.gold} />
-            <Text style={styles.profileStreakCount}>{stats.streakDays}</Text>
+            <MaterialCommunityIcons name="fire" size={20} color={THEME.colors.gold} />
+            <Text style={styles.profileStreakCount}>{stats.streakDays} Day Streak</Text>
           </View>
         </View>
 
@@ -516,23 +516,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileStreakBadge: {
-    minWidth: 54,
-    height: 38,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    backgroundColor: THEME.colors.surfaceCard,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: THEME.colors.border,
   },
   profileStreakCount: {
-    fontFamily: THEME.fonts.extraBold,
-    fontSize: 15,
-    color: '#FFFFFF',
-    fontVariant: ['tabular-nums'],
+    fontFamily: THEME.fonts.bold,
+    color: THEME.colors.gold,
+    fontSize: 13,
+    marginLeft: 4,
   },
   identityLeft: {
     flexDirection: 'row',
