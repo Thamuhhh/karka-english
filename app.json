@@ -3,6 +3,15 @@
     "name": "Elvate",
     "slug": "elvate",
     "scheme": "karka",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#8B5CF6",
+          "defaultChannel": "daily-practice"
+        }
+      ]
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/R_Appicon.png",

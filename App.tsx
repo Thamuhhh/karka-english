@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -67,6 +68,14 @@ import {
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 import { stopAllAudio } from './src/services/ttsService';
 import { loadPublishedCourses } from './src/services/courseService';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 type TabType = 'learn' | 'call' | 'league' | 'profile';
 
@@ -130,6 +139,19 @@ function AppContent() {
       setCourseOverrides(courses.coreOverrides);
     });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const openCourseFromReminder = (response: Notifications.NotificationResponse | null) => {
+      const data = response?.notification.request.content.data;
+      if (data?.screen === 'learn') {
+        setCurrentLesson(null);
+        setActiveTab('learn');
+      }
+    };
+    Notifications.getLastNotificationResponseAsync().then(openCourseFromReminder).catch(() => {});
+    const subscription = Notifications.addNotificationResponseReceivedListener(openCourseFromReminder);
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {

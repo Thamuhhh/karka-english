@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -22,6 +23,12 @@ import {
   updateSoundSetting,
 } from '../services/storageService';
 import { UserStats } from '../types';
+import {
+  DailyPracticeReminderSettings,
+  loadDailyPracticeReminderSettings,
+  sendPracticeReminderTest,
+  updateDailyPracticeReminder,
+} from '../services/notificationService';
 
 const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
   { id: 'en-US', shortLabel: 'US' },
@@ -29,6 +36,12 @@ const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
   { id: 'en-AU', shortLabel: 'AU' },
 ];
 const DAILY_GOALS = [50, 100, 200];
+const REMINDER_TIMES = [
+  { value: '18:00', label: '6 PM' },
+  { value: '19:00', label: '7 PM' },
+  { value: '20:00', label: '8 PM' },
+  { value: '21:00', label: '9 PM' },
+];
 interface SettingsScreenProps {
   stats: UserStats;
   onStatsUpdate: (stats: UserStats) => void;
@@ -42,9 +55,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
+  const [practiceReminder, setPracticeReminder] = useState<DailyPracticeReminderSettings>({ enabled: false, time: '19:00' });
+  const [reminderBusy, setReminderBusy] = useState(false);
 
   useEffect(() => {
     loadPreferredAccent().then(setSelectedAccent);
+    loadDailyPracticeReminderSettings().then(setPracticeReminder);
     setIsSlowSpeech(getSpeechRate() < 0.9);
   }, []);
 
@@ -64,6 +80,42 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const handleDailyGoalChange = async (goal: number) => {
     onStatsUpdate(await updateDailyGoal(goal));
+  };
+
+  const handleReminderChange = async (enabled: boolean, time = practiceReminder.time) => {
+    if (Platform.OS === 'web' || reminderBusy) return;
+    setReminderBusy(true);
+    try {
+      const scheduled = await updateDailyPracticeReminder(enabled, time);
+      if (!scheduled) {
+        Alert.alert('Notifications are off', 'Allow notifications for Elvate in your phone settings, then turn the daily reminder on again.');
+        return;
+      }
+      setPracticeReminder({ enabled, time });
+    } catch (error) {
+      Alert.alert('Could not update reminder', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setReminderBusy(false);
+    }
+  };
+
+  const handleTestReminder = async () => {
+    try {
+      const scheduled = await sendPracticeReminderTest();
+      if (!scheduled) {
+        Alert.alert('Notifications are off', 'Allow notifications for Elvate in your phone settings first.');
+        return;
+      }
+      Alert.alert('Test reminder scheduled', 'You should receive it in a few seconds.');
+    } catch {
+      Alert.alert('Could not send test reminder', 'Please try again in a moment.');
+    }
+  };
+
+  const reminderLabel = (time: string) => {
+    const [hourText, minute] = time.split(':');
+    const hour = Number(hourText);
+    return `${hour % 12 || 12}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`;
   };
 
   const handleResetProgress = () => {
@@ -190,6 +242,67 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </View>
         </View>
 
+        <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+        <View style={styles.section}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingLead}>
+              <Ionicons name="notifications-outline" size={19} color={THEME.colors.primaryGlow} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>Daily practice reminder</Text>
+                <Text style={styles.settingSubtitle}>
+                  {Platform.OS === 'web'
+                    ? 'Available in the Android and iOS app'
+                    : practiceReminder.enabled
+                      ? `Every day at ${reminderLabel(practiceReminder.time)}`
+                      : 'A gentle nudge to keep your streak alive'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={practiceReminder.enabled}
+              disabled={Platform.OS === 'web' || reminderBusy}
+              onValueChange={(enabled) => handleReminderChange(enabled)}
+              trackColor={{ false: '#26233B', true: THEME.colors.primary }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor="#26233B"
+            />
+          </View>
+          {practiceReminder.enabled && Platform.OS !== 'web' ? (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.reminderTimeBlock}>
+                <Text style={styles.settingSubtitle}>Reminder time</Text>
+                <View style={styles.goalOptions}>
+                  {REMINDER_TIMES.map((item) => {
+                    const active = practiceReminder.time === item.value;
+                    return (
+                      <TouchableOpacity
+                        key={item.value}
+                        disabled={reminderBusy}
+                        onPress={() => handleReminderChange(true, item.value)}
+                        style={[styles.goalChip, active && styles.goalChipActive]}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.goalChipText, active && styles.goalChipTextActive]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <TouchableOpacity style={styles.linkRow} onPress={handleTestReminder} activeOpacity={0.78}>
+                <View style={styles.settingLead}>
+                  <Ionicons name="paper-plane-outline" size={18} color={THEME.colors.primaryGlow} />
+                  <Text style={styles.settingTitle}>Send a test notification</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={17} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </>
+          ) : null}
+        </View>
+
         <Text style={styles.sectionLabel}>PROGRESS</Text>
         <View style={styles.section}>
           <TouchableOpacity style={styles.linkRow} onPress={handleResetProgress} activeOpacity={0.78}>
@@ -262,6 +375,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.065)' },
   goalHeader: { minHeight: 62, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   goalCurrent: { fontFamily: THEME.fonts.bold, color: THEME.colors.primaryGlow, fontSize: 12 },
+  reminderTimeBlock: { paddingTop: 12 },
   goalOptions: { flexDirection: 'row', gap: 8, paddingBottom: 13 },
   goalChip: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: THEME.colors.border, backgroundColor: THEME.colors.surfaceDark },
   goalChipActive: { borderColor: THEME.colors.primaryGlow, backgroundColor: THEME.colors.primaryLight },
