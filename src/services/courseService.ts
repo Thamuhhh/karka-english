@@ -1,5 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { SupernovaLevel } from '../constants/curriculum';
+
+const PUBLISHED_COURSE_CACHE_KEY = 'elvate-published-course-data-v1';
 
 export interface PublishedCourseData {
   extraLevels: SupernovaLevel[];
@@ -7,18 +10,32 @@ export interface PublishedCourseData {
 }
 
 export async function loadPublishedCourses(): Promise<PublishedCourseData> {
-  if (!supabase) return { extraLevels: [], coreOverrides: {} };
-  const { data, error } = await supabase
-    .from('custom_courses')
-    .select('id, level_data, created_at')
-    .eq('status', 'published')
-    .order('created_at', { ascending: true });
-  if (error) {
-    console.warn('Could not load published courses:', error.message);
-    return { extraLevels: [], coreOverrides: {} };
+  const cached = await AsyncStorage.getItem(PUBLISHED_COURSE_CACHE_KEY).catch(() => null);
+  const cachedCourses = cached
+    ? (() => {
+      try { return JSON.parse(cached) as PublishedCourseData; } catch { return null; }
+    })()
+    : null;
+  if (!supabase) return cachedCourses || { extraLevels: [], coreOverrides: {} };
+  let rows: Array<{ id: string; level_data: unknown; created_at: string }> = [];
+  let loadError: string | null = null;
+  try {
+    const { data, error } = await supabase
+      .from('custom_courses')
+      .select('id, level_data, created_at')
+      .eq('status', 'published')
+      .order('created_at', { ascending: true });
+    if (error) loadError = error.message;
+    else rows = (data || []) as Array<{ id: string; level_data: unknown; created_at: string }>;
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : 'Unknown network error';
+  }
+  if (loadError) {
+    console.warn('Could not load published courses:', loadError);
+    return cachedCourses || { extraLevels: [], coreOverrides: {} };
   }
   const coreOverrides: Record<number, SupernovaLevel> = {};
-  const customLevels = (data || []).flatMap((row) => {
+  const customLevels = rows.flatMap((row) => {
     const level = row.level_data as SupernovaLevel;
     const unitNumber = Number(level.levelNumber);
     if (String(row.id).startsWith('builtin-unit-') && unitNumber >= 1 && unitNumber <= 4) {
@@ -51,5 +68,7 @@ export async function loadPublishedCourses(): Promise<PublishedCourseData> {
       })),
     };
   });
-  return { extraLevels, coreOverrides };
+  const result = { extraLevels, coreOverrides };
+  await AsyncStorage.setItem(PUBLISHED_COURSE_CACHE_KEY, JSON.stringify(result)).catch(() => {});
+  return result;
 }

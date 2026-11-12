@@ -3,7 +3,8 @@ import { Audio, AVPlaybackSource } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { getLastGeminiError, synthesizeGeminiSpeech } from '../api/supernovaAi';
-import { LECTURE_AUDIO_ASSETS } from '../constants/lectureAudioMap';
+import { LectureAudioClip } from '../constants/curriculum';
+import { LECTURE_AUDIO_ASSETS, LECTURE_AUDIO_TEXTS } from '../constants/lectureAudioMap';
 
 let currentSound: Audio.Sound | null = null;
 let activeSequenceId = 0;
@@ -332,18 +333,60 @@ async function playAudioSource(
 async function tryPlayBundledLectureAsset(
   sequenceToken: number,
   assetKey: string | undefined,
+  text: string,
   rate: number,
   finishOnce: () => void
 ): Promise<boolean> {
   if (!assetKey) return false;
   const assetModule = LECTURE_AUDIO_ASSETS[assetKey];
   if (!assetModule) return false;
+  const sourceText = LECTURE_AUDIO_TEXTS[assetKey];
+  if (sourceText && sourceText.trim() !== text.trim()) return false;
 
   try {
     lastSpeechNotice = null;
     return await playAudioSource(sequenceToken, assetModule, rate, finishOnce);
   } catch (err) {
     console.warn('Bundled lecture audio playback fallback triggered:', err);
+    return false;
+  }
+}
+
+async function tryPlayGeneratedLectureAudio(
+  sequenceToken: number,
+  clip: LectureAudioClip | undefined,
+  text: string,
+  rate: number,
+  finishOnce: () => void
+): Promise<boolean> {
+  if (!clip?.url || clip.text.trim() !== text.trim()) return false;
+  try {
+    const cacheKey = `course-audio:${clip.url}:${clip.text}`;
+    let audioUri = geminiAudioCache.get(cacheKey);
+    if (audioUri && Platform.OS !== 'web' && audioUri.startsWith('file://')) {
+      const info = await FileSystem.getInfoAsync(audioUri).catch(() => ({ exists: false }));
+      if (!info.exists) {
+        geminiAudioCache.delete(cacheKey);
+        audioUri = undefined;
+      }
+    }
+    if (!audioUri && Platform.OS !== 'web') {
+      const extension = new URL(clip.url).pathname.toLowerCase().endsWith('.mp3') ? 'mp3' : 'wav';
+      const cachedPath = getPersistentAudioPath(cacheKey, extension);
+      if (cachedPath) {
+        const info = await FileSystem.getInfoAsync(cachedPath).catch(() => ({ exists: false }));
+        if (info.exists) audioUri = cachedPath;
+        else {
+          const download = await FileSystem.downloadAsync(clip.url, cachedPath);
+          audioUri = download.uri;
+        }
+      }
+    }
+    audioUri ||= clip.url;
+    cacheAudioUri(cacheKey, audioUri);
+    return await playAudioSource(sequenceToken, { uri: audioUri }, rate, finishOnce);
+  } catch (err) {
+    console.warn('Generated course audio playback fallback triggered:', err);
     return false;
   }
 }
@@ -405,7 +448,8 @@ export async function speakText(
   onDone?: () => void,
   rateOverride?: number,
   preferAiVoice = false,
-  assetKey?: string
+  assetKey?: string,
+  lectureAudio?: LectureAudioClip
 ) {
   const sequenceToken = ++activeSequenceId;
   await stopPlaybackOnly();
@@ -418,7 +462,10 @@ export async function speakText(
     }
   };
 
-  if (await tryPlayBundledLectureAsset(sequenceToken, assetKey, rateOverride ?? 1.0, finishOnce)) {
+  if (await tryPlayGeneratedLectureAudio(sequenceToken, lectureAudio, text, rateOverride ?? 1.0, finishOnce)) {
+    return;
+  }
+  if (await tryPlayBundledLectureAsset(sequenceToken, assetKey, text, rateOverride ?? 1.0, finishOnce)) {
     return;
   }
 
@@ -469,7 +516,12 @@ function runBilingualSequence(
 }
 
 /** Speaks Tamil coach commentary using bundled AI4Bharat audio if present, else Gemini TTS + fallback. */
-export async function speakTamil(text: string, onDone?: () => void, assetKey?: string) {
+export async function speakTamil(
+  text: string,
+  onDone?: () => void,
+  assetKey?: string,
+  lectureAudio?: LectureAudioClip
+) {
   const sequenceToken = ++activeSequenceId;
   await stopPlaybackOnly();
 
@@ -481,7 +533,10 @@ export async function speakTamil(text: string, onDone?: () => void, assetKey?: s
     }
   };
 
-  if (await tryPlayBundledLectureAsset(sequenceToken, assetKey, 1.0, finishOnce)) {
+  if (await tryPlayGeneratedLectureAudio(sequenceToken, lectureAudio, text, 1.0, finishOnce)) {
+    return;
+  }
+  if (await tryPlayBundledLectureAsset(sequenceToken, assetKey, text, 1.0, finishOnce)) {
     return;
   }
 

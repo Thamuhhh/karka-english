@@ -407,6 +407,15 @@ drop policy if exists published_custom_courses_read on public.custom_courses;
 create policy published_custom_courses_read on public.custom_courses
   for select to anon, authenticated using (status = 'published');
 
+-- Published lesson audio is public to play; only the trusted Edge Function writes with service-role access.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('course-audio', 'course-audio', true, 10485760, array['audio/mpeg', 'audio/wav'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists course_audio_public_read on storage.objects;
+create policy course_audio_public_read on storage.objects
+  for select to anon, authenticated using (bucket_id = 'course-audio');
+
 create or replace function public.admin_save_course(p_level_data jsonb, p_status text default 'draft')
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare

@@ -32,6 +32,8 @@ npx supabase link --project-ref your-project-ref
 npx supabase functions deploy admin-generate-course
 ```
 
+To generate course audio from the admin preview/editor, add a Supabase Function secret named `GEMINI_API_KEY` and deploy `supabase/functions/admin-generate-course-audio/index.ts` as `admin-generate-course-audio`. Run the latest schema first; it creates the public-read `course-audio` bucket. Audio generation makes up to three Gemini TTS calls per class (`tamil`, `why`, and `right`), saves the MP3/WAV files in Storage, and stores their URLs with the lesson. The app caches published course content at startup and downloads each generated clip on first playback for later offline use. Never expose `GEMINI_API_KEY` in `admin-config.js` or the browser.
+
 Keep the OpenRouter key in Supabase secrets; it is never sent to the browser or app. OpenRouter free models have usage limits and availability can vary. New published units are numbered after the four built-in units, and the app course progress total includes the published lessons. Then grant admin access only to your trusted account by running this with your own account email:
 
 ```sql

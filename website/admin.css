@@ -116,6 +116,7 @@ tbody tr:hover { background:rgba(180,146,227,.035); }
 .generated-lesson span,.saved-course span { color:#8f879a; font-size:9px; }
 .course-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
 .course-actions .secondary-button { height:37px; cursor:pointer; }
+.course-actions button:disabled { opacity:.55; cursor:wait; }
 .courses-list { margin:18px 17px 0; padding-top:14px; border-top:1px solid var(--line); }
 .courses-list > div { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
 .courses-list .table-message { grid-column:1/-1; margin:12px 0; }
@@ -135,6 +136,7 @@ tbody tr:hover { background:rgba(180,146,227,.035); }
 .manual-course-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
 .manual-course-actions .primary-button { height:37px; margin:0; padding:0 13px; font:inherit; font-size:10px; cursor:pointer; }
 .manual-course-actions .secondary-button { height:37px; cursor:pointer; }
+.manual-course-actions button:disabled { opacity:.55; cursor:wait; }
 .manual-course-actions button:disabled { opacity:.55; cursor:wait; }
 @media (max-width:900px) { .course-form { grid-template-columns:1fr 1fr; } }
 @media (max-width:1000px) {

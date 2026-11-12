@@ -20,6 +20,8 @@
   let visibleRows = 0;
   let editingCourse = null;
   let manualCourseBusy = false;
+  let manualAudioBusy = false;
+  let editingCourseStatus = 'draft';
 
   function readSession() {
     try {
@@ -258,6 +260,7 @@
 
   function openCourseEditor(entry) {
     editingCourse = JSON.parse(JSON.stringify(entry.level_data));
+    editingCourseStatus = entry.status || 'draft';
     document.querySelector('#course-studio-view').hidden = true;
     document.querySelector('#manual-course-page').hidden = false;
     document.querySelector('#manual-course-page h2').textContent = `Edit ${entry.level_data.levelName}`;
@@ -291,6 +294,7 @@
 
   function showCoursePreview(course) {
     editingCourse = course;
+    if (!editingCourseStatus) editingCourseStatus = 'draft';
     document.querySelector('#course-editor').hidden = false;
     document.querySelector('#course-preview-title').textContent = course.levelName;
     document.querySelector('#course-description').value = course.description || '';
@@ -314,6 +318,7 @@
     const course = { ...editingCourse, description: document.querySelector('#course-description').value.trim() };
     const saved = await rpc('admin_save_course', { p_level_data: course, p_status: status });
     if (saved?.level_data) showCoursePreview(saved.level_data);
+    editingCourseStatus = status;
     showMessage(document.querySelector('#course-message'), status === 'published' ? 'Course published to the app.' : 'Draft saved.', false);
     await loadCourses();
   }
@@ -446,7 +451,7 @@
 
   async function saveManualCourse(status) {
     const form = document.querySelector('#manual-course-form');
-    if (!form.reportValidity() || manualCourseBusy) return;
+    if (!form.reportValidity() || manualCourseBusy || manualAudioBusy) return;
     const buttons = [document.querySelector('#manual-save-draft'), document.querySelector('#manual-publish')];
     manualCourseBusy = true;
     buttons.forEach((button) => { button.disabled = true; });
@@ -456,6 +461,7 @@
       const course = buildManualCourse(new FormData(form));
       const saved = await rpc('admin_save_course', { p_level_data: course, p_status: status });
       if (saved?.level_data) editingCourse = saved.level_data;
+      editingCourseStatus = status;
       showMessage(message, status === 'published' ? 'Course published to the app.' : 'Course saved as a draft.', false);
       await loadCourses();
     } catch (error) {
@@ -463,6 +469,84 @@
     } finally {
       manualCourseBusy = false;
       buttons.forEach((button) => { button.disabled = false; });
+    }
+  }
+
+  async function generateCourseAudio() {
+    const form = document.querySelector('#manual-course-form');
+    const manualMode = !document.querySelector('#manual-course-page').hidden;
+    if ((manualMode && !form.reportValidity()) || manualCourseBusy || manualAudioBusy || (!manualMode && !editingCourse)) return;
+    const button = document.querySelector(manualMode ? '#generate-course-audio' : '#generate-preview-course-audio');
+    const message = document.querySelector(manualMode ? '#manual-course-message' : '#course-message');
+    manualAudioBusy = true;
+    button.disabled = true;
+    try {
+      const course = manualMode ? buildManualCourse(new FormData(form)) : editingCourse;
+      const saved = await rpc('admin_save_course', { p_level_data: course, p_status: editingCourseStatus });
+      editingCourse = saved?.level_data || course;
+      const total = editingCourse.classes.length * 3;
+      let completed = 0;
+      let generated = 0;
+
+      for (let lessonIndex = 0; lessonIndex < editingCourse.classes.length; lessonIndex += 1) {
+        const lesson = editingCourse.classes[lessonIndex];
+        const clipTexts = {
+          tamil: lesson.rule?.tamilMentalModel || '',
+          why: lesson.rule?.doAndDont?.whyTamil || '',
+          right: lesson.rule?.doAndDont?.right || '',
+        };
+        const missingClips = Object.entries(clipTexts)
+          .filter(([kind, text]) => text.trim() && lesson.lectureAudio?.[kind]?.text?.trim() !== text.trim())
+          .map(([kind, text]) => ({ kind, text }));
+        completed += Math.max(0, 3 - missingClips.length);
+        if (!missingClips.length) {
+          showMessage(message, `Audio already matches Class ${lessonIndex + 1} (${completed}/${total}).`, false);
+          continue;
+        }
+
+        for (const clip of missingClips) {
+          if (session.expiresAt && Date.now() > session.expiresAt - 60000) await refreshSession();
+          showMessage(message, `Generating ${clip.kind} audio for Class ${lessonIndex + 1} (${completed}/${total})…`, false);
+          const response = await fetch(`${apiUrl}/functions/v1/admin-generate-course-audio`, {
+            method: 'POST',
+            headers: {
+              apikey: publishableKey,
+              Authorization: `Bearer ${session.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              courseId: editingCourse.id,
+              lessonId: lesson.id,
+              clips: [clip],
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || `Could not generate ${clip.kind} audio for Class ${lessonIndex + 1}.`);
+          const currentLesson = editingCourse.classes[lessonIndex];
+          currentLesson.lectureAudio = { ...currentLesson.lectureAudio, ...result.audioClips };
+          const persisted = await rpc('admin_save_course', {
+            p_level_data: editingCourse,
+            p_status: editingCourseStatus,
+          });
+          if (persisted?.level_data) editingCourse = persisted.level_data;
+          completed += 1;
+          generated += 1;
+          showMessage(message, `Generated audio: ${completed}/${total} clips.`, false);
+          if (completed < total) await new Promise((resolve) => window.setTimeout(resolve, 2500));
+        }
+      }
+
+      showMessage(
+        message,
+        generated ? `Generated ${generated} audio clips and saved them with the course.` : 'All course audio is already up to date.',
+        false
+      );
+      await loadCourses();
+    } catch (error) {
+      showMessage(message, error.message || 'Course audio generation failed.');
+    } finally {
+      manualAudioBusy = false;
+      button.disabled = false;
     }
   }
 
@@ -525,6 +609,7 @@
   renderManualClassFields();
   document.querySelector('#open-manual-course').addEventListener('click', () => {
     editingCourse = null;
+    editingCourseStatus = 'draft';
     document.querySelector('#manual-course-form').reset();
     document.querySelector('#manual-course-page h2').textContent = 'Create a course manually';
     renderManualClassFields();
@@ -542,6 +627,8 @@
     saveManualCourse('published');
   });
   document.querySelector('#manual-save-draft').addEventListener('click', () => saveManualCourse('draft'));
+  document.querySelector('#generate-course-audio').addEventListener('click', generateCourseAudio);
+  document.querySelector('#generate-preview-course-audio').addEventListener('click', generateCourseAudio);
   document.querySelector('#course-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = document.querySelector('#generate-course');
@@ -557,6 +644,7 @@
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Could not generate the course.');
+      editingCourseStatus = 'draft';
       showCoursePreview(result.course);
       showMessage(document.querySelector('#course-message'), 'Review the generated unit, then save it as a draft or publish it.', false);
     } catch (error) {

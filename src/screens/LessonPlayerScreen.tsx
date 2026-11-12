@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { MascotAvatar } from '../components/MascotAvatar';
-import { SupernovaClass } from '../constants/curriculum';
+import { LectureAudioClip, SupernovaClass } from '../constants/curriculum';
 import { UserStats, GrammarCorrection, ChatMessage } from '../types';
 import {
   speakText,
@@ -273,7 +273,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
     rateOverride?: number,
     preferAiVoice = false,
     assetKey?: string,
-    onDone?: () => void
+    onDone?: () => void,
+    lectureAudioClip?: LectureAudioClip
   ) => {
     if (!onDone) lectureFollowUpTokenRef.current += 1;
     setPlayingAudioId(id);
@@ -285,14 +286,15 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
       },
       rateOverride,
       preferAiVoice,
-      assetKey
+      assetKey,
+      lectureAudioClip
     );
   };
 
-  const handlePlayTamilVoice = (text: string, id: string, assetKey?: string) => {
+  const handlePlayTamilVoice = (text: string, id: string, assetKey?: string, lectureAudioClip?: LectureAudioClip) => {
     lectureFollowUpTokenRef.current += 1;
     setPlayingAudioId(id);
-    speakTamil(text, () => setPlayingAudioId(null), assetKey);
+    speakTamil(text, () => setPlayingAudioId(null), assetKey, lectureAudioClip);
   };
 
   const handleStopVoice = () => {
@@ -314,10 +316,12 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
           handlePlayTamilVoice(
             lesson.rule.doAndDont.whyTamil,
             'lecture-why',
-            `${lesson.id}-why`
+            `${lesson.id}-why`,
+            lesson.lectureAudio?.why
           );
         }
-      }
+      },
+      lesson.lectureAudio?.right
     );
   };
 
@@ -329,7 +333,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
         handlePlayTamilVoice(
           lesson.rule.tamilMentalModel,
           'lecture-tamil',
-          `${lesson.id}-tamil`
+          `${lesson.id}-tamil`,
+          lesson.lectureAudio?.tamil
         );
       } else if (lectureStep === 1) {
         playRightThenWhy();
@@ -773,7 +778,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         : handlePlayTamilVoice(
                             lesson.rule.tamilMentalModel,
                             'lecture-tamil',
-                            `${lesson.id}-tamil`
+                            `${lesson.id}-tamil`,
+                            lesson.lectureAudio?.tamil
                           )
                     }
                     activeOpacity={0.78}
@@ -848,7 +854,8 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                         : handlePlayTamilVoice(
                             lesson.rule.doAndDont.whyTamil,
                             'lecture-why',
-                            `${lesson.id}-why`
+                            `${lesson.id}-why`,
+                            lesson.lectureAudio?.why
                           )
                     }
                     accessibilityRole="button"

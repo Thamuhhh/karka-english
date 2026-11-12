@@ -21,6 +21,12 @@ export interface FreeSpeakingChallenge {
   sampleNativeResponse: string;
 }
 
+export interface LectureAudioClip {
+  url: string;
+  text: string;
+  contentType?: string;
+}
+
 export interface SupernovaClass {
   id: string;
   levelNumber: number;
@@ -51,6 +57,7 @@ export interface SupernovaClass {
 
   // Step 4: Free Speaking with Nila
   speakingChallenge: FreeSpeakingChallenge;
+  lectureAudio?: Partial<Record<'tamil' | 'why' | 'right', LectureAudioClip>>;
 }
 
 export interface SupernovaLevel {
