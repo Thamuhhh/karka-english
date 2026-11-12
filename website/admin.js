@@ -19,6 +19,7 @@
   let currentOffset = 0;
   let visibleRows = 0;
   let editingCourse = null;
+  let manualCourseBusy = false;
 
   function readSession() {
     try {
@@ -282,6 +283,124 @@
     await loadCourses();
   }
 
+  function renderManualClassFields() {
+    const target = document.querySelector('#manual-class-fields');
+    target.replaceChildren();
+    for (let index = 1; index <= 5; index += 1) {
+      const card = document.createElement('fieldset');
+      card.className = 'manual-class-card';
+      card.innerHTML = `
+        <legend>Class ${index}</legend>
+        <label>Class title<input name="class${index}Title" required maxlength="100" placeholder="Making a polite request" /></label>
+        <label>Grammar focus<input name="class${index}Grammar" required maxlength="120" placeholder="Could I…? / Can I…?" /></label>
+        <label>English explanation<textarea name="class${index}Explanation" required maxlength="500" rows="2" placeholder="Explain the useful pattern in simple English"></textarea></label>
+        <label>Tamil explanation<textarea name="class${index}TamilExplanation" required maxlength="500" rows="2" placeholder="Explain the pattern in Tamil"></textarea></label>
+        <label>Correct English sentence<input name="class${index}Answer" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>
+        <label>Tamil sentence for word match<input name="class${index}JumbleTamil" required maxlength="240" placeholder="தயவுசெய்து எனக்கு ஒரு குவளை தண்ணீர் தர முடியுமா?" /></label>
+        <label>Tamil translation prompt<input name="class${index}TranslationTamil" required maxlength="240" placeholder="எனக்கு ஒரு குவளை தண்ணீர் தர முடியுமா?" /></label>
+        <label>Incorrect answer option 1<input name="class${index}Wrong1" required maxlength="240" placeholder="Give water to me." /></label>
+        <label>Incorrect answer option 2<input name="class${index}Wrong2" required maxlength="240" placeholder="I am have water." /></label>
+        <label>Speaking practice prompt<textarea name="class${index}SpeakingPrompt" required maxlength="300" rows="2" placeholder="Ask politely for a drink at a cafe."></textarea></label>
+        <label>Sample spoken answer<input name="class${index}Sample" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>`;
+      target.append(card);
+    }
+  }
+
+  function shuffleWords(words) {
+    const shuffled = [...words];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+    if (shuffled.join(' ') === words.join(' ') && shuffled.length > 1) shuffled.reverse();
+    return shuffled;
+  }
+
+  function buildManualCourse(formData) {
+    const unitTitle = String(formData.get('unitTitle')).trim();
+    const slug = unitTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'manual-course';
+    const courseId = `manual-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+    const get = (key) => String(formData.get(key) || '').trim();
+    const classes = Array.from({ length: 5 }, (_, index) => {
+      const number = index + 1;
+      const title = get(`class${number}Title`);
+      const grammarTopic = get(`class${number}Grammar`);
+      const explanation = get(`class${number}Explanation`);
+      const tamilExplanation = get(`class${number}TamilExplanation`);
+      const expectedEnglish = get(`class${number}Answer`);
+      const wrong1 = get(`class${number}Wrong1`);
+      const wrong2 = get(`class${number}Wrong2`);
+      const correctWords = expectedEnglish.split(/\s+/).filter(Boolean);
+      return {
+        id: `${courseId}-${number}`,
+        levelNumber: 5,
+        classNumber: number,
+        title: `Class ${number}: ${title}`,
+        subtitle: grammarTopic,
+        duration: '6 mins',
+        grammarTopic,
+        xpReward: 100,
+        rule: {
+          heading: grammarTopic,
+          englishExplanation: explanation,
+          tamilMentalModel: tamilExplanation,
+          doAndDont: { wrong: wrong1, right: expectedEnglish, whyTamil: tamilExplanation },
+        },
+        jumble: {
+          tamilSentence: get(`class${number}JumbleTamil`),
+          scrambledWords: shuffleWords(correctWords),
+          correctWords,
+          hint: `Build the sentence: “${expectedEnglish}”`,
+        },
+        translation: {
+          tamilPrompt: get(`class${number}TranslationTamil`),
+          expectedEnglish,
+          options: [expectedEnglish, wrong1, wrong2],
+          correctOptionIndex: 0,
+          explanation,
+          tamilExplanation,
+        },
+        speakingChallenge: {
+          prompt: get(`class${number}SpeakingPrompt`),
+          missNovaQuestion: get(`class${number}SpeakingPrompt`),
+          suggestedAnswers: [get(`class${number}Sample`), expectedEnglish],
+          sampleNativeResponse: get(`class${number}Sample`),
+        },
+      };
+    });
+    return {
+      id: courseId,
+      levelNumber: 5,
+      levelName: `Unit 5: ${unitTitle}`,
+      cefrTag: get('cefrTag') || 'CEFR A1',
+      badge: 'Custom Course',
+      accentColor: '#7F43FE',
+      description: get('description'),
+      classes,
+    };
+  }
+
+  async function saveManualCourse(status) {
+    const form = document.querySelector('#manual-course-form');
+    if (!form.reportValidity() || manualCourseBusy) return;
+    const buttons = [document.querySelector('#manual-save-draft'), document.querySelector('#manual-publish')];
+    manualCourseBusy = true;
+    buttons.forEach((button) => { button.disabled = true; });
+    const message = document.querySelector('#manual-course-message');
+    showMessage(message, status === 'published' ? 'Publishing course…' : 'Saving draft…', false);
+    try {
+      const course = buildManualCourse(new FormData(form));
+      await rpc('admin_save_course', { p_level_data: course, p_status: status });
+      showMessage(message, status === 'published' ? 'Course published to the app.' : 'Course saved as a draft.', false);
+      await loadCourses();
+    } catch (error) {
+      showMessage(message, error.message || 'Could not save the course.');
+    } finally {
+      manualCourseBusy = false;
+      buttons.forEach((button) => { button.disabled = false; });
+    }
+  }
+
   function showDashboard(isVisible) {
     loginScreen.hidden = isVisible;
     dashboard.hidden = !isVisible;
@@ -338,6 +457,21 @@
   });
 
   document.querySelector('#refresh-button').addEventListener('click', loadDashboard);
+  renderManualClassFields();
+  document.querySelector('#open-manual-course').addEventListener('click', () => {
+    document.querySelector('#course-studio-view').hidden = true;
+    document.querySelector('#manual-course-page').hidden = false;
+    document.querySelector('#manual-course-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.querySelector('#close-manual-course').addEventListener('click', () => {
+    document.querySelector('#manual-course-page').hidden = true;
+    document.querySelector('#course-studio-view').hidden = false;
+  });
+  document.querySelector('#manual-course-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveManualCourse('published');
+  });
+  document.querySelector('#manual-save-draft').addEventListener('click', () => saveManualCourse('draft'));
   document.querySelector('#course-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = document.querySelector('#generate-course');

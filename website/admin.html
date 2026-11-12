@@ -93,7 +93,9 @@
           <div class="table-footer"><span id="result-count">—</span><div><button id="previous-page" class="page-button" type="button" disabled>Previous</button><button id="next-page" class="page-button" type="button" disabled>Next</button></div></div>
         </section>
         <section id="courses" class="learners-panel courses-panel">
+          <div id="course-studio-view">
           <div class="panel-heading"><div><h2>Course studio</h2><p>Generate a five-class unit with AI, review it, then publish it to the app.</p></div></div>
+          <div class="course-mode-actions"><button id="open-manual-course" class="secondary-button" type="button">Create manually</button></div>
           <form id="course-form" class="course-form">
             <label>Unit title<input name="levelName" required maxlength="100" placeholder="Leadership & Persuasive Communication" /></label>
             <label>Topic<input name="topic" required maxlength="180" placeholder="Introducing yourself at work" /></label>
@@ -108,6 +110,20 @@
             <div class="course-actions"><button id="save-draft" class="secondary-button" type="button">Save draft</button><button id="publish-course" class="primary-button" type="button">Publish course</button></div>
           </div>
           <div class="courses-list"><h3>Saved courses</h3><div id="saved-courses"><p class="table-message">Sign in to load courses.</p></div></div>
+          </div>
+          <div id="manual-course-page" class="manual-course-page" hidden>
+            <div class="panel-heading manual-page-heading"><div><h2>Create a course manually</h2><p>Build a five-class unit yourself. No AI generation needed.</p></div><button id="close-manual-course" class="secondary-button" type="button">Back to courses</button></div>
+            <form id="manual-course-form" class="manual-course-form">
+              <div class="manual-course-basics">
+                <label>Unit title<input name="unitTitle" required maxlength="100" placeholder="Everyday conversations" /></label>
+                <label>CEFR level<select name="cefrTag"><option>CEFR A1</option><option>CEFR A2</option><option>CEFR B1</option><option>CEFR B2</option></select></label>
+                <label class="manual-description">Course description<textarea name="description" required maxlength="500" rows="2" placeholder="What learners will be able to do after this unit"></textarea></label>
+              </div>
+              <div id="manual-class-fields" class="manual-class-fields"></div>
+              <p id="manual-course-message" class="feedback" role="status" aria-live="polite"></p>
+              <div class="manual-course-actions"><button id="manual-save-draft" class="secondary-button" type="button">Save draft</button><button id="manual-publish" class="primary-button" type="submit">Publish course</button></div>
+            </form>
+          </div>
         </section>
         <p id="dashboard-error" class="dashboard-error" role="status" aria-live="polite"></p>
         <footer class="dashboard-footer">Elvate Admin · Learner data is visible to authorized administrators only.</footer>
