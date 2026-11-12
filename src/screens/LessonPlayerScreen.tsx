@@ -1277,6 +1277,16 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 <Text style={styles.spokenCoachSubtitle}>
                   {lesson?.speakingChallenge?.prompt || 'Now practice saying this sentence aloud:'}
                 </Text>
+                {lesson?.speakingChallenge?.missNovaQuestion ? (
+                  <Text style={styles.spokenCoachOpening}>
+                    Nila: “{lesson.speakingChallenge.missNovaQuestion}”
+                  </Text>
+                ) : null}
+                {lesson?.speakingChallenge?.tamilCoaching ? (
+                  <Text style={styles.spokenCoachTamilHint}>
+                    {lesson.speakingChallenge.tamilCoaching}
+                  </Text>
+                ) : null}
               </View>
               <TouchableOpacity
                 onPress={() =>
@@ -2576,6 +2586,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#E2E8F0',
     lineHeight: 18,
+  },
+  spokenCoachTamilHint: {
+    fontFamily: THEME.fonts.tamilMedium,
+    fontSize: 12,
+    color: '#B9ADC9',
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  spokenCoachOpening: {
+    fontSize: 12,
+    color: '#DDD0F4',
+    lineHeight: 17,
+    marginTop: 4,
   },
   spokenPromptAudioBtn: {
     width: 32,

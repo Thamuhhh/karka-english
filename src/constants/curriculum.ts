@@ -19,6 +19,7 @@ export interface FreeSpeakingChallenge {
   missNovaQuestion: string;
   suggestedAnswers: string[];
   sampleNativeResponse: string;
+  tamilCoaching?: string;
 }
 
 export interface LectureAudioClip {
@@ -33,6 +34,7 @@ export interface SupernovaClass {
   classNumber: number;
   title: string;
   subtitle: string;
+  learnerOutcome?: string;
   duration: string;
   grammarTopic: string;
   xpReward: number;

@@ -227,9 +227,26 @@
         ? { ...saved, is_builtin: true }
         : { id, level_data: { ...level, id }, status: 'published', is_builtin: true };
     });
+    const starterCourses = (window.ELVATE_ADMIN_STARTER_COURSES || []).flatMap((level) => {
+      const existing = savedById.get(level.id) || (Array.isArray(savedCourses) ? savedCourses.find((entry) =>
+        Number(entry.level_data?.levelNumber) === 5 || /^Unit\s+5\s*:/i.test(entry.level_data?.levelName || '')
+      ) : null);
+      if (existing?.level_data?.starterCourseKey === level.starterCourseKey) return [];
+      return [{
+        id: existing?.id || level.id,
+        level_data: { ...level, id: existing?.id || level.id },
+        status: existing?.status || 'draft',
+        is_starter: true,
+        replaces_existing: Boolean(existing),
+      }];
+    });
+    const replacedCourseIds = new Set(starterCourses.filter((entry) => entry.replaces_existing).map((entry) => entry.id));
     const courses = [
       ...builtInCourses,
-      ...(Array.isArray(savedCourses) ? savedCourses.filter((entry) => !String(entry.id).startsWith('builtin-unit-')) : []),
+      ...starterCourses,
+      ...(Array.isArray(savedCourses) ? savedCourses.filter((entry) =>
+        !String(entry.id).startsWith('builtin-unit-') && !replacedCourseIds.has(entry.id)
+      ) : []),
     ].sort((a, b) => Number(a.level_data?.levelNumber || 0) - Number(b.level_data?.levelNumber || 0));
     target.replaceChildren();
     if (!Array.isArray(courses) || !courses.length) {
@@ -249,7 +266,26 @@
       editButton.textContent = 'Edit';
       editButton.addEventListener('click', () => openCourseEditor(entry));
       row.append(title, detail, editButton);
-      if (!entry.is_builtin) {
+      if (entry.is_starter) {
+        const publishButton = document.createElement('button');
+        publishButton.type = 'button';
+        publishButton.className = 'publish-starter-button';
+        publishButton.textContent = entry.replaces_existing ? 'Replace & publish' : 'Publish Unit 5';
+        publishButton.addEventListener('click', async () => {
+          if (entry.replaces_existing && !window.confirm('Replace the current Unit 5 content with the complete Everyday Grammar That Connects course?')) return;
+          publishButton.disabled = true;
+          try {
+            await rpc('admin_save_course', { p_level_data: entry.level_data, p_status: 'published' });
+            showMessage(document.querySelector('#course-message'), 'Unit 5 published to the app.', false);
+            await loadCourses();
+          } catch (error) {
+            publishButton.disabled = false;
+            showMessage(document.querySelector('#course-message'), error.message || 'Could not publish Unit 5.');
+          }
+        });
+        row.append(publishButton);
+      }
+      if (!entry.is_builtin && !entry.is_starter) {
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
         removeButton.className = 'delete-course-button';
@@ -337,32 +373,56 @@
       card.className = 'manual-class-card';
       card.innerHTML = `
         <legend>Class ${index}</legend>
-        <label>Class title<input name="class${index}Title" required maxlength="100" placeholder="Making a polite request" /></label>
+        <label>Class title<input name="class${index}Title" required maxlength="100" placeholder="Ask Clear Questions and Give Short Answers" /></label>
+        <label>Subtitle<input name="class${index}Subtitle" required maxlength="160" placeholder="Put the helper in the right place" /></label>
+        <label>Learner outcome<input name="class${index}Outcome" maxlength="240" placeholder="Ask about a routine, current situation, or past event" /></label>
         <label>Grammar focus<input name="class${index}Grammar" required maxlength="120" placeholder="Could I…? / Can I…?" /></label>
-        <label>English explanation<textarea name="class${index}Explanation" required maxlength="500" rows="2" placeholder="Explain the useful pattern in simple English"></textarea></label>
-        <label>Tamil explanation<textarea name="class${index}TamilExplanation" required maxlength="500" rows="2" placeholder="Explain the pattern in Tamil"></textarea></label>
+        <label>Class duration<input name="class${index}Duration" required maxlength="30" placeholder="7 minutes" /></label>
+        <label>Rule heading<input name="class${index}RuleHeading" required maxlength="100" placeholder="Let the helper lead" /></label>
+        <label>English explanation<textarea name="class${index}Explanation" required maxlength="1200" rows="4" placeholder="Explain the pattern and add useful examples"></textarea></label>
+        <label>Tamil mental model<textarea name="class${index}TamilExplanation" required maxlength="1600" rows="6" placeholder="Teach the idea in natural spoken Tamil"></textarea></label>
+        <label>Common wrong English<input name="class${index}WrongExample" required maxlength="240" placeholder="Where you went yesterday?" /></label>
+        <label>Natural correction<input name="class${index}RightExample" required maxlength="240" placeholder="Where did you go yesterday?" /></label>
+        <label>Why this correction in Tamil<textarea name="class${index}WhyTamil" required maxlength="1000" rows="4" placeholder="Explain the Tamil-to-English difference"></textarea></label>
         <label>Correct English sentence<input name="class${index}Answer" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>
         <label>Tamil sentence for word match<input name="class${index}JumbleTamil" required maxlength="240" placeholder="தயவுசெய்து எனக்கு ஒரு குவளை தண்ணீர் தர முடியுமா?" /></label>
         <label>Tamil translation prompt<input name="class${index}TranslationTamil" required maxlength="240" placeholder="எனக்கு ஒரு குவளை தண்ணீர் தர முடியுமா?" /></label>
+        <label>Jumble hint in Tamil<input name="class${index}JumbleHint" required maxlength="240" placeholder="தமிழில் ஒரு சிறிய குறிப்பைக் கொடுங்கள்." /></label>
+        <label>Translation explanation in Tamil<textarea name="class${index}TranslationExplanation" required maxlength="1000" rows="4" placeholder="Explain why the correct answer fits"></textarea></label>
         <label>Incorrect answer option 1<input name="class${index}Wrong1" required maxlength="240" placeholder="Give water to me." /></label>
         <label>Incorrect answer option 2<input name="class${index}Wrong2" required maxlength="240" placeholder="I am have water." /></label>
-        <label>Speaking practice prompt<textarea name="class${index}SpeakingPrompt" required maxlength="300" rows="2" placeholder="Ask politely for a drink at a cafe."></textarea></label>
-        <label>Sample spoken answer<input name="class${index}Sample" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>`;
+        <label>Speaking situation and goal<textarea name="class${index}SpeakingPrompt" required maxlength="500" rows="3" placeholder="Describe the situation and communication goal"></textarea></label>
+        <label>Nila's opening line<input name="class${index}NilaOpening" maxlength="300" placeholder="What would you like to know?" /></label>
+        <label>Sample spoken answer 1<input name="class${index}Sample" required maxlength="240" placeholder="A natural example response" /></label>
+        <label>Sample spoken answer 2<input name="class${index}Sample2" maxlength="240" placeholder="Another natural response" /></label>
+        <label>Tamil speaking coaching<textarea name="class${index}SpeakingCoaching" maxlength="500" rows="3" placeholder="Tell the learner what information to include"></textarea></label>`;
       const options = lesson?.translation?.options || [];
       const correctIndex = lesson?.translation?.correctOptionIndex ?? 0;
       const wrongOptions = options.filter((_, optionIndex) => optionIndex !== correctIndex);
       const values = {
         Title: String(lesson?.title || '').replace(/^Class\s+\d+\s*:\s*/i, ''),
+        Subtitle: lesson?.subtitle || lesson?.grammarTopic || '',
+        Outcome: lesson?.learnerOutcome || '',
         Grammar: lesson?.grammarTopic || '',
+        Duration: lesson?.duration || '6 mins',
+        RuleHeading: lesson?.rule?.heading || '',
         Explanation: lesson?.rule?.englishExplanation || '',
         TamilExplanation: lesson?.rule?.tamilMentalModel || '',
+        WrongExample: lesson?.rule?.doAndDont?.wrong || wrongOptions[0] || '',
+        RightExample: lesson?.rule?.doAndDont?.right || lesson?.translation?.expectedEnglish || '',
+        WhyTamil: lesson?.rule?.doAndDont?.whyTamil || lesson?.rule?.tamilMentalModel || '',
         Answer: lesson?.translation?.expectedEnglish || lesson?.jumble?.correctWords?.join(' ') || '',
         JumbleTamil: lesson?.jumble?.tamilSentence || '',
+        JumbleHint: lesson?.jumble?.hint || '',
         TranslationTamil: lesson?.translation?.tamilPrompt || '',
-        Wrong1: wrongOptions[0] || lesson?.rule?.doAndDont?.wrong || '',
+        TranslationExplanation: lesson?.translation?.tamilExplanation || lesson?.rule?.tamilMentalModel || '',
+        Wrong1: wrongOptions[0] || '',
         Wrong2: wrongOptions[1] || '',
         SpeakingPrompt: lesson?.speakingChallenge?.prompt || '',
+        NilaOpening: lesson?.speakingChallenge?.missNovaQuestion || lesson?.speakingChallenge?.prompt || '',
         Sample: lesson?.speakingChallenge?.sampleNativeResponse || '',
+        Sample2: lesson?.speakingChallenge?.suggestedAnswers?.[1] || '',
+        SpeakingCoaching: lesson?.speakingChallenge?.tamilCoaching || '',
       };
       Object.entries(values).forEach(([field, value]) => {
         const input = card.querySelector(`[name="class${index}${field}"]`);
@@ -435,6 +495,8 @@
       const explanation = get(`class${number}Explanation`);
       const tamilExplanation = get(`class${number}TamilExplanation`);
       const expectedEnglish = get(`class${number}Answer`);
+      const speakingSample = get(`class${number}Sample`);
+      const speakingSample2 = get(`class${number}Sample2`);
       const wrong1 = get(`class${number}Wrong1`);
       const wrong2 = get(`class${number}Wrong2`);
       const correctWords = expectedEnglish.split(/\s+/).filter(Boolean);
@@ -444,23 +506,28 @@
         levelNumber: existingCourse?.levelNumber || 5,
         classNumber: existingLesson.classNumber || number,
         title: `Class ${number}: ${title}`,
-        subtitle: grammarTopic,
-        duration: existingLesson.duration || '6 mins',
+        subtitle: get(`class${number}Subtitle`) || grammarTopic,
+        learnerOutcome: get(`class${number}Outcome`),
+        duration: get(`class${number}Duration`) || existingLesson.duration || '6 mins',
         grammarTopic,
         xpReward: existingLesson.xpReward || 100,
         rule: {
           ...existingLesson.rule,
-          heading: grammarTopic,
+          heading: get(`class${number}RuleHeading`) || grammarTopic,
           englishExplanation: explanation,
           tamilMentalModel: tamilExplanation,
-          doAndDont: { wrong: wrong1, right: expectedEnglish, whyTamil: tamilExplanation },
+          doAndDont: {
+            wrong: get(`class${number}WrongExample`) || wrong1,
+            right: get(`class${number}RightExample`) || expectedEnglish,
+            whyTamil: get(`class${number}WhyTamil`) || tamilExplanation,
+          },
         },
         jumble: {
           ...existingLesson.jumble,
           tamilSentence: get(`class${number}JumbleTamil`),
           scrambledWords: shuffleWords(correctWords),
           correctWords,
-          hint: `Build the sentence: “${expectedEnglish}”`,
+          hint: get(`class${number}JumbleHint`) || `Build the sentence: "${expectedEnglish}"`,
         },
         translation: {
           ...existingLesson.translation,
@@ -469,14 +536,15 @@
           options: [expectedEnglish, wrong1, wrong2],
           correctOptionIndex: 0,
           explanation,
-          tamilExplanation,
+          tamilExplanation: get(`class${number}TranslationExplanation`) || tamilExplanation,
         },
         speakingChallenge: {
           ...existingLesson.speakingChallenge,
           prompt: get(`class${number}SpeakingPrompt`),
-          missNovaQuestion: get(`class${number}SpeakingPrompt`),
-          suggestedAnswers: [get(`class${number}Sample`), expectedEnglish],
-          sampleNativeResponse: get(`class${number}Sample`),
+          missNovaQuestion: get(`class${number}NilaOpening`) || get(`class${number}SpeakingPrompt`),
+          suggestedAnswers: [speakingSample, speakingSample2 || expectedEnglish],
+          sampleNativeResponse: speakingSample,
+          tamilCoaching: get(`class${number}SpeakingCoaching`),
         },
       };
     });

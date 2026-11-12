@@ -641,6 +641,11 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
               <Text style={styles.popoverSubtitle} numberOfLines={2}>
                 {selectedLesson.subtitle}
               </Text>
+              {selectedLesson.learnerOutcome ? (
+                <Text style={styles.popoverSubtitle} numberOfLines={3}>
+                  {selectedLesson.learnerOutcome}
+                </Text>
+              ) : null}
 
               {isSelectedUnlocked ? (
                 <TouchableOpacity
