@@ -21,6 +21,8 @@
   let editingCourse = null;
   let manualCourseBusy = false;
   let manualAudioBusy = false;
+  let audioAbortController = null;
+  let audioStopRequested = false;
   let editingCourseStatus = 'draft';
 
   function readSession() {
@@ -477,9 +479,13 @@
     const manualMode = !document.querySelector('#manual-course-page').hidden;
     if ((manualMode && !form.reportValidity()) || manualCourseBusy || manualAudioBusy || (!manualMode && !editingCourse)) return;
     const button = document.querySelector(manualMode ? '#generate-course-audio' : '#generate-preview-course-audio');
+    const stopButton = document.querySelector(manualMode ? '#stop-course-audio' : '#stop-preview-course-audio');
     const message = document.querySelector(manualMode ? '#manual-course-message' : '#course-message');
     manualAudioBusy = true;
+    audioStopRequested = false;
+    audioAbortController = new AbortController();
     button.disabled = true;
+    stopButton.hidden = false;
     try {
       const course = manualMode ? buildManualCourse(new FormData(form)) : editingCourse;
       const saved = await rpc('admin_save_course', { p_level_data: course, p_status: editingCourseStatus });
@@ -489,6 +495,7 @@
       let generated = 0;
 
       for (let lessonIndex = 0; lessonIndex < editingCourse.classes.length; lessonIndex += 1) {
+        if (audioStopRequested) break;
         const lesson = editingCourse.classes[lessonIndex];
         const clipTexts = {
           tamil: lesson.rule?.tamilMentalModel || '',
@@ -505,6 +512,7 @@
         }
 
         for (const clip of missingClips) {
+          if (audioStopRequested) break;
           if (session.expiresAt && Date.now() > session.expiresAt - 60000) await refreshSession();
           showMessage(message, `Generating ${clip.kind} audio for Class ${lessonIndex + 1} (${completed}/${total})…`, false);
           const response = await fetch(`${apiUrl}/functions/v1/admin-generate-course-audio`, {
@@ -519,6 +527,7 @@
               lessonId: lesson.id,
               clips: [clip],
             }),
+            signal: audioAbortController.signal,
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(result.error || `Could not generate ${clip.kind} audio for Class ${lessonIndex + 1}.`);
@@ -532,22 +541,40 @@
           completed += 1;
           generated += 1;
           showMessage(message, `Generated audio: ${completed}/${total} clips.`, false);
-          if (completed < total) await new Promise((resolve) => window.setTimeout(resolve, 2500));
+          if (completed < total && !audioStopRequested) {
+            await new Promise((resolve) => {
+              const timer = window.setTimeout(resolve, 2500);
+              audioAbortController.signal.addEventListener('abort', () => {
+                window.clearTimeout(timer);
+                resolve();
+              }, { once: true });
+            });
+          }
         }
       }
 
-      showMessage(
-        message,
-        generated ? `Generated ${generated} audio clips and saved them with the course.` : 'All course audio is already up to date.',
-        false
-      );
+      showMessage(message, audioStopRequested
+        ? `Audio generation stopped. ${generated} clips were saved; you can resume later.`
+        : generated ? `Generated ${generated} audio clips and saved them with the course.` : 'All course audio is already up to date.', false);
       await loadCourses();
     } catch (error) {
-      showMessage(message, error.message || 'Course audio generation failed.');
+      if (audioStopRequested || error.name === 'AbortError') {
+        showMessage(message, 'Audio generation stopped. Any completed clips were saved; you can resume later.', false);
+      } else {
+        showMessage(message, error.message || 'Course audio generation failed.');
+      }
     } finally {
       manualAudioBusy = false;
+      audioAbortController = null;
       button.disabled = false;
+      stopButton.hidden = true;
     }
+  }
+
+  function stopCourseAudio() {
+    if (!manualAudioBusy || !audioAbortController) return;
+    audioStopRequested = true;
+    audioAbortController.abort();
   }
 
   function showDashboard(isVisible) {
@@ -629,6 +656,8 @@
   document.querySelector('#manual-save-draft').addEventListener('click', () => saveManualCourse('draft'));
   document.querySelector('#generate-course-audio').addEventListener('click', generateCourseAudio);
   document.querySelector('#generate-preview-course-audio').addEventListener('click', generateCourseAudio);
+  document.querySelector('#stop-course-audio').addEventListener('click', stopCourseAudio);
+  document.querySelector('#stop-preview-course-audio').addEventListener('click', stopCourseAudio);
   document.querySelector('#course-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = document.querySelector('#generate-course');

@@ -116,6 +116,9 @@ tbody tr:hover { background:rgba(180,146,227,.035); }
 .generated-lesson span,.saved-course span { color:#8f879a; font-size:9px; }
 .course-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
 .course-actions .secondary-button { height:37px; cursor:pointer; }
+.stop-audio-button { height:37px; padding:0 13px; border:1px solid rgba(127,67,254,.55); border-radius:7px; background:rgba(127,67,254,.12); color:#d6baff; font:inherit; font-size:10px; cursor:pointer; }
+.stop-audio-button:hover { border-color:#a976eb; background:rgba(127,67,254,.2); color:#fff; }
+.stop-audio-button[hidden] { display:none; }
 .course-actions button:disabled { opacity:.55; cursor:wait; }
 .courses-list { margin:18px 17px 0; padding-top:14px; border-top:1px solid var(--line); }
 .courses-list > div { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
