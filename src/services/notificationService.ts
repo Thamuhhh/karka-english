@@ -4,12 +4,13 @@ import * as Notifications from 'expo-notifications';
 
 export interface DailyPracticeReminderSettings {
   enabled: boolean;
-  time: string;
 }
 
 const SETTINGS_KEY = 'elvate-daily-practice-reminder-v1';
 const SCHEDULED_ID_KEY = 'elvate-daily-practice-notification-id-v1';
-const DEFAULT_SETTINGS: DailyPracticeReminderSettings = { enabled: false, time: '19:00' };
+const DEFAULT_SETTINGS: DailyPracticeReminderSettings = { enabled: false };
+const AUTOMATIC_REMINDER_HOUR = 20;
+const AUTOMATIC_REMINDER_MINUTE = 0;
 const CHANNEL_ID = 'daily-practice';
 
 async function configureAndroidChannel() {
@@ -29,20 +30,18 @@ export async function loadDailyPracticeReminderSettings(): Promise<DailyPractice
     const raw = await AsyncStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<DailyPracticeReminderSettings>;
-    const time = typeof parsed.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(parsed.time)
-      ? parsed.time
-      : DEFAULT_SETTINGS.time;
-    return { enabled: parsed.enabled === true, time };
+    const settings = { enabled: parsed.enabled === true };
+    // Move reminders created by the old time picker to the automatic daily time.
+    if (settings.enabled) await updateDailyPracticeReminder(true);
+    return settings;
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
 export async function updateDailyPracticeReminder(
-  enabled: boolean,
-  time: string
+  enabled: boolean
 ): Promise<boolean> {
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Choose a valid reminder time.');
   await configureAndroidChannel();
 
   const currentId = await AsyncStorage.getItem(SCHEDULED_ID_KEY);
@@ -52,7 +51,7 @@ export async function updateDailyPracticeReminder(
   }
 
   if (!enabled) {
-    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ enabled: false, time }));
+    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ enabled: false }));
     return true;
   }
 
@@ -62,7 +61,6 @@ export async function updateDailyPracticeReminder(
   }
   if (!permission.granted) return false;
 
-  const [hour, minute] = time.split(':').map(Number);
   const identifier = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Your English practice is waiting ✨',
@@ -72,13 +70,13 @@ export async function updateDailyPracticeReminder(
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
+      hour: AUTOMATIC_REMINDER_HOUR,
+      minute: AUTOMATIC_REMINDER_MINUTE,
       ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
     },
   });
   await AsyncStorage.multiSet([
-    [SETTINGS_KEY, JSON.stringify({ enabled: true, time })],
+    [SETTINGS_KEY, JSON.stringify({ enabled: true })],
     [SCHEDULED_ID_KEY, identifier],
   ]);
   return true;

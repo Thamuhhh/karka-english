@@ -71,4 +71,4 @@ npm run web
 
 # Daily practice notifications
 
-Learners can enable a daily, device-scheduled practice reminder in **Profile → Settings → Notifications**. They can choose 6, 7, 8, or 9 PM, send a test notification, and tap a reminder to return to the Course tab. The reminder runs locally on Android/iOS and does not require a Supabase push server. Install a newly built app after adding `expo-notifications` so the native notification module and Android notification permission are included.
+Learners can enable a daily, device-scheduled practice reminder in **Profile → Settings → Notifications**. It arrives automatically at 8 PM local time; learners can also send a test notification and tap a reminder to return to the Course tab. The reminder runs locally on Android/iOS and does not require a Supabase push server. Install a newly built app after adding `expo-notifications` so the native notification module and Android notification permission are included.
