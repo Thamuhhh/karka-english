@@ -402,9 +402,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 {/* Zig-Zag Lesson Stop Nodes */}
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
-                  const isCurrent = cls.id === nextActiveClassId || extraLevels.some(
-                    (course) => course.classes.find((item) => !completedClasses.includes(item.id))?.id === cls.id
-                  );
+                  const isCurrent = cls.id === nextActiveClassId;
                   const isLocked = !lessonUnlocked(cls.id);
                   const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
                   const cx = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
