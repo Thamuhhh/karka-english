@@ -415,6 +415,7 @@ declare
   classes_to_save jsonb;
   unit_title text;
   next_unit_number integer;
+  builtin_unit_number integer;
 begin
   perform private.require_admin();
   if p_status not in ('draft', 'published') then raise exception 'Invalid course status'; end if;
@@ -424,12 +425,19 @@ begin
     raise exception 'Invalid course content';
   end if;
 
+  if coalesce(p_level_data ->> 'id', '') ~ '^builtin-unit-[1-4]$' then
+    builtin_unit_number := substring(p_level_data ->> 'id' from '[0-9]+$')::integer;
+  end if;
+
   select 5 + count(*)::integer into next_unit_number
   from public.custom_courses
-  where status = 'published' and id <> (p_level_data ->> 'id');
+  where status = 'published'
+    and id <> (p_level_data ->> 'id')
+    and id !~ '^builtin-unit-[1-4]$';
   unit_title := trim(regexp_replace(coalesce(level_to_save ->> 'levelName', ''), '^Unit[[:space:]]+[0-9]+:[[:space:]]*', '', 'i'));
   if unit_title = '' then unit_title := 'Custom Course'; end if;
 
+  if builtin_unit_number is not null then next_unit_number := builtin_unit_number; end if;
   level_to_save := jsonb_set(level_to_save, '{levelNumber}', to_jsonb(next_unit_number), true);
   level_to_save := jsonb_set(level_to_save, '{levelName}', to_jsonb('Unit ' || next_unit_number || ': ' || unit_title), true);
   select coalesce(

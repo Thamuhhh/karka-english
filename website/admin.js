@@ -212,7 +212,19 @@
 
   async function loadCourses() {
     const target = document.querySelector('#saved-courses');
-    const courses = await rpc('admin_list_courses');
+    const savedCourses = await rpc('admin_list_courses');
+    const savedById = new Map((Array.isArray(savedCourses) ? savedCourses : []).map((entry) => [entry.id, entry]));
+    const builtInCourses = (window.ELVATE_BUILTIN_COURSES || []).map((level) => {
+      const id = `builtin-unit-${level.levelNumber}`;
+      const saved = savedById.get(id);
+      return saved
+        ? { ...saved, is_builtin: true }
+        : { id, level_data: { ...level, id }, status: 'published', is_builtin: true };
+    });
+    const courses = [
+      ...builtInCourses,
+      ...(Array.isArray(savedCourses) ? savedCourses.filter((entry) => !String(entry.id).startsWith('builtin-unit-')) : []),
+    ].sort((a, b) => Number(a.level_data?.levelNumber || 0) - Number(b.level_data?.levelNumber || 0));
     target.replaceChildren();
     if (!Array.isArray(courses) || !courses.length) {
       target.textContent = 'No courses saved yet.';
@@ -225,15 +237,38 @@
       title.textContent = entry.level_data?.levelName || entry.id;
       const detail = document.createElement('span');
       detail.textContent = `${entry.status} · ${entry.level_data?.classes?.length || 0} classes`;
-      const removeButton = document.createElement('button');
-      removeButton.type = 'button';
-      removeButton.className = 'delete-course-button';
-      removeButton.textContent = 'Delete';
-      removeButton.setAttribute('aria-label', `Delete ${title.textContent}`);
-      removeButton.addEventListener('click', () => deleteCourse(entry, removeButton));
-      row.append(title, detail, removeButton);
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'edit-course-button';
+      editButton.textContent = 'Edit';
+      editButton.addEventListener('click', () => openCourseEditor(entry));
+      row.append(title, detail, editButton);
+      if (!entry.is_builtin) {
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'delete-course-button';
+        removeButton.textContent = 'Delete';
+        removeButton.setAttribute('aria-label', `Delete ${title.textContent}`);
+        removeButton.addEventListener('click', () => deleteCourse(entry, removeButton));
+        row.append(removeButton);
+      }
       target.append(row);
     });
+  }
+
+  function openCourseEditor(entry) {
+    editingCourse = JSON.parse(JSON.stringify(entry.level_data));
+    document.querySelector('#course-studio-view').hidden = true;
+    document.querySelector('#manual-course-page').hidden = false;
+    document.querySelector('#manual-course-page h2').textContent = `Edit ${entry.level_data.levelName}`;
+    document.querySelector('#manual-class-fields').replaceChildren();
+    renderManualClassFields(entry.level_data.classes.length, entry.level_data);
+    const form = document.querySelector('#manual-course-form');
+    form.elements.unitTitle.value = String(entry.level_data.levelName || '').replace(/^Unit\s+\d+\s*:\s*/i, '');
+    form.elements.cefrTag.value = entry.level_data.cefrTag || 'CEFR A1';
+    form.elements.description.value = entry.level_data.description || '';
+    showMessage(document.querySelector('#manual-course-message'), '');
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function deleteCourse(entry, button) {
@@ -283,10 +318,11 @@
     await loadCourses();
   }
 
-  function renderManualClassFields() {
+  function renderManualClassFields(count = 5, course = null) {
     const target = document.querySelector('#manual-class-fields');
     target.replaceChildren();
-    for (let index = 1; index <= 5; index += 1) {
+    for (let index = 1; index <= count; index += 1) {
+      const lesson = course?.classes?.[index - 1];
       const card = document.createElement('fieldset');
       card.className = 'manual-class-card';
       card.innerHTML = `
@@ -302,6 +338,26 @@
         <label>Incorrect answer option 2<input name="class${index}Wrong2" required maxlength="240" placeholder="I am have water." /></label>
         <label>Speaking practice prompt<textarea name="class${index}SpeakingPrompt" required maxlength="300" rows="2" placeholder="Ask politely for a drink at a cafe."></textarea></label>
         <label>Sample spoken answer<input name="class${index}Sample" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>`;
+      const options = lesson?.translation?.options || [];
+      const correctIndex = lesson?.translation?.correctOptionIndex ?? 0;
+      const wrongOptions = options.filter((_, optionIndex) => optionIndex !== correctIndex);
+      const values = {
+        Title: String(lesson?.title || '').replace(/^Class\s+\d+\s*:\s*/i, ''),
+        Grammar: lesson?.grammarTopic || '',
+        Explanation: lesson?.rule?.englishExplanation || '',
+        TamilExplanation: lesson?.rule?.tamilMentalModel || '',
+        Answer: lesson?.translation?.expectedEnglish || lesson?.jumble?.correctWords?.join(' ') || '',
+        JumbleTamil: lesson?.jumble?.tamilSentence || '',
+        TranslationTamil: lesson?.translation?.tamilPrompt || '',
+        Wrong1: wrongOptions[0] || lesson?.rule?.doAndDont?.wrong || '',
+        Wrong2: wrongOptions[1] || '',
+        SpeakingPrompt: lesson?.speakingChallenge?.prompt || '',
+        Sample: lesson?.speakingChallenge?.sampleNativeResponse || '',
+      };
+      Object.entries(values).forEach(([field, value]) => {
+        const input = card.querySelector(`[name="class${index}${field}"]`);
+        if (input) input.value = value;
+      });
       target.append(card);
     }
   }
@@ -319,10 +375,12 @@
   function buildManualCourse(formData) {
     const unitTitle = String(formData.get('unitTitle')).trim();
     const slug = unitTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'manual-course';
-    const courseId = `manual-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+    const existingCourse = editingCourse;
+    const courseId = existingCourse?.id || `manual-${slug}-${crypto.randomUUID().slice(0, 8)}`;
     const get = (key) => String(formData.get(key) || '').trim();
-    const classes = Array.from({ length: 5 }, (_, index) => {
+    const classes = Array.from({ length: existingCourse?.classes?.length || 5 }, (_, index) => {
       const number = index + 1;
+      const existingLesson = existingCourse?.classes?.[index] || {};
       const title = get(`class${number}Title`);
       const grammarTopic = get(`class${number}Grammar`);
       const explanation = get(`class${number}Explanation`);
@@ -332,27 +390,31 @@
       const wrong2 = get(`class${number}Wrong2`);
       const correctWords = expectedEnglish.split(/\s+/).filter(Boolean);
       return {
-        id: `${courseId}-${number}`,
-        levelNumber: 5,
-        classNumber: number,
+        ...existingLesson,
+        id: existingLesson.id || `${courseId}-${number}`,
+        levelNumber: existingCourse?.levelNumber || 5,
+        classNumber: existingLesson.classNumber || number,
         title: `Class ${number}: ${title}`,
         subtitle: grammarTopic,
-        duration: '6 mins',
+        duration: existingLesson.duration || '6 mins',
         grammarTopic,
-        xpReward: 100,
+        xpReward: existingLesson.xpReward || 100,
         rule: {
+          ...existingLesson.rule,
           heading: grammarTopic,
           englishExplanation: explanation,
           tamilMentalModel: tamilExplanation,
           doAndDont: { wrong: wrong1, right: expectedEnglish, whyTamil: tamilExplanation },
         },
         jumble: {
+          ...existingLesson.jumble,
           tamilSentence: get(`class${number}JumbleTamil`),
           scrambledWords: shuffleWords(correctWords),
           correctWords,
           hint: `Build the sentence: “${expectedEnglish}”`,
         },
         translation: {
+          ...existingLesson.translation,
           tamilPrompt: get(`class${number}TranslationTamil`),
           expectedEnglish,
           options: [expectedEnglish, wrong1, wrong2],
@@ -361,6 +423,7 @@
           tamilExplanation,
         },
         speakingChallenge: {
+          ...existingLesson.speakingChallenge,
           prompt: get(`class${number}SpeakingPrompt`),
           missNovaQuestion: get(`class${number}SpeakingPrompt`),
           suggestedAnswers: [get(`class${number}Sample`), expectedEnglish],
@@ -369,12 +432,13 @@
       };
     });
     return {
+      ...existingCourse,
       id: courseId,
-      levelNumber: 5,
-      levelName: `Unit 5: ${unitTitle}`,
+      levelNumber: existingCourse?.levelNumber || 5,
+      levelName: `Unit ${existingCourse?.levelNumber || 5}: ${unitTitle}`,
       cefrTag: get('cefrTag') || 'CEFR A1',
-      badge: 'Custom Course',
-      accentColor: '#7F43FE',
+      badge: existingCourse?.badge || 'Custom Course',
+      accentColor: existingCourse?.accentColor || '#7F43FE',
       description: get('description'),
       classes,
     };
@@ -390,7 +454,8 @@
     showMessage(message, status === 'published' ? 'Publishing course…' : 'Saving draft…', false);
     try {
       const course = buildManualCourse(new FormData(form));
-      await rpc('admin_save_course', { p_level_data: course, p_status: status });
+      const saved = await rpc('admin_save_course', { p_level_data: course, p_status: status });
+      if (saved?.level_data) editingCourse = saved.level_data;
       showMessage(message, status === 'published' ? 'Course published to the app.' : 'Course saved as a draft.', false);
       await loadCourses();
     } catch (error) {
@@ -459,6 +524,11 @@
   document.querySelector('#refresh-button').addEventListener('click', loadDashboard);
   renderManualClassFields();
   document.querySelector('#open-manual-course').addEventListener('click', () => {
+    editingCourse = null;
+    document.querySelector('#manual-course-form').reset();
+    document.querySelector('#manual-course-page h2').textContent = 'Create a course manually';
+    renderManualClassFields();
+    showMessage(document.querySelector('#manual-course-message'), '');
     document.querySelector('#course-studio-view').hidden = true;
     document.querySelector('#manual-course-page').hidden = false;
     document.querySelector('#manual-course-form').scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -105,6 +105,7 @@ function AppContent() {
 
   const [stats, setStats] = useState<UserStats>(createDefaultStats);
   const [publishedCourses, setPublishedCourses] = useState<SupernovaLevel[]>([]);
+  const [courseOverrides, setCourseOverrides] = useState<Record<number, SupernovaLevel>>({});
   const heartUpdateQueue = useRef(Promise.resolve());
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -123,7 +124,11 @@ function AppContent() {
 
   useEffect(() => {
     let active = true;
-    loadPublishedCourses().then((courses) => { if (active) setPublishedCourses(courses); });
+    loadPublishedCourses().then((courses) => {
+      if (!active) return;
+      setPublishedCourses(courses.extraLevels);
+      setCourseOverrides(courses.coreOverrides);
+    });
     return () => { active = false; };
   }, []);
 
@@ -319,7 +324,10 @@ function AppContent() {
 
   const handleStartLesson = (lesson: SupernovaClass) => {
     if (!stats.completedClasses.includes(lesson.id)) {
-      const nextClass = [...SUPERNOVA_LEVELS, ...publishedCourses]
+      const nextClass = [
+        ...SUPERNOVA_LEVELS.map((level) => courseOverrides[level.levelNumber] || level),
+        ...publishedCourses,
+      ]
         .flatMap((level) => level.classes)
         .find((item) => !stats.completedClasses.includes(item.id));
       if (nextClass?.id !== lesson.id) return;
@@ -402,6 +410,7 @@ function AppContent() {
                 onOpenLeague={() => setActiveTab('league')}
                 onTopColorChange={setCourseTopColor}
                 extraLevels={publishedCourses}
+                courseOverrides={courseOverrides}
               />
             </View>
 
@@ -437,6 +446,7 @@ function AppContent() {
               <ProfileScreen
                 stats={stats}
                 extraLevels={publishedCourses}
+                courseOverrides={courseOverrides}
                 authUser={authUser}
                 onStatsUpdate={setStats}
                 onSignOut={handleSignOut}

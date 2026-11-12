@@ -43,7 +43,7 @@ Deno.serve(async (request) => {
     if (!coursesResponse.ok) return respond({ error: 'Could not determine the next unit number. Apply the latest Supabase schema and retry.' }, 503);
     const savedCourses = await coursesResponse.json();
     const publishedCourseCount = Array.isArray(savedCourses)
-      ? savedCourses.filter((saved: Record<string, any>) => saved.status === 'published').length
+      ? savedCourses.filter((saved: Record<string, any>) => saved.status === 'published' && !String(saved.id || '').startsWith('builtin-unit-')).length
       : 0;
     const nextUnitNumber = 5 + publishedCourseCount;
     const levelName = `Unit ${nextUnitNumber}: ${unitTitle}`;

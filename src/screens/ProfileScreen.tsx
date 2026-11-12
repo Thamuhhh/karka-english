@@ -31,6 +31,7 @@ interface ProfileScreenProps {
   onAuthUserUpdate?: (user: AuthUser) => void;
   onTopColorChange?: (color: string) => void;
   extraLevels?: SupernovaLevel[];
+  courseOverrides?: Record<number, SupernovaLevel>;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -116,6 +117,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onAuthUserUpdate,
   onTopColorChange,
   extraLevels = [],
+  courseOverrides = {},
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocKey | null>(null);
@@ -159,7 +161,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   };
 
-  const curriculumClassIds = [...SUPERNOVA_LEVELS, ...extraLevels]
+  const curriculumClassIds = [
+    ...SUPERNOVA_LEVELS.map((level) => courseOverrides[level.levelNumber] || level),
+    ...extraLevels,
+  ]
     .flatMap((level) => level.classes.map((lesson) => lesson.id));
   const completedClassIds = new Set(stats.completedClasses);
   const totalCurriculumClasses = curriculumClassIds.length;

@@ -38,6 +38,7 @@ interface CurriculumScreenProps {
   onOpenLeague?: () => void;
   onTopColorChange?: (color: string) => void;
   extraLevels?: SupernovaLevel[];
+  courseOverrides?: Record<number, SupernovaLevel>;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -78,8 +79,12 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   stats,
   onTopColorChange,
   extraLevels = [],
+  courseOverrides = {},
 }) => {
-  const levels = [...SUPERNOVA_LEVELS, ...extraLevels];
+  const levels = [
+    ...SUPERNOVA_LEVELS.map((level) => courseOverrides[level.levelNumber] || level),
+    ...extraLevels,
+  ];
   const { width: windowWidth } = useWindowDimensions();
   const [selectedLesson, setSelectedLesson] = useState<SupernovaClass | null>(null);
   const [showStreakScreen, setShowStreakScreen] = useState(false);
