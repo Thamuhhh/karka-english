@@ -440,6 +440,7 @@ function AppContent() {
             >
               <ProfileScreen
                 stats={stats}
+                extraLevels={publishedCourses}
                 authUser={authUser}
                 onStatsUpdate={setStats}
                 onSignOut={handleSignOut}

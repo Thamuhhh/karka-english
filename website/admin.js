@@ -252,7 +252,8 @@
   async function saveCourse(status) {
     if (!editingCourse) return;
     const course = { ...editingCourse, description: document.querySelector('#course-description').value.trim() };
-    await rpc('admin_save_course', { p_level_data: course, p_status: status });
+    const saved = await rpc('admin_save_course', { p_level_data: course, p_status: status });
+    if (saved?.level_data) showCoursePreview(saved.level_data);
     showMessage(document.querySelector('#course-message'), status === 'published' ? 'Course published to the app.' : 'Draft saved.', false);
     await loadCourses();
   }

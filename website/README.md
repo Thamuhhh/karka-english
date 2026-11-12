@@ -22,14 +22,17 @@ For this repository, the Pages URL is `https://thamuhhh.github.io/karka-english/
 
 The admin dashboard is at `/admin.html`. It includes learner analytics and an AI course studio. The Pages workflow writes the Supabase URL and publishable key into `admin-config.js` from the GitHub Actions secrets `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. The publishable key is safe to expose in a browser; never put a service-role key in this file.
 
-Apply the latest `supabase/schema.sql` in the Supabase SQL Editor. It creates the admin RPC functions and course table. Then deploy the course generator and add the Google AI Studio key as a Supabase Function secret:
+Apply the latest `supabase/schema.sql` in the Supabase SQL Editor. It creates the admin RPC functions and course table. The course generator uses NVIDIA Nemotron 3.5 Super VL (free) through OpenRouter. Add an OpenRouter API key as a Supabase Function secret named `OPENROUTER_API_KEY` (never use the Supabase `sb_publishable_...` key here).
+
+Deploy `supabase/functions/admin-generate-course/index.ts` as the Edge Function named `admin-generate-course`. You can use **Edge Functions → Deploy a new function → Via Editor** in the Supabase Dashboard. Or install/use the CLI from the project root:
 
 ```sh
-supabase secrets set GEMINI_API_KEY=your-google-ai-studio-key
-supabase functions deploy admin-generate-course
+npx supabase login
+npx supabase link --project-ref your-project-ref
+npx supabase functions deploy admin-generate-course
 ```
 
-Keep the Gemini key in Supabase secrets; it is never sent to the browser or app. Then grant admin access only to your trusted account by running this with your own account email:
+Keep the OpenRouter key in Supabase secrets; it is never sent to the browser or app. OpenRouter free models have usage limits and availability can vary. New published units are numbered after the four built-in units, and the app course progress total includes the published lessons. Then grant admin access only to your trusted account by running this with your own account email:
 
 ```sql
 update auth.users

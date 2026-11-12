@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_LEVELS } from '../constants/curriculum';
+import { SUPERNOVA_LEVELS, SupernovaLevel } from '../constants/curriculum';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { getAvatarPackItem, AvatarPackId } from '../constants/avatarPack';
 import { AuthUser, UserStats } from '../types';
@@ -30,13 +30,10 @@ interface ProfileScreenProps {
   onRefillHearts?: () => Promise<boolean>;
   onAuthUserUpdate?: (user: AuthUser) => void;
   onTopColorChange?: (color: string) => void;
+  extraLevels?: SupernovaLevel[];
 }
 
 const MAX_CONTENT_WIDTH = 480;
-const TOTAL_CURRICULUM_CLASSES = SUPERNOVA_LEVELS.reduce(
-  (sum, lvl) => sum + lvl.classes.length,
-  0
-);
 
 type LegalDocKey = 'privacy' | 'terms' | 'licenses';
 
@@ -118,6 +115,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onRefillHearts,
   onAuthUserUpdate,
   onTopColorChange,
+  extraLevels = [],
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocKey | null>(null);
@@ -161,10 +159,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   };
 
-  const completedCount = stats.completedClasses.length;
+  const curriculumClassIds = [...SUPERNOVA_LEVELS, ...extraLevels]
+    .flatMap((level) => level.classes.map((lesson) => lesson.id));
+  const completedClassIds = new Set(stats.completedClasses);
+  const totalCurriculumClasses = curriculumClassIds.length;
+  const completedCount = curriculumClassIds.filter((id) => completedClassIds.has(id)).length;
   const fluencyPct =
-    TOTAL_CURRICULUM_CLASSES > 0
-      ? Math.round((completedCount / TOTAL_CURRICULUM_CLASSES) * 100)
+    totalCurriculumClasses > 0
+      ? Math.round((completedCount / totalCurriculumClasses) * 100)
       : 0;
   return (
     <View style={styles.container}>
@@ -239,7 +241,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <View style={styles.fluencyTop}>
             <Text style={styles.eyebrow}>COURSE FLUENCY</Text>
             <Text style={styles.fluencyStat}>
-              {completedCount}/{TOTAL_CURRICULUM_CLASSES} · {fluencyPct}%
+              {completedCount}/{totalCurriculumClasses} · {fluencyPct}%
             </Text>
           </View>
           <View style={styles.fluencyTrack}>

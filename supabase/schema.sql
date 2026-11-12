@@ -409,15 +409,38 @@ create policy published_custom_courses_read on public.custom_courses
 
 create or replace function public.admin_save_course(p_level_data jsonb, p_status text default 'draft')
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare saved public.custom_courses;
+declare
+  saved public.custom_courses;
+  level_to_save jsonb := p_level_data;
+  classes_to_save jsonb;
+  unit_title text;
+  next_unit_number integer;
 begin
   perform private.require_admin();
   if p_status not in ('draft', 'published') then raise exception 'Invalid course status'; end if;
-  if jsonb_typeof(p_level_data) <> 'object' or jsonb_typeof(p_level_data -> 'classes') <> 'array' then
+  if jsonb_typeof(p_level_data) <> 'object'
+     or coalesce(p_level_data ->> 'id', '') = ''
+     or jsonb_typeof(p_level_data -> 'classes') <> 'array' then
     raise exception 'Invalid course content';
   end if;
+
+  select 5 + count(*)::integer into next_unit_number
+  from public.custom_courses
+  where status = 'published' and id <> (p_level_data ->> 'id');
+  unit_title := trim(regexp_replace(coalesce(level_to_save ->> 'levelName', ''), '^Unit[[:space:]]+[0-9]+:[[:space:]]*', '', 'i'));
+  if unit_title = '' then unit_title := 'Custom Course'; end if;
+
+  level_to_save := jsonb_set(level_to_save, '{levelNumber}', to_jsonb(next_unit_number), true);
+  level_to_save := jsonb_set(level_to_save, '{levelName}', to_jsonb('Unit ' || next_unit_number || ': ' || unit_title), true);
+  select coalesce(
+    jsonb_agg(jsonb_set(lesson.content, '{levelNumber}', to_jsonb(next_unit_number), true) order by lesson.ordinality),
+    '[]'::jsonb
+  ) into classes_to_save
+  from jsonb_array_elements(level_to_save -> 'classes') with ordinality as lesson(content, ordinality);
+  level_to_save := jsonb_set(level_to_save, '{classes}', classes_to_save, true);
+
   insert into public.custom_courses(id, level_data, status, updated_at)
-  values (p_level_data ->> 'id', p_level_data, p_status, now())
+  values (level_to_save ->> 'id', level_to_save, p_status, now())
   on conflict (id) do update set level_data = excluded.level_data, status = excluded.status, updated_at = now()
   returning * into saved;
   return jsonb_build_object('id', saved.id, 'level_data', saved.level_data, 'status', saved.status, 'updated_at', saved.updated_at);
