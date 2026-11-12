@@ -35,6 +35,7 @@ export interface SupernovaClass {
   title: string;
   subtitle: string;
   learnerOutcome?: string;
+  imageUrl?: string;
   duration: string;
   grammarTopic: string;
   xpReward: number;

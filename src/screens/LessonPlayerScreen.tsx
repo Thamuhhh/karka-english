@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
+  Image,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -759,6 +760,14 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
                 })}
               </View>
             </View>
+
+            {lesson.imageUrl ? (
+              <Image
+                source={{ uri: lesson.imageUrl }}
+                style={styles.lessonContextImage}
+                resizeMode="cover"
+              />
+            ) : null}
 
             {/* MICRO-STEP 0: CORE RULE (Open Typography, Zero Box) */}
             {lectureStep === 0 && (
@@ -1941,6 +1950,12 @@ const styles = StyleSheet.create({
   lectureCanvas: {
     gap: 20,
     paddingTop: 4,
+  },
+  lessonContextImage: {
+    width: '100%',
+    height: 190,
+    borderRadius: 16,
+    backgroundColor: '#17141F',
   },
   lectureDotsRow: {
     flexDirection: 'row',

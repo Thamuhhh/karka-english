@@ -635,6 +635,14 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 </TouchableOpacity>
               </View>
 
+              {selectedLesson.imageUrl ? (
+                <Image
+                  source={{ uri: selectedLesson.imageUrl }}
+                  style={styles.popoverLessonImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+
               <Text style={styles.popoverTitle}>
                 {formatShortLessonTitle(selectedLesson.title)}
               </Text>
@@ -1013,6 +1021,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 18,
     elevation: 8,
+  },
+  popoverLessonImage: {
+    width: '100%',
+    height: 124,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#100E16',
   },
   popoverMetaRow: {
     flexDirection: 'row',

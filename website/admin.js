@@ -21,6 +21,7 @@
   let editingCourse = null;
   let manualCourseBusy = false;
   let manualAudioBusy = false;
+  let manualImageBusy = false;
   let audioAbortController = null;
   let audioStopRequested = false;
   let tamilPreviewAudio = null;
@@ -228,10 +229,13 @@
         : { id, level_data: { ...level, id }, status: 'published', is_builtin: true };
     });
     const starterCourses = (window.ELVATE_ADMIN_STARTER_COURSES || []).flatMap((level) => {
+      const alreadySaved = Array.isArray(savedCourses)
+        ? savedCourses.find((entry) => entry.level_data?.starterCourseKey === level.starterCourseKey)
+        : null;
+      if (alreadySaved) return [];
       const existing = savedById.get(level.id) || (Array.isArray(savedCourses) ? savedCourses.find((entry) =>
         Number(entry.level_data?.levelNumber) === 5 || /^Unit\s+5\s*:/i.test(entry.level_data?.levelName || '')
       ) : null);
-      if (existing?.level_data?.starterCourseKey === level.starterCourseKey) return [];
       return [{
         id: existing?.id || level.id,
         level_data: { ...level, id: existing?.id || level.id },
@@ -349,13 +353,14 @@
       const meta = document.createElement('span');
       meta.textContent = `${lesson.grammarTopic} · ${lesson.duration}`;
       item.append(title, meta);
+      addClassImageControl(item, lesson, index, false);
       addTamilAudioPreview(item, lesson);
       list.append(item);
     });
   }
 
   async function saveCourse(status) {
-    if (!editingCourse) return;
+    if (!editingCourse || manualImageBusy) return;
     const course = { ...editingCourse, description: document.querySelector('#course-description').value.trim() };
     const saved = await rpc('admin_save_course', { p_level_data: course, p_status: status });
     if (saved?.level_data) showCoursePreview(saved.level_data);
@@ -429,6 +434,7 @@
         if (input) input.value = value;
       });
       addTamilAudioPreview(card, lesson);
+      addClassImageControl(card, lesson, index - 1, true);
       target.append(card);
     }
   }
@@ -469,6 +475,81 @@
       }
     });
     container.append(button);
+  }
+
+  function addClassImageControl(container, lesson, lessonIndex, manualMode) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'class-image-control';
+    const image = document.createElement('img');
+    image.className = 'class-image-preview';
+    image.alt = `Class ${lessonIndex + 1} illustration`;
+    image.hidden = !lesson?.imageUrl;
+    if (lesson?.imageUrl) image.src = lesson.imageUrl;
+    const status = document.createElement('span');
+    status.className = 'class-image-status';
+    status.textContent = lesson?.imageUrl ? 'Class illustration ready' : 'No class illustration yet';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'class-image-generate';
+    button.textContent = lesson?.imageUrl ? 'Regenerate image' : 'Generate class image';
+    button.addEventListener('click', () => generateClassImage(lessonIndex, wrapper, manualMode, button));
+    wrapper.append(image, status, button);
+    container.append(wrapper);
+  }
+
+  async function generateClassImage(lessonIndex, wrapper, manualMode, button) {
+    if (manualImageBusy || manualCourseBusy || manualAudioBusy) return;
+    const form = document.querySelector('#manual-course-form');
+    if (manualMode && !form.reportValidity()) return;
+    const message = document.querySelector(manualMode ? '#manual-course-message' : '#course-message');
+    manualImageBusy = true;
+    document.querySelectorAll('.class-image-generate').forEach((item) => { item.disabled = true; });
+    button.textContent = 'Preparing image…';
+    try {
+      const course = manualMode ? buildManualCourse(new FormData(form)) : editingCourse;
+      const saved = await rpc('admin_save_course', { p_level_data: course, p_status: editingCourseStatus });
+      editingCourse = saved?.level_data || course;
+      const lesson = editingCourse.classes[lessonIndex];
+      showMessage(message, `Generating image for Class ${lessonIndex + 1}…`, false);
+      const response = await fetch(`${apiUrl}/functions/v1/admin-generate-course-image`, {
+        method: 'POST',
+        headers: {
+          apikey: publishableKey,
+          Authorization: `Bearer ${session.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseId: editingCourse.id,
+          lessonId: lesson.id,
+          title: String(lesson.title || '').replace(/^Class\s+\d+\s*:\s*/i, ''),
+          subtitle: lesson.subtitle,
+          grammarTopic: lesson.grammarTopic,
+          learnerOutcome: lesson.learnerOutcome,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || `Could not generate an image for Class ${lessonIndex + 1}.`);
+      lesson.imageUrl = result.imageUrl;
+      const persisted = await rpc('admin_save_course', {
+        p_level_data: editingCourse,
+        p_status: editingCourseStatus,
+      });
+      if (persisted?.level_data) editingCourse = persisted.level_data;
+      const updatedLesson = editingCourse.classes[lessonIndex];
+      const image = wrapper.querySelector('.class-image-preview');
+      image.src = updatedLesson.imageUrl;
+      image.hidden = false;
+      wrapper.querySelector('.class-image-status').textContent = 'Class illustration ready';
+      button.textContent = 'Regenerate image';
+      showMessage(message, `Class ${lessonIndex + 1} image generated and mapped to the course.`, false);
+      await loadCourses();
+    } catch (error) {
+      button.textContent = 'Generate class image';
+      showMessage(message, error.message || 'Class image generation failed.');
+    } finally {
+      manualImageBusy = false;
+      document.querySelectorAll('.class-image-generate').forEach((item) => { item.disabled = false; });
+    }
   }
 
   function shuffleWords(words) {
@@ -563,7 +644,7 @@
 
   async function saveManualCourse(status) {
     const form = document.querySelector('#manual-course-form');
-    if (!form.reportValidity() || manualCourseBusy || manualAudioBusy) return;
+    if (!form.reportValidity() || manualCourseBusy || manualAudioBusy || manualImageBusy) return;
     const buttons = [document.querySelector('#manual-save-draft'), document.querySelector('#manual-publish')];
     manualCourseBusy = true;
     buttons.forEach((button) => { button.disabled = true; });
@@ -587,7 +668,7 @@
   async function generateCourseAudio() {
     const form = document.querySelector('#manual-course-form');
     const manualMode = !document.querySelector('#manual-course-page').hidden;
-    if ((manualMode && !form.reportValidity()) || manualCourseBusy || manualAudioBusy || (!manualMode && !editingCourse)) return;
+    if ((manualMode && !form.reportValidity()) || manualCourseBusy || manualAudioBusy || manualImageBusy || (!manualMode && !editingCourse)) return;
     const button = document.querySelector(manualMode ? '#generate-course-audio' : '#generate-preview-course-audio');
     const stopButton = document.querySelector(manualMode ? '#stop-course-audio' : '#stop-preview-course-audio');
     const message = document.querySelector(manualMode ? '#manual-course-message' : '#course-message');

@@ -416,6 +416,14 @@ drop policy if exists course_audio_public_read on storage.objects;
 create policy course_audio_public_read on storage.objects
   for select to anon, authenticated using (bucket_id = 'course-audio');
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('course-images', 'course-images', true, 8388608, array['image/png', 'image/jpeg', 'image/webp'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists course_images_public_read on storage.objects;
+create policy course_images_public_read on storage.objects
+  for select to anon, authenticated using (bucket_id = 'course-images');
+
 create or replace function public.admin_save_course(p_level_data jsonb, p_status text default 'draft')
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare

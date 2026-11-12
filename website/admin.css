@@ -108,6 +108,13 @@ tbody tr:hover { background:rgba(180,146,227,.035); }
 .generated-lesson,.saved-course { display:flex; min-width:0; flex-direction:column; gap:4px; padding:10px; border:1px solid var(--line); border-radius:7px; background:#17141d; }
 .tamil-audio-preview { align-self:flex-start; margin-top:4px; padding:5px 8px; border:1px solid rgba(127,67,254,.38); border-radius:6px; background:rgba(127,67,254,.1); color:#d6baff; font:inherit; font-size:10px; cursor:pointer; }
 .tamil-audio-preview:hover { border-color:#a976eb; background:rgba(127,67,254,.18); color:#fff; }
+.class-image-control { display:flex; min-width:0; flex-direction:column; align-items:flex-start; gap:6px; margin-top:6px; }
+.class-image-preview { width:100%; max-height:150px; aspect-ratio:16/9; object-fit:cover; border:1px solid rgba(190,157,236,.18); border-radius:7px; background:#100e16; }
+.class-image-preview[hidden] { display:none; }
+.class-image-status { color:#8f879a; font-size:9px; }
+.class-image-generate { padding:5px 8px; border:1px solid rgba(127,67,254,.38); border-radius:6px; background:rgba(127,67,254,.1); color:#d6baff; font:inherit; font-size:10px; cursor:pointer; }
+.class-image-generate:hover:not(:disabled) { border-color:#a976eb; background:rgba(127,67,254,.18); color:#fff; }
+.class-image-generate:disabled { opacity:.55; cursor:wait; }
 .saved-course { position:relative; padding-right:118px; }
 .publish-starter-button { align-self:flex-start; margin-top:4px; padding:5px 9px; border:1px solid rgba(127,67,254,.5); border-radius:6px; background:rgba(127,67,254,.13); color:#d6baff; font:inherit; font-size:9px; cursor:pointer; }
 .publish-starter-button:hover:not(:disabled) { border-color:#a976eb; background:rgba(127,67,254,.22); color:#fff; }
