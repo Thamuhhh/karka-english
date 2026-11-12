@@ -108,11 +108,6 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   const lessonNumberMap = Object.fromEntries(orderedClasses.map((cls, index) => [cls.id, index + 1]));
   const lessonUnlocked = (id: string) => {
     if (completedClasses.includes(id)) return true;
-    const customLevel = extraLevels.find((level) => level.classes.some((lesson) => lesson.id === id));
-    if (customLevel) {
-      const index = customLevel.classes.findIndex((lesson) => lesson.id === id);
-      return index === 0 || completedClasses.includes(customLevel.classes[index - 1].id);
-    }
     return nextActiveClassId === id;
   };
   const isSelectedUnlocked = selectedLesson

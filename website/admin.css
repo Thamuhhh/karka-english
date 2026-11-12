@@ -104,6 +104,10 @@ tbody tr:hover { background:rgba(180,146,227,.035); }
 .course-editor-heading span { color:#9b91a7; font-size:9px; }
 .generated-lessons { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:11px; }
 .generated-lesson,.saved-course { display:flex; min-width:0; flex-direction:column; gap:4px; padding:10px; border:1px solid var(--line); border-radius:7px; background:#17141d; }
+.saved-course { position:relative; padding-right:58px; }
+.delete-course-button { position:absolute; top:9px; right:9px; padding:4px 7px; border:1px solid rgba(190,157,236,.2); border-radius:5px; background:transparent; color:#bca1e0; font:inherit; font-size:9px; cursor:pointer; }
+.delete-course-button:hover:not(:disabled) { border-color:#a976eb; color:#e5d1ff; }
+.delete-course-button:disabled { opacity:.5; cursor:wait; }
 .generated-lesson b,.saved-course b { overflow:hidden; color:#e1d9eb; font-size:9px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
 .generated-lesson span,.saved-course span { color:#8f879a; font-size:9px; }
 .course-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }

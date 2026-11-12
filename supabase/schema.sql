@@ -454,7 +454,21 @@ begin
     from public.custom_courses c order by c.updated_at desc;
 end; $$;
 
+create or replace function public.admin_delete_course(p_course_id text)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare
+  deleted_count integer;
+begin
+  perform private.require_admin();
+  if coalesce(trim(p_course_id), '') = '' then raise exception 'Course ID is required'; end if;
+  delete from public.custom_courses where id = p_course_id;
+  get diagnostics deleted_count = row_count;
+  return deleted_count > 0;
+end; $$;
+
 revoke all on function public.admin_save_course(jsonb, text) from public, anon, authenticated;
 revoke all on function public.admin_list_courses() from public, anon, authenticated;
+revoke all on function public.admin_delete_course(text) from public, anon, authenticated;
 grant execute on function public.admin_save_course(jsonb, text) to authenticated;
 grant execute on function public.admin_list_courses() to authenticated;
+grant execute on function public.admin_delete_course(text) to authenticated;

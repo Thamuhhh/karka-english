@@ -224,9 +224,33 @@
       title.textContent = entry.level_data?.levelName || entry.id;
       const detail = document.createElement('span');
       detail.textContent = `${entry.status} · ${entry.level_data?.classes?.length || 0} classes`;
-      row.append(title, detail);
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'delete-course-button';
+      removeButton.textContent = 'Delete';
+      removeButton.setAttribute('aria-label', `Delete ${title.textContent}`);
+      removeButton.addEventListener('click', () => deleteCourse(entry, removeButton));
+      row.append(title, detail, removeButton);
       target.append(row);
     });
+  }
+
+  async function deleteCourse(entry, button) {
+    const title = entry.level_data?.levelName || entry.id;
+    if (!window.confirm(`Delete "${title}"? This removes the course from the app and cannot be undone.`)) return;
+    button.disabled = true;
+    try {
+      await rpc('admin_delete_course', { p_course_id: entry.id });
+      if (editingCourse?.id === entry.id) {
+        editingCourse = null;
+        document.querySelector('#course-editor').hidden = true;
+      }
+      showMessage(document.querySelector('#course-message'), 'Course deleted.', false);
+      await loadCourses();
+    } catch (error) {
+      button.disabled = false;
+      showMessage(document.querySelector('#course-message'), error.message || 'Could not delete the course.');
+    }
   }
 
   function showCoursePreview(course) {

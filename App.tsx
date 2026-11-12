@@ -319,14 +319,10 @@ function AppContent() {
 
   const handleStartLesson = (lesson: SupernovaClass) => {
     if (!stats.completedClasses.includes(lesson.id)) {
-      const customLevel = publishedCourses.find((level) => level.classes.some((item) => item.id === lesson.id));
-      if (customLevel) {
-        const index = customLevel.classes.findIndex((item) => item.id === lesson.id);
-        if (index > 0 && !stats.completedClasses.includes(customLevel.classes[index - 1].id)) return;
-      } else {
-        const nextClass = SUPERNOVA_LEVELS.flatMap((level) => level.classes).find((item) => !stats.completedClasses.includes(item.id));
-        if (nextClass?.id !== lesson.id) return;
-      }
+      const nextClass = [...SUPERNOVA_LEVELS, ...publishedCourses]
+        .flatMap((level) => level.classes)
+        .find((item) => !stats.completedClasses.includes(item.id));
+      if (nextClass?.id !== lesson.id) return;
     }
     setCurrentLesson(lesson);
   };
