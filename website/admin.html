@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#100e16" />
+    <title>Admin · Elvate</title>
+    <link rel="icon" type="image/png" href="./assets/mascot/elvate_headset_enhanced.png" />
+    <link rel="stylesheet" href="./admin.css" />
+    <script src="./admin-config.js"></script>
+    <script src="./admin.js" defer></script>
+  </head>
+  <body>
+    <main id="login-screen" class="login-screen">
+      <div class="login-brand">
+        <a class="brand-lockup" href="./"><span class="brand-icon"><img src="./assets/R_Appicon.png" alt="" /></span><img class="wordmark" src="./assets/Elvate%20Logo.png" alt="Elvate" /></a>
+        <span class="admin-chip">ADMIN</span>
+      </div>
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="login-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.9 8.2 7 10 4.1-1.8 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <p class="overline">ELVATE OPERATIONS</p>
+        <h1 id="login-title">Admin sign in</h1>
+        <p class="login-description">Sign in with an Elvate administrator account to view learner activity.</p>
+        <form id="login-form" autocomplete="on">
+          <label for="admin-email">Email address</label>
+          <input id="admin-email" name="email" type="email" autocomplete="username" placeholder="admin@example.com" required />
+          <label for="admin-password">Password</label>
+          <input id="admin-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required />
+          <button id="login-button" class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        </form>
+        <p id="login-error" class="feedback" role="alert" aria-live="polite"></p>
+        <a class="back-link" href="./">← Back to Elvate</a>
+      </section>
+      <p class="security-note">Restricted access · Admin role required</p>
+    </main>
+
+    <div id="dashboard" class="dashboard" hidden>
+      <aside class="sidebar">
+        <a class="brand-lockup" href="./" aria-label="Elvate home"><span class="brand-icon"><img src="./assets/R_Appicon.png" alt="" /></span><img class="wordmark" src="./assets/Elvate%20Logo.png" alt="Elvate" /></a>
+        <div class="sidebar-label">WORKSPACE</div>
+        <a class="side-link side-link-active" href="#overview"><span class="side-icon">⌂</span>Overview</a>
+        <a class="side-link" href="#learners"><span class="side-icon">♙</span>Learners</a>
+        <div class="sidebar-bottom">
+          <span class="admin-avatar">A</span>
+          <span class="admin-identity"><b id="admin-name">Administrator</b><small>Admin account</small></span>
+          <button id="signout-button" class="icon-button" type="button" aria-label="Sign out" title="Sign out">
+            <svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5m5 5H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content" id="overview">
+        <header class="topbar">
+          <div class="breadcrumb">Elvate <span>/</span> Overview</div>
+          <button id="refresh-button" class="secondary-button" type="button"><span class="refresh-icon">↻</span> Refresh data</button>
+        </header>
+        <section class="page-heading">
+          <div>
+            <p class="overline">LEARNER ANALYTICS</p>
+            <h1>Overview</h1>
+            <p class="page-subtitle">A snapshot of learner accounts and course activity.</p>
+          </div>
+          <p id="last-updated" class="updated-label"></p>
+        </section>
+
+        <section id="metric-grid" class="metric-grid" aria-label="Learning statistics">
+          <article class="metric-card"><span class="metric-label">Total accounts</span><strong id="metric-accounts">—</strong><span class="metric-foot">Registered learners</span><span class="metric-symbol">♙</span></article>
+          <article class="metric-card"><span class="metric-label">New this week</span><strong id="metric-new">—</strong><span class="metric-foot">Joined in the last 7 days</span><span class="metric-symbol">↗</span></article>
+          <article class="metric-card"><span class="metric-label">Active today</span><strong id="metric-active">—</strong><span class="metric-foot">Practised today</span><span class="metric-symbol">◷</span></article>
+          <article class="metric-card"><span class="metric-label">XP earned</span><strong id="metric-xp">—</strong><span class="metric-foot">Across all accounts</span><span class="metric-symbol">✦</span></article>
+          <article class="metric-card"><span class="metric-label">Classes completed</span><strong id="metric-classes">—</strong><span class="metric-foot">Total lesson completions</span><span class="metric-symbol">✓</span></article>
+          <article class="metric-card"><span class="metric-label">Average streak</span><strong id="metric-streak">—</strong><span class="metric-foot">Days per learner</span><span class="metric-symbol">♨</span></article>
+        </section>
+
+        <section id="learners" class="learners-panel">
+          <div class="panel-heading">
+            <div><h2>Learners</h2><p>Recently created accounts and their progress.</p></div>
+            <form id="search-form" class="search-form" role="search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="learner-search" type="search" placeholder="Search name or email" aria-label="Search learners" />
+              <button type="submit">Search</button>
+            </form>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Learner</th><th>Joined</th><th>Last active</th><th>XP</th><th>Streak</th><th>Classes</th></tr></thead>
+              <tbody id="learner-rows"><tr><td class="table-message" colspan="6">Sign in to load learner data.</td></tr></tbody>
+            </table>
+          </div>
+          <div class="table-footer"><span id="result-count">—</span><div><button id="previous-page" class="page-button" type="button" disabled>Previous</button><button id="next-page" class="page-button" type="button" disabled>Next</button></div></div>
+        </section>
+        <p id="dashboard-error" class="dashboard-error" role="status" aria-live="polite"></p>
+        <footer class="dashboard-footer">Elvate Admin · Learner data is visible to authorized administrators only.</footer>
+      </main>
+    </div>
+  </body>
+</html>

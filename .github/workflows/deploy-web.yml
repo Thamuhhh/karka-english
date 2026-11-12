@@ -29,6 +29,23 @@ jobs:
         with:
           enablement: true
 
+      - name: Configure Supabase for the admin panel
+        env:
+          SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const config = {
+            supabaseUrl: process.env.SUPABASE_URL || '',
+            publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || '',
+          };
+          fs.writeFileSync(
+            'website/admin-config.js',
+            `window.ELVATE_ADMIN_CONFIG = ${JSON.stringify(config)};\n`
+          );
+          NODE
+
       - name: Upload landing page
         uses: actions/upload-pages-artifact@v3
         with:

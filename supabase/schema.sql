@@ -296,3 +296,98 @@ create trigger on_auth_user_created
 -- Backward-compatible columns for avatar pack
 alter table public.profiles add column if not exists avatar_id text default 'lion';
 alter table public.leaderboard_entries add column if not exists avatar_id text default 'lion';
+
+-- Admin-only read access for the static website dashboard. Admin role must be
+-- assigned in auth.users.raw_app_meta_data by a trusted Supabase operator.
+create or replace function private.require_admin()
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'admin' then
+    raise exception 'Admin access required' using errcode = '42501';
+  end if;
+end;
+$$;
+
+revoke all on function private.require_admin() from public, anon, authenticated;
+
+create or replace function public.admin_get_overview()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+
+  return jsonb_build_object(
+    'total_accounts', (select count(*) from auth.users),
+    'new_accounts_7d', (
+      select count(*) from auth.users where created_at >= now() - interval '7 days'
+    ),
+    'active_today', (
+      select count(*) from public.user_progress where last_active_date = current_date
+    ),
+    'total_xp', (
+      select coalesce(sum(stardust_xp), 0) from public.user_progress
+    ),
+    'completed_classes', (
+      select coalesce(sum(cardinality(completed_classes)), 0) from public.user_progress
+    ),
+    'average_streak', (
+      select coalesce(round(avg(streak_days)::numeric, 1), 0) from public.user_progress
+    )
+  );
+end;
+$$;
+
+create or replace function public.admin_list_learners(
+  p_query text default '',
+  p_limit integer default 30,
+  p_offset integer default 0
+)
+returns table (
+  user_id uuid,
+  email text,
+  display_name text,
+  created_at timestamptz,
+  last_active_date date,
+  stardust_xp integer,
+  streak_days integer,
+  completed_classes integer
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+
+  return query
+    select
+      u.id,
+      coalesce(u.email, case when u.is_anonymous then 'Guest account' else '—' end)::text,
+      coalesce(p.display_name, 'Elvate Learner')::text,
+      u.created_at,
+      pr.last_active_date,
+      coalesce(pr.stardust_xp, 0)::integer,
+      coalesce(pr.streak_days, 0)::integer,
+      coalesce(cardinality(pr.completed_classes), 0)::integer
+    from auth.users as u
+    left join public.profiles as p on p.id = u.id
+    left join public.user_progress as pr on pr.user_id = u.id
+    where coalesce(p_query, '') = ''
+      or coalesce(p.display_name, '') ilike '%' || p_query || '%'
+      or coalesce(u.email, '') ilike '%' || p_query || '%'
+    order by u.created_at desc
+    limit greatest(1, least(coalesce(p_limit, 30), 100))
+    offset greatest(coalesce(p_offset, 0), 0);
+end;
+$$;
+
+revoke all on function public.admin_get_overview() from public, anon, authenticated;
+revoke all on function public.admin_list_learners(text, integer, integer) from public, anon, authenticated;
+grant execute on function public.admin_get_overview() to authenticated;
+grant execute on function public.admin_list_learners(text, integer, integer) to authenticated;
