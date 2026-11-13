@@ -226,7 +226,9 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
   const [isJumbleCorrect, setIsJumbleCorrect] = useState(false);
 
   // Slide 3: Active English Q&A Translation State
-  const [transMode, setTransMode] = useState<'type' | 'choices'>('type');
+  const [transMode, setTransMode] = useState<'type' | 'choices'>(
+    lesson.translation.options?.length ? 'choices' : 'type'
+  );
   const [typedAnswer, setTypedAnswer] = useState('');
   const [selectedTransIdx, setSelectedTransIdx] = useState<number | null>(null);
   const [isCheckingTrans, setIsCheckingTrans] = useState(false);
@@ -1033,7 +1035,7 @@ export const LessonPlayerScreen: React.FC<LessonPlayerProps> = ({
               />
             ) : (
               <View style={styles.optionsCol}>
-                {lesson.translation.options.map((opt, oIdx) => {
+                {(lesson.translation.options || []).map((opt, oIdx) => {
                   const isSelected = selectedTransIdx === oIdx;
                   const isRightOption = oIdx === lesson.translation.correctOptionIndex;
 

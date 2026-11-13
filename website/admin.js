@@ -392,6 +392,8 @@
         <label>Correct English sentence<input name="class${index}Answer" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>
         <label>Tamil sentence for word match<input name="class${index}JumbleTamil" required maxlength="240" placeholder="தயவுசெய்து எனக்கு ஒரு குவளை தண்ணீர் தர முடியுமா?" /></label>
         <label>Tamil translation prompt<input name="class${index}TranslationTamil" required maxlength="240" placeholder="எனக்கு ஒரு குவளை தண்ணீர் தர முடியுமா?" /></label>
+        <label>Correct English translation<input name="class${index}TranslationAnswer" required maxlength="240" placeholder="Could I have a glass of water, please?" /></label>
+        <label>Translation explanation in English<textarea name="class${index}TranslationEnglishExplanation" required maxlength="1000" rows="3" placeholder="Explain why this answer matches the Tamil prompt"></textarea></label>
         <label>Jumble hint in Tamil<input name="class${index}JumbleHint" required maxlength="240" placeholder="தமிழில் ஒரு சிறிய குறிப்பைக் கொடுங்கள்." /></label>
         <label>Translation explanation in Tamil<textarea name="class${index}TranslationExplanation" required maxlength="1000" rows="4" placeholder="Explain why the correct answer fits"></textarea></label>
         <label>Incorrect answer option 1<input name="class${index}Wrong1" required maxlength="240" placeholder="Give water to me." /></label>
@@ -416,10 +418,12 @@
         WrongExample: lesson?.rule?.doAndDont?.wrong || wrongOptions[0] || '',
         RightExample: lesson?.rule?.doAndDont?.right || lesson?.translation?.expectedEnglish || '',
         WhyTamil: lesson?.rule?.doAndDont?.whyTamil || lesson?.rule?.tamilMentalModel || '',
-        Answer: lesson?.translation?.expectedEnglish || lesson?.jumble?.correctWords?.join(' ') || '',
+        Answer: lesson?.jumble?.correctWords?.join(' ') || lesson?.translation?.expectedEnglish || '',
         JumbleTamil: lesson?.jumble?.tamilSentence || '',
         JumbleHint: lesson?.jumble?.hint || '',
         TranslationTamil: lesson?.translation?.tamilPrompt || '',
+        TranslationAnswer: lesson?.translation?.expectedEnglish || lesson?.jumble?.correctWords?.join(' ') || '',
+        TranslationEnglishExplanation: lesson?.translation?.explanation || lesson?.rule?.englishExplanation || '',
         TranslationExplanation: lesson?.translation?.tamilExplanation || lesson?.rule?.tamilMentalModel || '',
         Wrong1: wrongOptions[0] || '',
         Wrong2: wrongOptions[1] || '',
@@ -576,6 +580,8 @@
       const explanation = get(`class${number}Explanation`);
       const tamilExplanation = get(`class${number}TamilExplanation`);
       const expectedEnglish = get(`class${number}Answer`);
+      const translationAnswer = get(`class${number}TranslationAnswer`) || expectedEnglish;
+      const translationEnglishExplanation = get(`class${number}TranslationEnglishExplanation`) || explanation;
       const speakingSample = get(`class${number}Sample`);
       const speakingSample2 = get(`class${number}Sample2`);
       const wrong1 = get(`class${number}Wrong1`);
@@ -613,10 +619,10 @@
         translation: {
           ...existingLesson.translation,
           tamilPrompt: get(`class${number}TranslationTamil`),
-          expectedEnglish,
-          options: [expectedEnglish, wrong1, wrong2],
+          expectedEnglish: translationAnswer,
+          options: [translationAnswer, wrong1, wrong2],
           correctOptionIndex: 0,
-          explanation,
+          explanation: translationEnglishExplanation,
           tamilExplanation: get(`class${number}TranslationExplanation`) || tamilExplanation,
         },
         speakingChallenge: {
