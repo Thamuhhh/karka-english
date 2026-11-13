@@ -39,6 +39,7 @@ interface CurriculumScreenProps {
   onTopColorChange?: (color: string) => void;
   extraLevels?: SupernovaLevel[];
   courseOverrides?: Record<number, SupernovaLevel>;
+  devUnlockAllClasses?: boolean;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -80,6 +81,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   onTopColorChange,
   extraLevels = [],
   courseOverrides = {},
+  devUnlockAllClasses = false,
 }) => {
   const levels = [
     ...SUPERNOVA_LEVELS.map((level) => courseOverrides[level.levelNumber] || level),
@@ -112,6 +114,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
   const nextActiveClassId = orderedClasses.find((cls) => !completedClasses.includes(cls.id))?.id ?? null;
   const lessonNumberMap = Object.fromEntries(orderedClasses.map((cls, index) => [cls.id, index + 1]));
   const lessonUnlocked = (id: string) => {
+    if (devUnlockAllClasses) return true;
     if (completedClasses.includes(id)) return true;
     return nextActiveClassId === id;
   };
@@ -408,7 +411,7 @@ export const CurriculumScreen: React.FC<CurriculumScreenProps> = ({
                 {level.classes.map((cls, cIdx) => {
                   const isCompleted = completedClasses.includes(cls.id);
                   const isCurrent = cls.id === nextActiveClassId;
-                  const isLocked = !lessonUnlocked(cls.id);
+                  const isLocked = !devUnlockAllClasses && !lessonUnlocked(cls.id);
                   const lessonNum = lessonNumberMap[cls.id] || cIdx + 1;
                   const cx = getZigZagCenterX(cIdx, level.classes.length, mapWidth, false);
                   const cy = MAP_TOP_CY + cIdx * MAP_STEP_Y;

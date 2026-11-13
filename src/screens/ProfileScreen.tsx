@@ -32,6 +32,8 @@ interface ProfileScreenProps {
   onTopColorChange?: (color: string) => void;
   extraLevels?: SupernovaLevel[];
   courseOverrides?: Record<number, SupernovaLevel>;
+  devUnlockAllClasses?: boolean;
+  onDevUnlockAllClassesChange?: (enabled: boolean) => void;
 }
 
 const MAX_CONTENT_WIDTH = 480;
@@ -116,6 +118,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onRefillHearts,
   onAuthUserUpdate,
   onTopColorChange,
+  devUnlockAllClasses = false,
+  onDevUnlockAllClassesChange,
   extraLevels = [],
   courseOverrides = {},
 }) => {
@@ -382,6 +386,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <SettingsScreen
           stats={stats}
           onStatsUpdate={onStatsUpdate}
+          devUnlockAllClasses={devUnlockAllClasses}
+          onDevUnlockAllClassesChange={onDevUnlockAllClassesChange}
           onClose={() => setShowSettings(false)}
         />
       </Modal>

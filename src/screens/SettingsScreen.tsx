@@ -40,12 +40,16 @@ interface SettingsScreenProps {
   stats: UserStats;
   onStatsUpdate: (stats: UserStats) => void;
   onClose: () => void;
+  devUnlockAllClasses?: boolean;
+  onDevUnlockAllClassesChange?: (enabled: boolean) => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   stats,
   onStatsUpdate,
   onClose,
+  devUnlockAllClasses = false,
+  onDevUnlockAllClassesChange,
 }) => {
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
@@ -269,6 +273,32 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </>
           ) : null}
         </View>
+
+        {__DEV__ ? (
+          <>
+            <Text style={styles.sectionLabel}>DEVELOPER</Text>
+            <View style={styles.section}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingLead}>
+                  <Ionicons name="construct-outline" size={19} color={THEME.colors.primaryGlow} />
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingTitle}>Unlock all classes</Text>
+                    <Text style={styles.settingSubtitle}>
+                      Open any lesson to preview it while developing
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={devUnlockAllClasses}
+                  onValueChange={onDevUnlockAllClassesChange}
+                  trackColor={{ false: '#26233B', true: THEME.colors.primary }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor="#26233B"
+                />
+              </View>
+            </View>
+          </>
+        ) : null}
 
         <Text style={styles.sectionLabel}>PROGRESS</Text>
         <View style={styles.section}>

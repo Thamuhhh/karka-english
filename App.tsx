@@ -121,6 +121,7 @@ function AppContent() {
   const [splashVisible, setSplashVisible] = useState(true);
   const [splashExiting, setSplashExiting] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('learn');
+  const [devUnlockAllClasses, setDevUnlockAllClasses] = useState(false);
   const [currentLesson, setCurrentLesson] = useState<SupernovaClass | null>(null);
   const [authTopColor, setAuthTopColor] = useState('#1D1436');
   const [courseTopColor, setCourseTopColor] = useState('#1E1438');
@@ -345,7 +346,7 @@ function AppContent() {
   const userRank = getUserLeaderboardRank(stats);
 
   const handleStartLesson = (lesson: SupernovaClass) => {
-    if (!stats.completedClasses.includes(lesson.id)) {
+    if (!(__DEV__ && devUnlockAllClasses) && !stats.completedClasses.includes(lesson.id)) {
       const nextClass = [
         ...SUPERNOVA_LEVELS.map((level) => courseOverrides[level.levelNumber] || level),
         ...publishedCourses,
@@ -428,6 +429,7 @@ function AppContent() {
               <CurriculumScreen
                 onStartLesson={handleStartLesson}
                 stats={stats}
+                devUnlockAllClasses={__DEV__ && devUnlockAllClasses}
                 userRank={userRank}
                 onOpenLeague={() => setActiveTab('league')}
                 onTopColorChange={setCourseTopColor}
@@ -467,6 +469,8 @@ function AppContent() {
             >
               <ProfileScreen
                 stats={stats}
+                devUnlockAllClasses={__DEV__ && devUnlockAllClasses}
+                onDevUnlockAllClassesChange={setDevUnlockAllClasses}
                 extraLevels={publishedCourses}
                 courseOverrides={courseOverrides}
                 authUser={authUser}
