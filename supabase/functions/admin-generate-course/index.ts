@@ -48,7 +48,9 @@ Deno.serve(async (request) => {
     const nextUnitNumber = 5 + publishedCourseCount;
     const levelName = `Unit ${nextUnitNumber}: ${unitTitle}`;
 
-    const prompt = `Create one complete Elvate English-learning unit for Tamil-speaking learners. Return only valid JSON matching the exact shape described. Course topic: ${topic}. Unit name: ${levelName}. CEFR: ${cefrTag}. Create 5 progressive classes. Each class must have id, levelNumber, classNumber, title, subtitle, duration, grammarTopic, xpReward (25-50), rule {heading, englishExplanation, tamilMentalModel, doAndDont {wrong,right,whyTamil}}, jumble {tamilSentence,scrambledWords,correctWords,hint}, translation {tamilPrompt,expectedEnglish,options (4 strings),correctOptionIndex (0-3),explanation,tamilExplanation}, speakingChallenge {prompt,missNovaQuestion,suggestedAnswers (3 strings),sampleNativeResponse}. Keep Tamil naturally written in Tamil script. Jumble scrambledWords must be a real permutation of correctWords; correctWords must form a natural English sentence. Translation correctOptionIndex must point to a correct option. No markdown. JSON top level: {levelNumber:1, levelName:string, cefrTag:string, badge:string, accentColor:"#7F43FE", description:string, classes:[...]}. Use ids exactly course-generated stable IDs prefixed "ai-".`;
+    const prompt = `Create one complete Elvate English-learning unit for Tamil-speaking learners. Return only valid JSON matching the exact shape described. Course topic: ${topic}. Unit name: ${levelName}. CEFR: ${cefrTag}. Create 5 progressive classes. Each class must have id, levelNumber, classNumber, title, subtitle, duration, grammarTopic, xpReward (25-50), rule {heading, englishExplanation, tamilMentalModel, doAndDont {wrong,right,whyTamil}}, jumble {tamilSentence,scrambledWords,correctWords,hint}, translation {tamilPrompt,expectedEnglish,options (4 strings),correctOptionIndex (0-3),explanation,tamilExplanation}, speakingChallenge {prompt,missNovaQuestion,suggestedAnswers (3 strings),sampleNativeResponse,tamilCoaching}.
+
+Keep each class concise enough to finish in about 5 minutes. The English rule/explanation must be at most 60 words and teach one main idea. Tamil teaching is important: write in simple, friendly spoken Tamil in Tamil script, like explaining to a friend. Code-switch familiar English grammar words naturally (do, did, tense, helper verb, countable, etc.) instead of using rare or formal Tamil equivalents. Avoid literary, classical, stiff textbook Tamil and long sentences. tamilMentalModel: 3-4 short sentences, about 35-55 Tamil words. doAndDont.whyTamil: at most 2 short sentences and 30 words. translation.tamilExplanation: at most 2 short sentences and 30 words. jumble.hint and speakingChallenge.tamilCoaching: one short, practical sentence each. Use Tamil script for Tamil; keep English examples and grammar terms in English. Explain why the pattern changes with one clear contrast, without restating the same rule in every field. Jumble scrambledWords must be a real permutation of correctWords; correctWords must form a natural English sentence. Translation correctOptionIndex must point to exactly one correct option. No markdown. JSON top level: {levelNumber:1, levelName:string, cefrTag:string, badge:string, accentColor:"#7F43FE", description:string, classes:[...]}. Use ids exactly course-generated stable IDs prefixed "ai-".`;
 
     const textSchema = { type: 'string' };
     const textArraySchema = { type: 'array', items: textSchema };
@@ -86,11 +88,11 @@ Deno.serve(async (request) => {
         },
         speakingChallenge: {
           type: 'object', additionalProperties: false,
-          required: ['prompt', 'missNovaQuestion', 'suggestedAnswers', 'sampleNativeResponse'],
+          required: ['prompt', 'missNovaQuestion', 'suggestedAnswers', 'sampleNativeResponse', 'tamilCoaching'],
           properties: {
             prompt: textSchema, missNovaQuestion: textSchema,
             suggestedAnswers: { type: 'array', items: textSchema, minItems: 3, maxItems: 3 },
-            sampleNativeResponse: textSchema,
+            sampleNativeResponse: textSchema, tamilCoaching: textSchema,
           },
         },
       },

@@ -1,5 +1,7 @@
 # Unit 5: Everyday Grammar That Connects
 
+> **Updated content:** The shorter, conversational Tamil version is now in [`website/unit-5-starter-course.js`](website/unit-5-starter-course.js). Use the Unit 5 **Replace & publish** action in Admin to put that version in the app. The manual draft below is the earlier, longer version.
+
 **Target:** A2 consolidation; bridge toward B1  
 **Unit outcome:** Learners can ask clear questions, describe routines and current situations, talk about past experience with the right time reference, and give simple details about quantity, place, and time.
 
