@@ -10,7 +10,7 @@
     <script src="./admin-config.js"></script>
     <script src="./builtin-courses.js"></script>
     <script src="./unit-5-starter-course.js?v=class-images-1"></script>
-    <script src="./admin.js?v=class-images-1" defer></script>
+    <script src="./admin.js?v=js-course-import-1" defer></script>
   </head>
   <body>
     <main id="login-screen" class="login-screen">
@@ -97,7 +97,7 @@
         <section id="courses" class="learners-panel courses-panel">
           <div id="course-studio-view">
           <div class="panel-heading"><div><h2>Course studio</h2><p>Generate a five-class unit with AI, review it, then publish it to the app.</p></div></div>
-          <div class="course-mode-actions"><button id="open-manual-course" class="secondary-button" type="button">Create manually</button></div>
+          <div class="course-mode-actions"><button id="import-course-js" class="secondary-button" type="button">Import course .js</button><input id="course-js-file" type="file" accept=".js,text/javascript,application/javascript" hidden /><button id="open-manual-course" class="secondary-button" type="button">Create manually</button></div>
           <form id="course-form" class="course-form">
             <label>Unit title<input name="levelName" required maxlength="100" placeholder="Leadership & Persuasive Communication" /></label>
             <label>Topic<input name="topic" required maxlength="180" placeholder="Introducing yourself at work" /></label>

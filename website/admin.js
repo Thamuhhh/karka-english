@@ -830,6 +830,10 @@
 
   document.querySelector('#refresh-button').addEventListener('click', loadDashboard);
   renderManualClassFields();
+  document.querySelector('#import-course-js').addEventListener('click', () => {
+    document.querySelector('#course-js-file').click();
+  });
+  document.querySelector('#course-js-file').addEventListener('change', importCourseJavaScript);
   document.querySelector('#open-manual-course').addEventListener('click', () => {
     editingCourse = null;
     editingCourseStatus = 'draft';
@@ -894,6 +898,79 @@
     currentOffset += pageSize;
     try { await loadLearners(); } catch (error) { showMessage(dashboardError, error.message); }
   });
+
+  async function importCourseJavaScript(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const message = document.querySelector('#course-message');
+    if (!file.name.toLowerCase().endsWith('.js') || file.size > 2 * 1024 * 1024) {
+      showMessage(message, 'Choose a JavaScript course file smaller than 2 MB.');
+      return;
+    }
+    showMessage(message, 'Reading course data from the JavaScript file…', false);
+    try {
+      const courses = await extractCoursesFromJavaScript(await file.text());
+      const course = courses.find((item) => Array.isArray(item?.classes) && item.classes.length) || courses[0];
+      if (!course || !Array.isArray(course.classes) || !course.classes.length) {
+        throw new Error('This file does not contain an Elvate course with classes.');
+      }
+      const imported = JSON.parse(JSON.stringify(course));
+      delete imported.id;
+      delete imported.starterCourseKey;
+      imported.classes = imported.classes.map((lesson) => {
+        const copy = { ...lesson };
+        delete copy.id;
+        return copy;
+      });
+      editingCourse = imported;
+      editingCourseStatus = 'draft';
+      const form = document.querySelector('#manual-course-form');
+      form.reset();
+      document.querySelector('#course-studio-view').hidden = true;
+      document.querySelector('#manual-course-page').hidden = false;
+      document.querySelector('#manual-course-page h2').textContent = 'Review imported course';
+      renderManualClassFields(imported.classes.length, imported);
+      form.elements.unitTitle.value = String(imported.levelName || 'Imported course').replace(/^Unit\s+\d+\s*:\s*/i, '');
+      form.elements.cefrTag.value = imported.cefrTag || 'CEFR A1';
+      form.elements.description.value = imported.description || '';
+      showMessage(document.querySelector('#manual-course-message'), `Imported ${imported.classes.length} classes. Review the content, then save as draft.`, false);
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      showMessage(message, error.message || 'Could not read course data from that JavaScript file.');
+    }
+  }
+
+  function extractCoursesFromJavaScript(source) {
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.hidden = true;
+      iframe.setAttribute('sandbox', 'allow-scripts');
+      const payload = `${source}\n;try { parent.postMessage({ type: 'elvate-course-import', courses: window.ELVATE_ADMIN_STARTER_COURSES || window.ELVATE_BUILTIN_COURSES || [] }, '*'); } catch (_) { parent.postMessage({ type: 'elvate-course-import-error' }, '*'); }`;
+      const blobUrl = URL.createObjectURL(new Blob([payload], { type: 'text/javascript' }));
+      let settled = false;
+      const finish = (error, courses) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        window.removeEventListener('message', onMessage);
+        URL.revokeObjectURL(blobUrl);
+        iframe.remove();
+        if (error) reject(error);
+        else resolve(Array.isArray(courses) ? courses : []);
+      };
+      const onMessage = (message) => {
+        if (message.source !== iframe.contentWindow) return;
+        if (message.data?.type === 'elvate-course-import') finish(null, message.data.courses);
+        else if (message.data?.type === 'elvate-course-import-error') finish(new Error('Could not extract the course object from this file.'));
+      };
+      const timeout = setTimeout(() => finish(new Error('The JavaScript file did not expose course data in the expected Elvate format.')), 4000);
+      window.addEventListener('message', onMessage);
+      iframe.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src blob:; connect-src 'none'; img-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; style-src 'none'"><script src="${blobUrl}"><\/script>`;
+      document.body.append(iframe);
+    });
+  }
 
   if (session?.user?.app_metadata?.role === 'admin' && session.accessToken) {
     showDashboard(true);
