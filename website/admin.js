@@ -948,14 +948,17 @@
       iframe.hidden = true;
       iframe.setAttribute('sandbox', 'allow-scripts');
       const payload = `${source}\n;try { parent.postMessage({ type: 'elvate-course-import', courses: window.ELVATE_ADMIN_STARTER_COURSES || window.ELVATE_BUILTIN_COURSES || [] }, '*'); } catch (_) { parent.postMessage({ type: 'elvate-course-import-error' }, '*'); }`;
-      const blobUrl = URL.createObjectURL(new Blob([payload], { type: 'text/javascript' }));
+      if (/<\/script/i.test(source)) {
+        reject(new Error('This JavaScript file contains a script closing tag and cannot be imported safely.'));
+        return;
+      }
+      const nonce = crypto.randomUUID().replace(/-/g, '');
       let settled = false;
       const finish = (error, courses) => {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
         window.removeEventListener('message', onMessage);
-        URL.revokeObjectURL(blobUrl);
         iframe.remove();
         if (error) reject(error);
         else resolve(Array.isArray(courses) ? courses : []);
@@ -967,7 +970,7 @@
       };
       const timeout = setTimeout(() => finish(new Error('The JavaScript file did not expose course data in the expected Elvate format.')), 4000);
       window.addEventListener('message', onMessage);
-      iframe.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src blob:; connect-src 'none'; img-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; style-src 'none'"><script src="${blobUrl}"><\/script>`;
+      iframe.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'none'; img-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; style-src 'none'"><script nonce="${nonce}">${payload}</script>`;
       document.body.append(iframe);
     });
   }
