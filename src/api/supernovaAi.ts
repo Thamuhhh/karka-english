@@ -604,7 +604,7 @@ Recent Conversation:
 ${recentLines || '(First turn)'}
 Learner just said: "${userMessage}"
 
-Keep explanation and tamilExplanation concise (<=12 words each), reply to 1-2 short natural sentences + one question.
+This is a relaxed, spoken roleplay, not a lesson or an interview about grammar. React to the specific detail the learner shared. Use contractions and everyday phrasing. Avoid generic praise, repeated sentence openers, and repeating the learner's words. Ask a relevant follow-up only when it would naturally keep this conversation going; sometimes respond without a question. Keep the spoken reply brief (usually one sentence, at most about 25 words). Never put corrections or grammar explanations in the spoken reply; put them only in the feedback fields. Keep each English and Tamil explanation to one short sentence. Treat the conversation history as the source of truth and don't ask for information the learner already gave.
 Respond ONLY with valid JSON:
 {
   "reply": "string",
@@ -683,7 +683,8 @@ export async function sendChatMessage(
       `You are an English coach in roleplay:
 Role: ${scenario.persona}
 Scenario: ${scenario.description}
-Style: ${scenario.systemPrompt}`,
+Roleplay style: ${scenario.systemPrompt}
+Speak like a real person in this role, not like a tutor grading every line.`,
       history,
       userMessage
     );
@@ -693,7 +694,8 @@ Style: ${scenario.systemPrompt}`,
   }
 
   const feedback = localGrammarDiagnosis(userMessage);
-  const reply = generateLocalScenarioReply(userMessage, scenario, history.length);
+  const userTurnCount = history.filter((message) => message.role === 'user').length;
+  const reply = generateLocalScenarioReply(userMessage, scenario, userTurnCount);
   return { reply, feedback };
 }
 
@@ -703,65 +705,65 @@ export function generateLocalScenarioReply(
   turnCount = 1
 ): string {
   const lower = userMsg.toLowerCase();
+  const pickByTurn = (options: string[]) => options[Math.max(0, turnCount - 1) % options.length];
 
   if (scenario.id === 'interview-tech') {
     if (lower.includes('project') || lower.includes('built') || lower.includes('developed')) {
-      return 'That architecture sounds solid! What was the toughest bottleneck you hit while shipping it, and how did you measure the fix?';
+      return pickByTurn([
+        'What part of that project did you own?',
+        'How did you decide what to build first?',
+      ]);
     }
     if (lower.includes('challenge') || lower.includes('problem') || lower.includes('bug') || lower.includes('latency')) {
-      return 'Great debugging mindset. How do you usually collaborate with QA or product managers when trade-offs are needed before a release?';
+      return 'How did you narrow down what was causing it?';
     }
     if (lower.includes('developer') || lower.includes('engineer') || lower.includes('react') || lower.includes('api')) {
-      return 'Nice background! Walk me through one technical decision you are proud of making recently.';
+      return 'What kind of work have you enjoyed most recently?';
     }
-    const fallbacks = [
-      'Good point. Can you give a quick concrete example from your past team experience?',
-      'That makes sense. How do you keep learning new tools alongside daily sprint work?',
-    ];
-    return fallbacks[turnCount % fallbacks.length];
+    return pickByTurn(['What happened next?', 'What did you learn from that experience?']);
   }
 
   if (scenario.id === 'cafe-order') {
     if (lower.includes('coffee') || lower.includes('latte') || lower.includes('cappuccino') || lower.includes('tea')) {
-      return 'Brilliant choice! Would you like regular or large, and any preference on oat milk, almond milk, or whole milk?';
+      return 'Sure. What size would you like?';
     }
     if (lower.includes('croissant') || lower.includes('pastry') || lower.includes('muffin') || lower.includes('milk')) {
-      return 'Sorted! Should I warm that croissant up for you, and will that be for here or takeaway?';
+      return 'Would you like me to warm that up?';
     }
-    return "That'll be £4.50 altogether. Would you like to pay by contactless card or cash today?";
+    return pickByTurn(["That'll be £4.50. Is that for here or to take away?", 'You can tap your card whenever you are ready.']);
   }
 
   if (scenario.id === 'airport-travel') {
     if (lower.includes('vacation') || lower.includes('tourism') || lower.includes('visit') || lower.includes('holiday')) {
-      return 'Understood. How many days will you be staying in the country, and do you have your hotel confirmation handy?';
+      return 'How long are you staying?';
     }
     if (lower.includes('work') || lower.includes('conference') || lower.includes('meeting') || lower.includes('business')) {
-      return 'Got it—business travel. Which company are you visiting, and when is your return flight scheduled?';
+      return 'Which company are you visiting?';
     }
-    return 'Thank you. Everything matches your visa details—please collect your boarding pass and enjoy your stay!';
+    return pickByTurn(['Do you have a return ticket?', 'All right. Enjoy your stay.']);
   }
 
   if (scenario.id === 'workplace-standup') {
     if (lower.includes('blocker') || lower.includes('stuck') || lower.includes('waiting') || lower.includes('delay')) {
-      return "Thanks for flagging that early! Let's sync for 10 minutes right after standup so we unblock your PR before noon.";
+      return 'What would help you move it forward?';
     }
     if (lower.includes('yesterday') || lower.includes('today') || lower.includes('testing') || lower.includes('completed')) {
-      return 'Awesome progress! Anything you need from backend or design today to stay on track for Friday demo?';
+      return 'Is there anything you need from the team today?';
     }
-    return 'Clear update! Who would you like to hand off to next on the board?';
+    return pickByTurn(['Got it. Anything else for today?', 'Thanks for the update.']);
   }
 
   if (scenario.id === 'casual-hangout') {
     if (lower.includes('pizza') || lower.includes('food') || lower.includes('dinner') || lower.includes('hungry')) {
-      return "Totally down for that! Should we grab extra garlic knots too, or put on a movie while we wait for delivery?";
+      return pickByTurn(['That sounds good. What do you feel like ordering?', 'Nice. Have you tried that place before?']);
     }
     if (lower.includes('busy') || lower.includes('tired') || lower.includes('good') || lower.includes('productive')) {
-      return 'Sounds like quite a day! Want to unwind a bit and grab some iced coffee later this evening?';
+      return pickByTurn(['What was the best part of your day?', 'Hope you get a chance to relax. What do you usually do to unwind?']);
     }
-    return "Nice! Tell me a bit more about that—what has been keeping you busy lately?";
+    return pickByTurn(['Oh, I see. What do you enjoy about it?', 'Tell me more about that.']);
   }
 
-  return "Got it! That sounds well explained. What would you like to practice saying next?";
+  return pickByTurn(['I see. What happened next?', 'Tell me a little more.']);
 }
 
 const CONTRACTION_MAP: Array<[RegExp, string]> = [
@@ -917,14 +919,15 @@ export async function analyzeAndReplySpokenAudio(
 
   const roleContext =
     context.mode === 'scenario'
-      ? `Persona: ${context.scenario.persona} | Scenario: ${context.scenario.description}`
+      ? `Persona: ${context.scenario.persona}\nScenario: ${context.scenario.description}\nRoleplay style: ${context.scenario.systemPrompt}`
       : `Lesson: ${context.lesson.title} | Goal: ${context.lesson.speakingChallenge.prompt} | Target: ${context.lesson.grammarTopic}`;
 
-  const prompt = `Listen to this Tamil learner's spoken English. ${roleContext}
+  const prompt = `Listen to this Tamil learner's spoken English and continue the conversation as the roleplay character.\n${roleContext}
 Recent:
 ${recentLines || '(First turn)'}
 
-Return JSON only (<=12 words for tips/explanations, 1-2 short spoken sentences + 1 question for reply):
+This is relaxed conversation, not an oral exam. Respond to what the learner means and the details they gave. Speak in natural everyday English with contractions. Avoid generic praise, repeated sentence starters, and repeating the learner's words. Keep the spoken reply brief (usually one sentence, at most about 25 words). Ask one relevant follow-up only if it feels natural; sometimes just respond and let the learner take the next turn. Do not put corrections in the spoken reply. Never ask again for information already given. Keep grammar and Tamil coaching notes to one short sentence each.
+Return JSON only:
 {
   "transcript": "exact spoken words or \"\" if silent",
   "fluencyScore": number,
@@ -996,10 +999,17 @@ Return JSON only (<=12 words for tips/explanations, 1-2 short spoken sentences +
       fluencyScore: Math.max(40, Math.min(100, Number(parsed.fluencyScore) || 82)),
     };
 
+    const fallbackReply = context.mode === 'scenario'
+      ? generateLocalScenarioReply(
+          transcript,
+          context.scenario,
+          history.filter((message) => message.role === 'user').length + 1
+        )
+      : 'I see. What happened next?';
     const reply =
       typeof parsed.reply === 'string' && parsed.reply.trim()
         ? parsed.reply.trim()
-        : 'Great job! Tell me a bit more about that.';
+        : fallbackReply;
 
     return { ok: true, transcript, reply, feedback };
   } catch (e) {
@@ -1033,17 +1043,22 @@ function extractInlineAudio(data: any): { base64: string; mimeType: string } | n
  */
 export async function synthesizeGeminiSpeech(
   text: string,
-  _mode: 'tamil-coach' | 'english-native',
-  _accent: 'en-US' | 'en-GB' | 'en-AU' = 'en-US'
+  mode: 'tamil-coach' | 'english-native',
+  accent: 'en-US' | 'en-GB' | 'en-AU' = 'en-US'
 ): Promise<{ base64: string; mimeType: string } | null> {
   const clean = text.trim();
   const activeKey = resolveGeminiKey();
   if (!clean || !activeKey) return null;
 
+  const accentName = accent === 'en-GB' ? 'British English' : accent === 'en-AU' ? 'Australian English' : 'American English';
+  const speechDirection = mode === 'english-native'
+    ? `Say the following in ${accentName} as a friendly conversation partner. Sound warm, relaxed, and natural, with human pacing and light emphasis. Do not sound like a narrator or announcer. Speak only the words after "Text to say:".\nText to say: ${clean}`
+    : `Say the following in clear, friendly spoken Tamil, like a patient teacher explaining something to one learner. Use a natural pace and warm tone. Speak only the words after "Text to say:".\nText to say: ${clean}`;
+
   const json = await callGeminiWithTimeout(
     activeKey,
     {
-      contents: [{ role: 'user', parts: [{ text: clean }] }],
+      contents: [{ role: 'user', parts: [{ text: speechDirection }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: {

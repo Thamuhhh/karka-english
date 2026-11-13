@@ -77,6 +77,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
   const [isSendingText, setIsSendingText] = useState(false);
   const [animatedBotMsgId, setAnimatedBotMsgId] = useState<string | null>(null);
   const [expandedMsgFeedbackId, setExpandedMsgFeedbackId] = useState<string | null>(null);
+  const [showCoachFeedback, setShowCoachFeedback] = useState(false);
   const [userTranscript, setUserTranscript] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -178,7 +179,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     setIsAiSpeaking(true);
     speakText(text, () => {
       setIsAiSpeaking(false);
-    });
+    }, undefined, true);
   };
 
   const handleSelectScenario = (idx: number) => {
@@ -193,6 +194,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     setShowScenarios(false);
     setAnimatedBotMsgId(null);
     setExpandedMsgFeedbackId(null);
+    setShowCoachFeedback(false);
     setLastFeedback(null);
     const introMsg: ChatMessage = {
       id: `init-${nextScenario.id}-${Date.now()}`,
@@ -226,6 +228,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
     try {
       const { reply, feedback } = await sendChatMessage(newHistory, text, activeScenario);
       setLastFeedback(feedback);
+      setShowCoachFeedback(false);
 
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
@@ -322,6 +325,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
 
       setAnimatedBotMsgId(botMsg.id);
       setLastFeedback(result.feedback);
+      setShowCoachFeedback(false);
       setMessages((prev) => [...prev, userMsg, botMsg]);
       speakAiMessage(result.reply);
       await addXp(15);
@@ -538,10 +542,6 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
             const isUser = msg.role === 'user';
             const msgFeedback = isUser ? msg.feedback : undefined;
             const isExpanded = expandedMsgFeedbackId === msg.id;
-            const naturalPhrase = msgFeedback ? getNaturalPhrase(msgFeedback) : '';
-            const hasDiff =
-              naturalPhrase.length > 0 &&
-              naturalPhrase.toLowerCase() !== msg.content.trim().toLowerCase();
 
             return (
               <AnimatedChatBubble key={msg.id} style={styles.msgGroup}>
@@ -591,7 +591,7 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
                         ]}
                       />
                       <Text style={styles.inlineImproveLabel} numberOfLines={1}>
-                        {hasDiff ? `Natural: "${naturalPhrase}"` : `Natural phrasing · ${msgFeedback.fluencyScore}/100`}
+                        {isExpanded ? 'Hide English tip' : 'Show English tip'}
                       </Text>
                       <Ionicons
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -741,7 +741,25 @@ export const LiveVoiceCallScreen: React.FC<LiveVoiceCallScreenProps> = ({ onStat
           </View>
 
           {/* Left-Accented Subtle Natural Improvement Strip */}
-          {lastFeedback && renderNaturalImprovementStrip(lastFeedback)}
+          {lastFeedback ? (
+            <View style={styles.feedbackToggleWrap}>
+              <TouchableOpacity
+                style={styles.feedbackToggle}
+                onPress={() => setShowCoachFeedback((visible) => !visible)}
+                activeOpacity={0.78}
+              >
+                <Ionicons
+                  name={showCoachFeedback ? 'chevron-up' : 'bulb-outline'}
+                  size={14}
+                  color={THEME.colors.primaryGlow}
+                />
+                <Text style={styles.feedbackToggleText}>
+                  {showCoachFeedback ? 'Hide English tip' : 'Show English tip'}
+                </Text>
+              </TouchableOpacity>
+              {showCoachFeedback ? renderNaturalImprovementStrip(lastFeedback) : null}
+            </View>
+          ) : null}
         </ScrollView>
       )}
 
@@ -1106,6 +1124,23 @@ const styles = StyleSheet.create({
   },
 
   /* LEFT-ACCENTED NATURAL IMPROVEMENT */
+  feedbackToggleWrap: {
+    width: '100%',
+    marginTop: 16,
+  },
+  feedbackToggle: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingRight: 10,
+  },
+  feedbackToggleText: {
+    fontFamily: THEME.fonts.semiBold,
+    fontSize: 11,
+    color: THEME.colors.primaryGlow,
+  },
   coachStrip: {
     marginTop: 18,
     width: '100%',
