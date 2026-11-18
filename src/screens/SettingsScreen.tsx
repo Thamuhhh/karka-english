@@ -23,12 +23,6 @@ import {
   updateSoundSetting,
 } from '../services/storageService';
 import { UserStats } from '../types';
-import {
-  DailyPracticeReminderSettings,
-  loadDailyPracticeReminderSettings,
-  sendPracticeReminderTest,
-  updateDailyPracticeReminder,
-} from '../services/notificationService';
 
 const ACCENT_OPTIONS: Array<{ id: EnglishAccent; shortLabel: string }> = [
   { id: 'en-US', shortLabel: 'US' },
@@ -53,12 +47,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
-  const [practiceReminder, setPracticeReminder] = useState<DailyPracticeReminderSettings>({ enabled: false });
-  const [reminderBusy, setReminderBusy] = useState(false);
 
   useEffect(() => {
     loadPreferredAccent().then(setSelectedAccent);
-    loadDailyPracticeReminderSettings().then(setPracticeReminder);
     setIsSlowSpeech(getSpeechRate() < 0.9);
   }, []);
 
@@ -79,37 +70,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const handleDailyGoalChange = async (goal: number) => {
     onStatsUpdate(await updateDailyGoal(goal));
   };
-
-  const handleReminderChange = async (enabled: boolean) => {
-    if (Platform.OS === 'web' || reminderBusy) return;
-    setReminderBusy(true);
-    try {
-      const scheduled = await updateDailyPracticeReminder(enabled);
-      if (!scheduled) {
-        Alert.alert('Notifications are off', 'Allow notifications for Elvate in your phone settings, then turn the daily reminder on again.');
-        return;
-      }
-      setPracticeReminder({ enabled });
-    } catch (error) {
-      Alert.alert('Could not update reminder', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setReminderBusy(false);
-    }
-  };
-
-  const handleTestReminder = async () => {
-    try {
-      const scheduled = await sendPracticeReminderTest();
-      if (!scheduled) {
-        Alert.alert('Notifications are off', 'Allow notifications for Elvate in your phone settings first.');
-        return;
-      }
-      Alert.alert('Test reminder scheduled', 'You should receive it in a few seconds.');
-    } catch {
-      Alert.alert('Could not send test reminder', 'Please try again in a moment.');
-    }
-  };
-
 
   const handleResetProgress = () => {
     Alert.alert(
@@ -241,37 +201,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <View style={styles.settingLead}>
               <Ionicons name="notifications-outline" size={19} color={THEME.colors.primaryGlow} />
               <View style={styles.settingText}>
-                <Text style={styles.settingTitle}>Daily practice reminder</Text>
+                <Text style={styles.settingTitle}>Nila AI speaking reminder</Text>
                 <Text style={styles.settingSubtitle}>
                   {Platform.OS === 'web'
-                    ? 'Available in the Android and iOS app'
-                    : practiceReminder.enabled
-                      ? 'Every day at 8 PM · automatic'
-                      : 'A gentle nudge to keep your streak alive'}
+                    ? 'Daily reminders are available in the Android and iOS app'
+                    : 'One personalized AI reminder daily at 8 PM local time'}
                 </Text>
               </View>
             </View>
-            <Switch
-              value={practiceReminder.enabled}
-              disabled={Platform.OS === 'web' || reminderBusy}
-              onValueChange={(enabled) => handleReminderChange(enabled)}
-              trackColor={{ false: '#26233B', true: THEME.colors.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor="#26233B"
-            />
           </View>
-          {practiceReminder.enabled && Platform.OS !== 'web' ? (
-            <>
-              <View style={styles.divider} />
-              <TouchableOpacity style={styles.linkRow} onPress={handleTestReminder} activeOpacity={0.78}>
-                <View style={styles.settingLead}>
-                  <Ionicons name="paper-plane-outline" size={18} color={THEME.colors.primaryGlow} />
-                  <Text style={styles.settingTitle}>Send a test notification</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={17} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </>
-          ) : null}
         </View>
 
         {__DEV__ ? (

@@ -54,7 +54,12 @@
     },
     "experiments": {
       "baseUrl": "/karka-english"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d3118528-01ad-4833-b519-df4f99b1e8da"
+      }
+    },
+    "owner": "elvate-tamil"
   }
 }
-

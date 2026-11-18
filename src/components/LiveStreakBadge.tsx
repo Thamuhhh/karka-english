@@ -1,7 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 import { THEME } from '../constants/theme';
+
+interface LiveFlameProps {
+  /** Flame height in px; width scales proportionally (0.75x). Defaults to compact header size (24). */
+  size?: number;
+  /** Renders a warm pulsing radial fire aura behind the flame (ideal for hero screens). */
+  showGlow?: boolean;
+}
 
 interface LiveStreakBadgeProps {
   streakDays: number;
@@ -10,13 +17,26 @@ interface LiveStreakBadgeProps {
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 /**
- * Compact header streak badge with a multi-layered live flickering SVG flame.
+ * Reusable multi-layered live flickering SVG flame with rising glowing ember sparks.
+ * Scales cleanly from the compact header badge to the full Streak screen hero.
  */
-export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) => {
+export const LiveFlame: React.FC<LiveFlameProps> = ({ size = 24, showGlow = false }) => {
+  const rawId = useId();
+  const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const outerGradId = `novaFireOuter_${safeId}`;
+  const coreGradId = `novaFireCore_${safeId}`;
+  const auraGradId = `novaFireAura_${safeId}`;
+
   const outerCycle = useRef(new Animated.Value(0)).current;
   const coreCycle = useRef(new Animated.Value(0)).current;
   const sparkA = useRef(new Animated.Value(0)).current;
   const sparkB = useRef(new Animated.Value(0)).current;
+  const sparkC = useRef(new Animated.Value(0)).current;
+
+  const height = size;
+  const width = Math.round(size * 0.75);
+  const scaleFactor = size / 24;
+  const glowSize = Math.round(size * 1.85);
 
   useEffect(() => {
     const outerAnim = Animated.loop(
@@ -105,18 +125,40 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
       ])
     );
 
+    const sparkCAnim = Animated.loop(
+      Animated.sequence([
+        Animated.delay(420),
+        Animated.timing(sparkC, {
+          toValue: 1,
+          duration: 1450,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(sparkC, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.delay(240),
+      ])
+    );
+
     outerAnim.start();
     coreAnim.start();
     sparkAAnim.start();
     sparkBAnim.start();
+    if (showGlow) {
+      sparkCAnim.start();
+    }
 
     return () => {
       outerAnim.stop();
       coreAnim.stop();
       sparkAAnim.stop();
       sparkBAnim.stop();
+      sparkCAnim.stop();
     };
-  }, [outerCycle, coreCycle, sparkA, sparkB]);
+  }, [outerCycle, coreCycle, sparkA, sparkB, sparkC, showGlow]);
 
   const outerScaleY = outerCycle.interpolate({
     inputRange: [0, 1, 2, 3],
@@ -132,7 +174,16 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
   });
   const outerShiftY = outerCycle.interpolate({
     inputRange: [0, 1, 2, 3],
-    outputRange: [0, -1.2, 0.4, -0.7],
+    outputRange: [0, -1.2 * scaleFactor, 0.4 * scaleFactor, -0.7 * scaleFactor],
+  });
+
+  const glowScale = outerCycle.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [0.94, 1.09, 0.96, 1.05],
+  });
+  const glowOpacity = outerCycle.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [0.76, 1, 0.72, 0.92],
   });
 
   const coreScaleY = coreCycle.interpolate({
@@ -150,11 +201,11 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
 
   const sparkATranslateY = sparkA.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, -9],
+    outputRange: [1 * scaleFactor, -9 * scaleFactor],
   });
   const sparkATranslateX = sparkA.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0, 2.5, 1],
+    outputRange: [0, 2.5 * scaleFactor, 1 * scaleFactor],
   });
   const sparkAOpacity = sparkA.interpolate({
     inputRange: [0, 0.25, 0.75, 1],
@@ -163,107 +214,174 @@ export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) 
 
   const sparkBTranslateY = sparkB.interpolate({
     inputRange: [0, 1],
-    outputRange: [2, -8],
+    outputRange: [2 * scaleFactor, -8 * scaleFactor],
   });
   const sparkBTranslateX = sparkB.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0, -2.5, -1],
+    outputRange: [0, -2.5 * scaleFactor, -1 * scaleFactor],
   });
   const sparkBOpacity = sparkB.interpolate({
     inputRange: [0, 0.25, 0.75, 1],
     outputRange: [0, 0.9, 0.6, 0],
   });
 
+  const sparkCTranslateY = sparkC.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -10.5 * scaleFactor],
+  });
+  const sparkCTranslateX = sparkC.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, -1.2 * scaleFactor, 1.8 * scaleFactor],
+  });
+  const sparkCOpacity = sparkC.interpolate({
+    inputRange: [0, 0.2, 0.72, 1],
+    outputRange: [0, 0.85, 0.55, 0],
+  });
+
+  return (
+    <View style={[styles.flameStage, { width, height }]}>
+      {showGlow && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.ambientGlowWrap,
+            {
+              width: glowSize,
+              height: glowSize,
+              opacity: glowOpacity,
+              transform: [{ scale: glowScale }],
+            },
+          ]}
+        >
+          <Svg width="100%" height="100%" viewBox="0 0 200 200">
+            <Defs>
+              <RadialGradient id={auraGradId} cx="50%" cy="54%" r="50%">
+                <Stop offset="0%" stopColor="#FDE047" stopOpacity="0.46" />
+                <Stop offset="34%" stopColor="#F97316" stopOpacity="0.32" />
+                <Stop offset="66%" stopColor="#EA580C" stopOpacity="0.12" />
+                <Stop offset="100%" stopColor="#0E0D14" stopOpacity="0" />
+              </RadialGradient>
+            </Defs>
+            <Circle cx="100" cy="100" r="100" fill={`url(#${auraGradId})`} />
+          </Svg>
+        </Animated.View>
+      )}
+
+      {/* Rising Glowing Ember Sparks */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.sparkLayer,
+          {
+            opacity: sparkAOpacity,
+            transform: [{ translateY: sparkATranslateY }, { translateX: sparkATranslateX }],
+          },
+        ]}
+      >
+        <Svg width={width} height={height} viewBox="3.5 0 17 28">
+          <Circle cx="13.5" cy="6.5" r="1.35" fill="#FDE68A" />
+        </Svg>
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.sparkLayer,
+          {
+            opacity: sparkBOpacity,
+            transform: [{ translateY: sparkBTranslateY }, { translateX: sparkBTranslateX }],
+          },
+        ]}
+      >
+        <Svg width={width} height={height} viewBox="3.5 0 17 28">
+          <Circle cx="9.5" cy="7.5" r="1.15" fill="#FB923C" />
+        </Svg>
+      </Animated.View>
+
+      {showGlow && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.sparkLayer,
+            {
+              opacity: sparkCOpacity,
+              transform: [{ translateY: sparkCTranslateY }, { translateX: sparkCTranslateX }],
+            },
+          ]}
+        >
+          <Svg width={width} height={height} viewBox="3.5 0 17 28">
+            <Circle cx="11.8" cy="4.2" r="0.95" fill="#FEF08A" />
+          </Svg>
+        </Animated.View>
+      )}
+
+      {/* Outer Licking Flame Silhouette */}
+      <Animated.View
+        style={[
+          styles.flameLayer,
+          {
+            transform: [
+              { translateY: outerShiftY },
+              { rotate: outerRotate },
+              { scaleX: outerScaleX },
+              { scaleY: outerScaleY },
+            ],
+          },
+        ]}
+      >
+        <Svg width={width} height={height} viewBox="3.5 0 17 28">
+          <Defs>
+            <LinearGradient id={outerGradId} x1="0.5" y1="0" x2="0.5" y2="1">
+              <Stop offset="0" stopColor="#FBBF24" />
+              <Stop offset="0.45" stopColor="#F97316" />
+              <Stop offset="1" stopColor="#EA580C" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M12 2.2 C12.4 5.8 15.8 7.8 17.5 11.4 C19.1 14.7 19.2 18.8 17 21.7 C15.7 23.4 13.9 24.5 12 24.5 C9.4 24.5 7 23.1 5.6 20.6 C4.1 17.9 4.5 14.3 6.2 11.7 C7.1 10.3 8.1 9.4 8.5 7.7 C9.3 9.2 10.2 9.8 10.6 9.8 C10.7 6.8 11.3 4.2 12 2.2 Z"
+            fill={`url(#${outerGradId})`}
+          />
+        </Svg>
+      </Animated.View>
+
+      {/* Inner White-Gold Dancing Core */}
+      <Animated.View
+        style={[
+          styles.flameLayer,
+          {
+            transform: [
+              { rotate: coreRotate },
+              { scaleX: coreScaleX },
+              { scaleY: coreScaleY },
+            ],
+          },
+        ]}
+      >
+        <Svg width={width} height={height} viewBox="3.5 0 17 28">
+          <Defs>
+            <LinearGradient id={coreGradId} x1="0.5" y1="0" x2="0.5" y2="1">
+              <Stop offset="0" stopColor="#FEF9C3" />
+              <Stop offset="0.65" stopColor="#FDE047" />
+              <Stop offset="1" stopColor="#F59E0B" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M12.2 11.2 C13.5 13.6 15.4 15.5 15.4 18.4 C15.4 21 13.9 22.9 12 22.9 C10.1 22.9 8.6 21 8.6 18.4 C8.6 16.3 9.8 14.5 10.7 13.5 C11 14.3 11.5 14.6 11.8 14.5 C11.9 13.3 12 12.2 12.2 11.2 Z"
+            fill={`url(#${coreGradId})`}
+          />
+        </Svg>
+      </Animated.View>
+    </View>
+  );
+};
+
+/**
+ * Compact header streak badge with a multi-layered live flickering SVG flame.
+ */
+export const LiveStreakBadge: React.FC<LiveStreakBadgeProps> = ({ streakDays }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.flameStage}>
-        {/* Rising Glowing Ember Sparks */}
-        <Animated.View
-          style={[
-            styles.sparkLayer,
-            {
-              opacity: sparkAOpacity,
-              transform: [{ translateY: sparkATranslateY }, { translateX: sparkATranslateX }],
-            },
-          ]}
-        >
-          <Svg width={18} height={24} viewBox="3.5 0 17 28">
-            <Circle cx="13.5" cy="6.5" r="1.35" fill="#FDE68A" />
-          </Svg>
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.sparkLayer,
-            {
-              opacity: sparkBOpacity,
-              transform: [{ translateY: sparkBTranslateY }, { translateX: sparkBTranslateX }],
-            },
-          ]}
-        >
-          <Svg width={18} height={24} viewBox="3.5 0 17 28">
-            <Circle cx="9.5" cy="7.5" r="1.15" fill="#FB923C" />
-          </Svg>
-        </Animated.View>
-
-        {/* Outer Licking Flame Silhouette */}
-        <Animated.View
-          style={[
-            styles.flameLayer,
-            {
-              transform: [
-                { translateY: outerShiftY },
-                { rotate: outerRotate },
-                { scaleX: outerScaleX },
-                { scaleY: outerScaleY },
-              ],
-            },
-          ]}
-        >
-          <Svg width={18} height={24} viewBox="3.5 0 17 28">
-            <Defs>
-              <LinearGradient id="novaFireOuterGrad" x1="0.5" y1="0" x2="0.5" y2="1">
-                <Stop offset="0" stopColor="#FBBF24" />
-                <Stop offset="0.45" stopColor="#F97316" />
-                <Stop offset="1" stopColor="#EA580C" />
-              </LinearGradient>
-            </Defs>
-            <Path
-              d="M12 2.2 C12.4 5.8 15.8 7.8 17.5 11.4 C19.1 14.7 19.2 18.8 17 21.7 C15.7 23.4 13.9 24.5 12 24.5 C9.4 24.5 7 23.1 5.6 20.6 C4.1 17.9 4.5 14.3 6.2 11.7 C7.1 10.3 8.1 9.4 8.5 7.7 C9.3 9.2 10.2 9.8 10.6 9.8 C10.7 6.8 11.3 4.2 12 2.2 Z"
-              fill="url(#novaFireOuterGrad)"
-            />
-          </Svg>
-        </Animated.View>
-
-        {/* Inner White-Gold Dancing Core */}
-        <Animated.View
-          style={[
-            styles.flameLayer,
-            {
-              transform: [
-                { rotate: coreRotate },
-                { scaleX: coreScaleX },
-                { scaleY: coreScaleY },
-              ],
-            },
-          ]}
-        >
-          <Svg width={18} height={24} viewBox="3.5 0 17 28">
-            <Defs>
-              <LinearGradient id="novaFireCoreGrad" x1="0.5" y1="0" x2="0.5" y2="1">
-                <Stop offset="0" stopColor="#FEF9C3" />
-                <Stop offset="0.65" stopColor="#FDE047" />
-                <Stop offset="1" stopColor="#F59E0B" />
-              </LinearGradient>
-            </Defs>
-            <Path
-              d="M12.2 11.2 C13.5 13.6 15.4 15.5 15.4 18.4 C15.4 21 13.9 22.9 12 22.9 C10.1 22.9 8.6 21 8.6 18.4 C8.6 16.3 9.8 14.5 10.7 13.5 C11 14.3 11.5 14.6 11.8 14.5 C11.9 13.3 12 12.2 12.2 11.2 Z"
-              fill="url(#novaFireCoreGrad)"
-            />
-          </Svg>
-        </Animated.View>
-      </View>
-
+      <LiveFlame size={24} />
       <Text style={styles.countText}>{streakDays}</Text>
     </View>
   );
@@ -277,11 +395,14 @@ const styles = StyleSheet.create({
     height: 24,
   },
   flameStage: {
-    width: 18,
-    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+  },
+  ambientGlowWrap: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   flameLayer: {
     ...StyleSheet.absoluteFillObject,

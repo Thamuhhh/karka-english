@@ -1,23 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { AuthUser } from '../types';
+import { supabase } from '../lib/supabase';
 
-export interface DailyPracticeReminderSettings {
-  enabled: boolean;
-}
-
-const SETTINGS_KEY = 'elvate-daily-practice-reminder-v1';
-const SCHEDULED_ID_KEY = 'elvate-daily-practice-notification-id-v1';
-const DEFAULT_SETTINGS: DailyPracticeReminderSettings = { enabled: false };
-const AUTOMATIC_REMINDER_HOUR = 20;
-const AUTOMATIC_REMINDER_MINUTE = 0;
+const PUSH_TOKEN_KEY = 'elvate-expo-push-token-v1';
+const LEGACY_SCHEDULED_ID_KEY = 'elvate-daily-practice-notification-id-v1';
 const CHANNEL_ID = 'daily-practice';
+
+export type PushRegistrationResult = 'registered' | 'permission-denied' | 'unsupported' | 'project-id-missing';
 
 async function configureAndroidChannel() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'Daily practice reminders',
-    description: 'A gentle reminder to practice English and keep your streak going.',
+    name: 'Nila AI speaking reminders',
+    description: 'Personal daily reminders to practise English with Nila AI.',
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 180, 100, 180],
     lightColor: '#8B5CF6',
@@ -25,82 +23,56 @@ async function configureAndroidChannel() {
   });
 }
 
-export async function loadDailyPracticeReminderSettings(): Promise<DailyPracticeReminderSettings> {
-  try {
-    const raw = await AsyncStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw) as Partial<DailyPracticeReminderSettings>;
-    const settings = { enabled: parsed.enabled === true };
-    // Move reminders created by the old time picker to the automatic daily time.
-    if (settings.enabled) await updateDailyPracticeReminder(true);
-    return settings;
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+async function cancelLegacyLocalReminder() {
+  const oldId = await AsyncStorage.getItem(LEGACY_SCHEDULED_ID_KEY);
+  if (!oldId) return;
+  await Notifications.cancelScheduledNotificationAsync(oldId).catch(() => {});
+  await AsyncStorage.removeItem(LEGACY_SCHEDULED_ID_KEY);
 }
 
-export async function updateDailyPracticeReminder(
-  enabled: boolean
-): Promise<boolean> {
+export async function registerUserPushDevice(
+  authUser: AuthUser | null,
+  requestPermission = true
+): Promise<PushRegistrationResult> {
+  if (Platform.OS === 'web' || !supabase || !authUser?.id || !authUser.isCloudSession) return 'unsupported';
+  await cancelLegacyLocalReminder();
   await configureAndroidChannel();
 
-  const currentId = await AsyncStorage.getItem(SCHEDULED_ID_KEY);
-  if (currentId) {
-    await Notifications.cancelScheduledNotificationAsync(currentId).catch(() => {});
-    await AsyncStorage.removeItem(SCHEDULED_ID_KEY);
-  }
-
-  if (!enabled) {
-    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ enabled: false }));
-    return true;
-  }
+  const projectId =
+    Constants.easConfig?.projectId ||
+    Constants.expoConfig?.extra?.eas?.projectId ||
+    process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  if (!projectId) return 'project-id-missing';
 
   let permission = await Notifications.getPermissionsAsync();
-  if (!permission.granted && permission.canAskAgain) {
+  if (!permission.granted && requestPermission && permission.canAskAgain) {
     permission = await Notifications.requestPermissionsAsync();
   }
-  if (!permission.granted) return false;
+  if (!permission.granted) return 'permission-denied';
 
-  const identifier = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Your English practice is waiting ✨',
-      body: 'A few minutes today can keep your Elvate streak alive. Ready for one class?',
-      sound: 'default',
-      data: { screen: 'learn', kind: 'daily-practice-reminder' },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: AUTOMATIC_REMINDER_HOUR,
-      minute: AUTOMATIC_REMINDER_MINUTE,
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
-    },
+  const expoPushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const { error } = await supabase.rpc('register_push_device', {
+    p_expo_push_token: expoPushToken,
+    p_platform: Platform.OS,
+    p_timezone: timezone,
   });
-  await AsyncStorage.multiSet([
-    [SETTINGS_KEY, JSON.stringify({ enabled: true })],
-    [SCHEDULED_ID_KEY, identifier],
-  ]);
-  return true;
+  if (error) throw error;
+  await AsyncStorage.setItem(PUSH_TOKEN_KEY, expoPushToken);
+  return 'registered';
 }
 
-export async function sendPracticeReminderTest(): Promise<boolean> {
-  await configureAndroidChannel();
-  let permission = await Notifications.getPermissionsAsync();
-  if (!permission.granted && permission.canAskAgain) {
-    permission = await Notifications.requestPermissionsAsync();
-  }
-  if (!permission.granted) return false;
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Elvate notifications are working 🎉',
-      body: 'Your daily English practice reminder is ready.',
-      sound: 'default',
-      data: { screen: 'learn', kind: 'test-reminder' },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 3,
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
-    },
+export async function unregisterUserPushDevice(): Promise<void> {
+  if (!supabase) return;
+  const expoPushToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+  if (!expoPushToken) return;
+  const { error } = await supabase.rpc('unregister_push_device', {
+    p_expo_push_token: expoPushToken,
   });
-  return true;
+  if (error) {
+    console.warn('Could not unlink push device from account:', error.message);
+    return;
+  }
+  await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+  await cancelLegacyLocalReminder();
 }

@@ -11,6 +11,7 @@ import { setSoundEffectsEnabled } from './soundEffectsService';
 import { computeLeagueRankName } from './leaderboardService';
 import { STARTER_VOCABULARY } from '../api/dictionary';
 import { signOutSupabase } from './authService';
+import { unregisterUserPushDevice } from './notificationService';
 import {
   ensureCloudProvisioned,
   pullCloudUserData,
@@ -713,6 +714,7 @@ export async function updateAuthUserAvatar(avatarId: string): Promise<AuthUser |
 
 export async function signOutAuthUser(): Promise<void> {
   try {
+    await unregisterUserPushDevice();
     activeCloudUserCache = null;
     await signOutSupabase();
     await AsyncStorage.multiRemove([

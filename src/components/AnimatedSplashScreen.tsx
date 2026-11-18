@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -11,8 +11,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { THEME } from '../constants/theme';
-import { SUPERNOVA_IMAGES } from '../constants/supernovaAssets';
+import { MASCOT_EXPRESSIONS } from '../constants/supernovaAssets';
 import { ElvateWordmark } from './ElvateBrand';
+import { SplashLottie } from './SplashLottie';
+
+// Replace this file with any custom Lottie .json from LottieFiles.com to customize the backdrop burst.
+const SPLASH_LOTTIE_SOURCE = require('../../assets/lottie/elvate-splash.json');
 
 interface AnimatedSplashScreenProps {
   isReady: boolean;
@@ -22,10 +26,11 @@ interface AnimatedSplashScreenProps {
 }
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
-const MIN_SPLASH_MS = 1350;
+const MIN_SPLASH_MS = 680;
+const FALLBACK_LOTTIE_MS = 1050;
 
 /**
- * Custom animated Elvate splash screen layered over disabled Android static native splash.
+ * Custom Lottie + Fox Mascot Elvate splash screen layered seamlessly over the dark native launch background.
  */
 export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
   isReady,
@@ -34,6 +39,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
   onFinish,
 }) => {
   const [minDelayDone, setMinDelayDone] = useState(false);
+  const [lottieDone, setLottieDone] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const exitStartedRef = useRef(false);
   const onExitingRef = useRef(onExiting);
@@ -43,69 +49,68 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
 
   const containerOpacity = useRef(new Animated.Value(1)).current;
   const heroExitScale = useRef(new Animated.Value(1)).current;
-  const badgeScale = useRef(new Animated.Value(0.86)).current;
-  const badgeSlideY = useRef(new Animated.Value(18)).current;
-  const badgeOpacity = useRef(new Animated.Value(0)).current;
-  const sheenX = useRef(new Animated.Value(-135)).current;
+  const mascotOpacity = useRef(new Animated.Value(0)).current;
+  const mascotScale = useRef(new Animated.Value(0.62)).current;
+  const mascotSlideY = useRef(new Animated.Value(20)).current;
+  const mascotTilt = useRef(new Animated.Value(-1)).current;
   const wordmarkOpacity = useRef(new Animated.Value(0)).current;
-  const wordmarkSlideY = useRef(new Animated.Value(14)).current;
-  const loaderProgress = useRef(new Animated.Value(0)).current;
+  const wordmarkSlideY = useRef(new Animated.Value(12)).current;
   const auraPulse = useRef(new Animated.Value(0)).current;
+
+  const handleLottieFinish = useCallback(() => {
+    setLottieDone(true);
+  }, []);
 
   useEffect(() => {
     const entranceAnim = Animated.parallel([
-      Animated.timing(badgeScale, {
+      Animated.timing(mascotOpacity, {
         toValue: 1,
-        duration: 460,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-      Animated.timing(badgeSlideY, {
-        toValue: 0,
-        duration: 460,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-      Animated.timing(badgeOpacity, {
-        toValue: 1,
-        duration: 300,
+        duration: 200,
         easing: Easing.out(Easing.quad),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
+      Animated.spring(mascotScale, {
+        toValue: 1,
+        friction: 5.8,
+        tension: 105,
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }),
+      Animated.timing(mascotSlideY, {
+        toValue: 0,
+        duration: 340,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: USE_NATIVE_DRIVER,
+      }),
       Animated.sequence([
-        Animated.delay(340),
-        Animated.timing(sheenX, {
-          toValue: 145,
-          duration: 580,
+        Animated.timing(mascotTilt, {
+          toValue: 0.7,
+          duration: 240,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(mascotTilt, {
+          toValue: 0,
+          duration: 220,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
       Animated.sequence([
-        Animated.delay(200),
+        Animated.delay(140),
         Animated.parallel([
           Animated.timing(wordmarkOpacity, {
             toValue: 1,
-            duration: 360,
+            duration: 260,
             easing: Easing.out(Easing.quad),
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(wordmarkSlideY, {
             toValue: 0,
-            duration: 380,
+            duration: 280,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
-      ]),
-      Animated.sequence([
-        Animated.delay(240),
-        Animated.timing(loaderProgress, {
-          toValue: 1,
-          duration: 950,
-          easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
       ]),
     ]);
 
@@ -129,42 +134,47 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
     entranceAnim.start();
     auraLoop.start();
 
-    const timer = setTimeout(() => {
+    const minTimer = setTimeout(() => {
       setMinDelayDone(true);
     }, MIN_SPLASH_MS);
 
+    // Safety fallback so a looping or slow custom Lottie never traps the user on launch.
+    const fallbackTimer = setTimeout(() => {
+      setLottieDone(true);
+    }, FALLBACK_LOTTIE_MS);
+
     return () => {
-      clearTimeout(timer);
+      clearTimeout(minTimer);
+      clearTimeout(fallbackTimer);
       entranceAnim.stop();
       auraLoop.stop();
     };
   }, [
     auraPulse,
-    badgeOpacity,
-    badgeScale,
-    badgeSlideY,
-    loaderProgress,
-    sheenX,
+    mascotOpacity,
+    mascotScale,
+    mascotSlideY,
+    mascotTilt,
     wordmarkOpacity,
     wordmarkSlideY,
   ]);
 
   useEffect(() => {
-    if (!isReady || !minDelayDone || exitStartedRef.current) return;
+    if (!isReady || !minDelayDone || !lottieDone || exitStartedRef.current) return;
     exitStartedRef.current = true;
     setIsExiting(true);
     onExitingRef.current?.();
 
     const exitAnim = Animated.parallel([
       Animated.timing(heroExitScale, {
-        toValue: 1.07,
-        duration: 320,
+        toValue: 1.05,
+        duration: 220,
         easing: Easing.inOut(Easing.quad),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(containerOpacity, {
         toValue: 0,
-        duration: 320,
+        duration: 220,
         easing: Easing.out(Easing.quad),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
@@ -177,11 +187,16 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
     });
 
     return () => exitAnim.stop();
-  }, [containerOpacity, heroExitScale, isReady, minDelayDone]);
+  }, [containerOpacity, heroExitScale, isReady, lottieDone, minDelayDone]);
 
   const auraScale = auraPulse.interpolate({
     inputRange: [0, 1],
     outputRange: [0.95, 1.08],
+  });
+
+  const mascotRotate = mascotTilt.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-7deg', '0deg', '6deg'],
   });
 
   return (
@@ -198,7 +213,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
           <Defs>
             <RadialGradient id="splashAura" cx="50%" cy="50%" r="50%">
               <Stop offset="0%" stopColor="#7F43FE" stopOpacity="0.34" />
-              <Stop offset="48%" stopColor="#4C089C" stopOpacity="0.16" />
+              <Stop offset="48%" stopColor="#4C089C" stopOpacity="0.15" />
               <Stop offset="100%" stopColor="#0E0E14" stopOpacity="0" />
             </RadialGradient>
           </Defs>
@@ -209,46 +224,48 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
       <Animated.View
         style={[styles.centerStage, { transform: [{ scale: heroExitScale }] }]}
       >
-        {/* Icon Squircle: Smooth Cubic Rise + Diagonal Glass Sheen */}
-        <View style={styles.emblemStage}>
+        {/* Lottie Vector Burst + Fox Mascot Hero */}
+        <View style={styles.mascotStage}>
+          <View style={styles.lottieLayer} pointerEvents="none">
+            <SplashLottie
+              source={SPLASH_LOTTIE_SOURCE}
+              size={236}
+              speed={1.45}
+              loop={false}
+              onAnimationFinish={handleLottieFinish}
+            />
+          </View>
+
           <Animated.View
             style={[
-              styles.iconSquircleShadow,
+              styles.mascotWrap,
               {
-                opacity: badgeOpacity,
-                transform: [{ translateY: badgeSlideY }, { scale: badgeScale }],
+                opacity: mascotOpacity,
+                transform: [
+                  { translateY: mascotSlideY },
+                  { scale: mascotScale },
+                  { rotate: mascotRotate },
+                ],
               },
             ]}
           >
-            <View style={styles.iconSquircleClip}>
+            <LinearGradient
+              colors={['#2E1B5E', '#170F33']}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={styles.mascotCircleBg}
+            >
               <Image
-                source={SUPERNOVA_IMAGES.appIcon}
-                style={styles.iconImg}
-                resizeMode="cover"
+                source={MASCOT_EXPRESSIONS.wave}
+                style={styles.mascotImg}
+                resizeMode="contain"
+                accessibilityLabel="Elvate Fox Mascot"
               />
-              <Animated.View
-                style={[
-                  styles.sheenOverlay,
-                  { transform: [{ translateX: sheenX }, { rotate: '24deg' }] },
-                ]}
-                pointerEvents="none"
-              >
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0)',
-                    'rgba(255, 255, 255, 0.36)',
-                    'rgba(255, 255, 255, 0)',
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.sheenGradient}
-                />
-              </Animated.View>
-            </View>
+            </LinearGradient>
           </Animated.View>
         </View>
 
-        {/* Wordmark + Progress Bar */}
+        {/* Wordmark + Tagline */}
         <Animated.View
           style={[
             styles.wordmarkGroup,
@@ -258,24 +275,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
             },
           ]}
         >
-          <ElvateWordmark width={116} height={34} style={styles.wordmarkSpacing} />
-
-          <View style={styles.progressTrack}>
-            <Animated.View
-              style={[
-                styles.progressFillWrap,
-                { transform: [{ scaleX: loaderProgress }] },
-              ]}
-            >
-              <LinearGradient
-                colors={['#C4B5FD', '#7F43FE']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.progressFillGradient}
-              />
-            </Animated.View>
-          </View>
-
+          <ElvateWordmark width={122} height={34} style={styles.wordmarkSpacing} />
           {fontsLoaded && (
             <Text style={styles.subtitleText}>Speak English effortlessly</Text>
           )}
@@ -295,79 +295,56 @@ const styles = StyleSheet.create({
   },
   auraWrap: {
     position: 'absolute',
-    width: 340,
-    height: 340,
+    width: 360,
+    height: 360,
   },
   centerStage: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  emblemStage: {
-    width: 104,
-    height: 104,
+  mascotStage: {
+    width: 236,
+    height: 236,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 2,
   },
-  iconSquircleShadow: {
-    width: 88,
-    height: 88,
-    borderRadius: 25,
-    shadowColor: '#7F43FE',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.48,
-    shadowRadius: 20,
-    elevation: 12,
+  lottieLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  iconSquircleClip: {
-    flex: 1,
-    borderRadius: 25,
-    backgroundColor: '#9048F6',
-    borderWidth: 1.5,
-    borderColor: 'rgba(196, 181, 253, 0.42)',
+  mascotWrap: {
+    width: 126,
+    height: 126,
+    borderRadius: 63,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(196, 181, 253, 0.45)',
+    backgroundColor: '#1C123B',
   },
-  sheenOverlay: {
-    position: 'absolute',
-    top: -32,
-    bottom: -32,
-    width: 44,
-  },
-  sheenGradient: {
-    flex: 1,
-  },
-  iconImg: {
+  mascotCircleBg: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.04 }],
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  mascotImg: {
+    width: 114,
+    height: 114,
+    marginBottom: -4,
   },
   wordmarkGroup: {
     alignItems: 'center',
   },
   wordmarkSpacing: {
-    marginBottom: 18,
-  },
-  progressTrack: {
-    width: 116,
-    height: 3.5,
-    borderRadius: 2,
-    backgroundColor: '#1E1A33',
-    overflow: 'hidden',
-  },
-  progressFillWrap: {
-    width: '100%',
-    height: '100%',
-  },
-  progressFillGradient: {
-    flex: 1,
-    borderRadius: 2,
+    marginBottom: 10,
   },
   subtitleText: {
     fontFamily: THEME.fonts.medium,
     fontSize: 12.5,
     color: '#A5A1B8',
-    letterSpacing: 0.3,
-    marginTop: 14,
+    letterSpacing: 0.35,
   },
 });

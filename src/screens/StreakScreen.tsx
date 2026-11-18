@@ -1,12 +1,13 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../constants/theme';
 import { UserStats } from '../types';
 import { ElvateWordmark } from '../components/ElvateBrand';
+import { LiveFlame } from '../components/LiveStreakBadge';
 import {
   getStreakWeekActivity,
   hasSecuredStreakToday,
@@ -20,7 +21,6 @@ interface StreakScreenProps {
 }
 
 export const StreakScreen: React.FC<StreakScreenProps> = ({ stats, onClose }) => {
-  const flamePulse = useRef(new Animated.Value(0)).current;
   const goal = Math.max(1, stats.dailyGoalXp);
   const progress = Math.min(1, stats.todayXp / goal);
   const secured = hasSecuredStreakToday(stats);
@@ -28,30 +28,6 @@ export const StreakScreen: React.FC<StreakScreenProps> = ({ stats, onClose }) =>
   const todayIndex = (new Date().getDay() + 6) % 7;
   const nextMilestone = (Math.floor(stats.streakDays / 7) + 1) * 7;
   const isMilestoneDay = secured && stats.streakDays > 0 && stats.streakDays % 7 === 0;
-  const flameGlowOpacity = flamePulse.interpolate({ inputRange: [0, 1], outputRange: [0.48, 0.95] });
-  const flameGlowScale = flamePulse.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.12] });
-  const flameScale = flamePulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.045] });
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(flamePulse, {
-          toValue: 1,
-          duration: 720,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(flamePulse, {
-          toValue: 0,
-          duration: 860,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [flamePulse]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -72,28 +48,7 @@ export const StreakScreen: React.FC<StreakScreenProps> = ({ stats, onClose }) =>
 
         <View style={styles.hero}>
           <View style={styles.flameStage}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.flameGlow,
-                { opacity: flameGlowOpacity, transform: [{ scale: flameGlowScale }] },
-              ]}
-            >
-              <LinearGradient
-                colors={['rgba(167,139,250,0.38)', 'rgba(127,67,254,0.16)', 'rgba(127,67,254,0)']}
-                style={styles.flameGlowFill}
-              />
-            </Animated.View>
-            <Animated.View style={{ transform: [{ scale: flameScale }] }}>
-              <LinearGradient
-                colors={['rgba(196,181,253,0.22)', 'rgba(127,67,254,0.09)']}
-                style={styles.flameHalo}
-              >
-                <MaterialCommunityIcons name="fire" size={76} color="#C4B5FD" />
-              </LinearGradient>
-            </Animated.View>
-            <View style={[styles.ember, styles.emberLeft]} />
-            <View style={[styles.ember, styles.emberRight]} />
+            <LiveFlame size={118} showGlow />
           </View>
           <Text style={styles.streakNumber}>{stats.streakDays}</Text>
           <Text style={styles.streakUnit}>
@@ -211,47 +166,13 @@ const styles = StyleSheet.create({
   topBarSpacer: { width: 38 },
   hero: { alignItems: 'center', paddingTop: 28, paddingBottom: 38 },
   flameStage: {
-    width: 156,
-    height: 150,
+    width: 210,
+    height: 162,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flameGlow: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    shadowColor: '#7F43FE',
-    shadowOpacity: 0.7,
-    shadowRadius: 34,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 16,
-  },
-  flameGlowFill: { flex: 1, borderRadius: 75 },
-  flameHalo: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.28)',
-  },
-  ember: {
-    position: 'absolute',
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#D9CCFF',
-    shadowColor: '#A78BFA',
-    shadowOpacity: 0.9,
-    shadowRadius: 7,
-    elevation: 4,
-  },
-  emberLeft: { left: 24, top: 52 },
-  emberRight: { right: 22, top: 83, width: 4, height: 4 },
   streakNumber: {
-    marginTop: 14,
+    marginTop: 8,
     fontFamily: THEME.fonts.extraBold,
     color: '#FFF9EF',
     fontSize: 62,
@@ -261,7 +182,7 @@ const styles = StyleSheet.create({
   streakUnit: {
     marginTop: 2,
     fontFamily: THEME.fonts.bold,
-    color: '#C4B5FD',
+    color: '#FBBF24',
     fontSize: 10,
     letterSpacing: 2,
   },

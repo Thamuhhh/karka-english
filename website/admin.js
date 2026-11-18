@@ -18,6 +18,7 @@
   let session = readSession();
   let currentOffset = 0;
   let visibleRows = 0;
+  let publishedCustomCourseCount = 0;
   let editingCourse = null;
   let manualCourseBusy = false;
   let manualAudioBusy = false;
@@ -57,6 +58,10 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '—';
     return new Intl.DateTimeFormat('en', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+  }
+
+  function getNextUnitNumber() {
+    return 5 + publishedCustomCourseCount;
   }
 
   async function authRequest(path, payload, accessToken) {
@@ -220,6 +225,9 @@
   async function loadCourses() {
     const target = document.querySelector('#saved-courses');
     const savedCourses = await rpc('admin_list_courses');
+    publishedCustomCourseCount = Array.isArray(savedCourses)
+      ? savedCourses.filter((entry) => entry.status === 'published' && !String(entry.id).startsWith('builtin-unit-')).length
+      : 0;
     const savedById = new Map((Array.isArray(savedCourses) ? savedCourses : []).map((entry) => [entry.id, entry]));
     const builtInCourses = (window.ELVATE_BUILTIN_COURSES || []).map((level) => {
       const id = `builtin-unit-${level.levelNumber}`;
@@ -228,28 +236,10 @@
         ? { ...saved, is_builtin: true }
         : { id, level_data: { ...level, id }, status: 'published', is_builtin: true };
     });
-    const starterCourses = (window.ELVATE_ADMIN_STARTER_COURSES || []).flatMap((level) => {
-      const alreadySaved = Array.isArray(savedCourses)
-        ? savedCourses.find((entry) => entry.level_data?.starterCourseKey === level.starterCourseKey)
-        : null;
-      if (alreadySaved) return [];
-      const existing = savedById.get(level.id) || (Array.isArray(savedCourses) ? savedCourses.find((entry) =>
-        Number(entry.level_data?.levelNumber) === 5 || /^Unit\s+5\s*:/i.test(entry.level_data?.levelName || '')
-      ) : null);
-      return [{
-        id: existing?.id || level.id,
-        level_data: { ...level, id: existing?.id || level.id },
-        status: existing?.status || 'draft',
-        is_starter: true,
-        replaces_existing: Boolean(existing),
-      }];
-    });
-    const replacedCourseIds = new Set(starterCourses.filter((entry) => entry.replaces_existing).map((entry) => entry.id));
     const courses = [
       ...builtInCourses,
-      ...starterCourses,
       ...(Array.isArray(savedCourses) ? savedCourses.filter((entry) =>
-        !String(entry.id).startsWith('builtin-unit-') && !replacedCourseIds.has(entry.id)
+        !String(entry.id).startsWith('builtin-unit-')
       ) : []),
     ].sort((a, b) => Number(a.level_data?.levelNumber || 0) - Number(b.level_data?.levelNumber || 0));
     target.replaceChildren();
@@ -270,25 +260,6 @@
       editButton.textContent = 'Edit';
       editButton.addEventListener('click', () => openCourseEditor(entry));
       row.append(title, detail, editButton);
-      if (entry.is_starter) {
-        const publishButton = document.createElement('button');
-        publishButton.type = 'button';
-        publishButton.className = 'publish-starter-button';
-        publishButton.textContent = entry.replaces_existing ? 'Replace & publish' : 'Publish Unit 5';
-        publishButton.addEventListener('click', async () => {
-          if (entry.replaces_existing && !window.confirm('Replace the current Unit 5 content with the complete Everyday Grammar That Connects course?')) return;
-          publishButton.disabled = true;
-          try {
-            await rpc('admin_save_course', { p_level_data: entry.level_data, p_status: 'published' });
-            showMessage(document.querySelector('#course-message'), 'Unit 5 published to the app.', false);
-            await loadCourses();
-          } catch (error) {
-            publishButton.disabled = false;
-            showMessage(document.querySelector('#course-message'), error.message || 'Could not publish Unit 5.');
-          }
-        });
-        row.append(publishButton);
-      }
       if (!entry.is_builtin && !entry.is_starter) {
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
@@ -590,7 +561,7 @@
       return {
         ...existingLesson,
         id: existingLesson.id || `${courseId}-${number}`,
-        levelNumber: existingCourse?.levelNumber || 5,
+        levelNumber: existingCourse?.levelNumber || getNextUnitNumber(),
         classNumber: existingLesson.classNumber || number,
         title: `Class ${number}: ${title}`,
         subtitle: get(`class${number}Subtitle`) || grammarTopic,
@@ -638,8 +609,8 @@
     return {
       ...existingCourse,
       id: courseId,
-      levelNumber: existingCourse?.levelNumber || 5,
-      levelName: `Unit ${existingCourse?.levelNumber || 5}: ${unitTitle}`,
+      levelNumber: existingCourse?.levelNumber || getNextUnitNumber(),
+      levelName: `Unit ${existingCourse?.levelNumber || getNextUnitNumber()}: ${unitTitle}`,
       cefrTag: get('cefrTag') || 'CEFR A1',
       badge: existingCourse?.badge || 'Custom Course',
       accentColor: existingCourse?.accentColor || '#7F43FE',
@@ -925,9 +896,14 @@
       const imported = JSON.parse(JSON.stringify(course));
       delete imported.id;
       delete imported.starterCourseKey;
-      imported.classes = imported.classes.map((lesson) => {
+      const nextUnitNumber = getNextUnitNumber();
+      imported.levelNumber = nextUnitNumber;
+      imported.levelName = `Unit ${nextUnitNumber}: ${String(imported.levelName || 'Imported Course').replace(/^Unit\s+\d+\s*:\s*/i, '')}`;
+      imported.classes = imported.classes.map((lesson, index) => {
         const copy = { ...lesson };
         delete copy.id;
+        copy.levelNumber = nextUnitNumber;
+        copy.classNumber = index + 1;
         return copy;
       });
       editingCourse = imported;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  AppState,
   StyleSheet,
   View,
   Text,
@@ -68,6 +69,9 @@ import {
 import { getUserLeaderboardRank } from './src/services/leaderboardService';
 import { stopAllAudio } from './src/services/ttsService';
 import { loadPublishedCourses } from './src/services/courseService';
+import {
+  registerUserPushDevice,
+} from './src/services/notificationService';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -131,6 +135,7 @@ function AppContent() {
   const [authInitialError, setAuthInitialError] = useState<string | null>(null);
   const [showOnboardingAvatarPicker, setShowOnboardingAvatarPicker] = useState(false);
   const activeAuthKeyRef = useRef<string | null>(null);
+  const notificationAuthKeyRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -148,12 +153,53 @@ function AppContent() {
       if (data?.screen === 'learn') {
         setCurrentLesson(null);
         setActiveTab('learn');
+      } else if (data?.screen === 'call') {
+        setCurrentLesson(null);
+        setActiveTab('call');
       }
     };
     Notifications.getLastNotificationResponseAsync().then(openCourseFromReminder).catch(() => {});
     const subscription = Notifications.addNotificationResponseReceivedListener(openCourseFromReminder);
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    if (!hydrated || Platform.OS === 'web') return;
+    if (!authUser?.id || !authUser.isCloudSession) return;
+    const authKey = authUser.id;
+    if (notificationAuthKeyRef.current === authKey) return;
+    notificationAuthKeyRef.current = authKey;
+    let active = true;
+    let initialSetupFinished = false;
+    let denialAlertShown = false;
+    const registerDevice = async (showPermissionAlert: boolean, requestPermission = true) => {
+      const result = await registerUserPushDevice(authUser, requestPermission);
+      initialSetupFinished = true;
+      if (!active) return;
+      if (result === 'permission-denied' && showPermissionAlert && !denialAlertShown) {
+        denialAlertShown = true;
+        Alert.alert(
+          'Enable Elvate notifications',
+          'Daily Nila AI speaking reminders need notification access. Turn on notifications in your phone settings to receive them.',
+          [{ text: 'Open Settings', onPress: () => { void Linking.openSettings(); } }]
+        );
+      } else if (result === 'project-id-missing') {
+        console.warn('Expo push registration needs the EAS project ID. Set EXPO_PUBLIC_EAS_PROJECT_ID and rebuild the app.');
+      }
+    };
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active' || !initialSetupFinished) return;
+      void registerDevice(false, false).catch((error) => console.warn('Could not refresh push device:', error));
+    });
+    void registerDevice(true).catch((error) => {
+      initialSetupFinished = true;
+      console.warn('Could not register push device:', error);
+    });
+    return () => {
+      active = false;
+      appStateSubscription.remove();
+    };
+  }, [authUser?.id, authUser?.isCloudSession, hydrated]);
 
   useEffect(() => {
     let mounted = true;
@@ -168,52 +214,81 @@ function AppContent() {
           }
         }
 
+        // 1. FAST PATH (Cache-First): Read local preferences and cached auth in ~15ms
         const [loadedStats, loadedAuth] = await Promise.all([
           hydrateAppPreferences(),
           loadAuthUser(),
         ]);
         if (!mounted) return;
+
         setStats(loadedStats);
+        if (loadedAuth) {
+          activeAuthKeyRef.current =
+            loadedAuth.id ||
+            (loadedAuth.provider === 'guest'
+              ? `local-guest:${loadedAuth.name}`
+              : loadedAuth.name);
+          setAuthUser(loadedAuth);
+        }
 
-        let verifiedUser = await getVerifiedAuthUser(loadedAuth);
-        if (!mounted) return;
-
-        if (
-          !verifiedUser &&
+        const isWebOAuthRedirect =
           Platform.OS === 'web' &&
           typeof window !== 'undefined' &&
-          (window.location.href.includes('access_token=') || window.location.href.includes('code='))
-        ) {
+          (window.location.href.includes('access_token=') || window.location.href.includes('code='));
+
+        if (isWebOAuthRedirect) {
           const fallbackRes = await completeAuthSessionFromUrl(window.location.href);
           if (!mounted) return;
           if (fallbackRes.error) {
             setAuthInitialError(fallbackRes.error);
           } else if (fallbackRes.user) {
-            verifiedUser = fallbackRes.user;
+            activeAuthKeyRef.current =
+              fallbackRes.user.id ||
+              (fallbackRes.user.provider === 'guest'
+                ? `local-guest:${fallbackRes.user.name}`
+                : fallbackRes.user.name);
+            setAuthUser(fallbackRes.user);
+            const cloudStats = await hydrateUserCloudSession(fallbackRes.user);
+            if (!mounted) return;
+            setStats(cloudStats);
           }
           window.history.replaceState(null, '', window.location.pathname || '/');
         }
 
-        if (verifiedUser) {
-          activeAuthKeyRef.current =
-            verifiedUser.id ||
-            (verifiedUser.provider === 'guest'
-              ? `local-guest:${verifiedUser.name}`
-              : verifiedUser.name);
-          const cloudStats = await hydrateUserCloudSession(verifiedUser);
-          if (!mounted) return;
-          setAuthInitialError(null);
-          setStats(cloudStats);
-          setAuthUser(verifiedUser);
-          if (!verifiedUser.avatarId) {
-            setShowOnboardingAvatarPicker(true);
-          }
-        } else {
-          if (loadedAuth) {
-            await signOutAuthUser();
-          }
-          activeAuthKeyRef.current = null;
-          setAuthUser(null);
+        // Immediately unblock splash screen! App mounts instantaneously (< 50ms)
+        setHydrated(true);
+
+        // 2. BACKGROUND PATH (Non-blocking): Revalidate session and sync with cloud silently
+        if (!isWebOAuthRedirect) {
+          void (async () => {
+            try {
+              const verifiedUser = await getVerifiedAuthUser(loadedAuth);
+              if (!mounted) return;
+
+              if (verifiedUser) {
+                activeAuthKeyRef.current =
+                  verifiedUser.id ||
+                  (verifiedUser.provider === 'guest'
+                    ? `local-guest:${verifiedUser.name}`
+                    : verifiedUser.name);
+                const cloudStats = await hydrateUserCloudSession(verifiedUser);
+                if (!mounted) return;
+                setAuthInitialError(null);
+                setStats(cloudStats);
+                setAuthUser(verifiedUser);
+                if (!verifiedUser.avatarId) {
+                  setShowOnboardingAvatarPicker(true);
+                }
+              } else if (loadedAuth) {
+                await signOutAuthUser();
+                if (!mounted) return;
+                activeAuthKeyRef.current = null;
+                setAuthUser(null);
+              }
+            } catch (bgErr) {
+              console.warn('Background session sync error:', bgErr);
+            }
+          })();
         }
       } catch (err) {
         console.warn('Bootstrap session error:', err);
@@ -336,6 +411,7 @@ function AppContent() {
 
   const handleSignOut = async () => {
     activeAuthKeyRef.current = null;
+    notificationAuthKeyRef.current = null;
     await signOutAuthUser();
     setCurrentLesson(null);
     setActiveTab('learn');

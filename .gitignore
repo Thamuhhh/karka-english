@@ -18,3 +18,7 @@ reference_apk/
 .env
 .env*.local
 
+# Supabase CLI temp files
+supabase/.temp/
+
+
