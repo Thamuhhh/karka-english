@@ -185,8 +185,14 @@
   }
 
   function showDashboard(isVisible) {
-    loginScreen.hidden = isVisible;
-    dashboard.hidden = !isVisible;
+    if (loginScreen) {
+      loginScreen.hidden = isVisible;
+      loginScreen.style.display = isVisible ? 'none' : 'flex';
+    }
+    if (dashboard) {
+      dashboard.hidden = !isVisible;
+      dashboard.style.display = isVisible ? 'flex' : 'none';
+    }
     if (isVisible) {
       const email = session?.user?.email || 'Administrator';
       if (adminName) adminName.textContent = email;
@@ -198,6 +204,9 @@
     const current = session;
     saveSession(null);
     showDashboard(false);
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     showToast('Signed out of Operations Console.', 'info');
     if (current?.accessToken && apiUrl && publishableKey) {
       await authRequest('logout', {}, current.accessToken).catch(() => {});
@@ -297,6 +306,7 @@
   };
 
   function navigateToView(viewId) {
+    if (!session?.accessToken) return;
     const target = viewId.replace(/^#/, '') || 'overview';
     const validViews = ['overview', 'learners', 'courses', 'notifications', 'system'];
     const activeView = validViews.includes(target) ? target : 'overview';
@@ -1805,9 +1815,11 @@
     });
   }
 
-  // Handle Hash Routing on URL change or initial load
+  // Handle Hash Routing on URL change
   window.addEventListener('hashchange', () => {
-    navigateToView(window.location.hash);
+    if (session?.accessToken) {
+      navigateToView(window.location.hash);
+    }
   });
 
   // Clock tick every 30s
@@ -1815,9 +1827,14 @@
 
   // Initial Auth Check
   if (session?.user?.app_metadata?.role === 'admin' && session.accessToken) {
-    showDashboard(true);
-    navigateToView(window.location.hash || 'overview');
-    loadDashboard();
+    if (session.expiresAt && Date.now() > session.expiresAt) {
+      saveSession(null);
+      showDashboard(false);
+    } else {
+      showDashboard(true);
+      navigateToView(window.location.hash || 'overview');
+      loadDashboard();
+    }
   } else {
     saveSession(null);
     showDashboard(false);

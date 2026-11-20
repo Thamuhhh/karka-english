@@ -43,6 +43,18 @@ body {
   line-height: 1.5;
 }
 
+/* ACCESSIBILITY & VISIBILITY GUARDS */
+[hidden],
+.dashboard[hidden],
+.login-screen[hidden],
+.app-view[hidden],
+.studio-subview[hidden],
+.learner-drawer[hidden],
+.course-editor[hidden],
+.stop-audio-button[hidden] {
+  display: none !important;
+}
+
 /* 1. LOGIN SCREEN */
 .login-screen {
   min-height: 100vh;
