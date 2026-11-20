@@ -27,6 +27,7 @@
     Search: (props) => html`<${SvgIcon} ...${props} d=${['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'm21 21-4.35-4.35']} />`,
     Refresh: (props) => html`<${SvgIcon} ...${props} d=${['M23 4v6h-6', 'M20.49 15a9 9 0 1 1-2.12-9.36L23 10']} />`,
     Download: (props) => html`<${SvgIcon} ...${props} d=${['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3']} />`,
+    Upload: (props) => html`<${SvgIcon} ...${props} d=${['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12']} />`,
     LogOut: (props) => html`<${SvgIcon} ...${props} d=${['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9']} />`,
     Close: (props) => html`<${SvgIcon} ...${props} d="M18 6 6 18M6 6l12 12" />`,
     Play: (props) => html`<${SvgIcon} ...${props} d="M5 3l14 9-14 9V3z" />`,
@@ -35,6 +36,9 @@
     Sparkles: (props) => html`<${SvgIcon} ...${props} d=${['m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z']} />`,
     Check: (props) => html`<${SvgIcon} ...${props} d="M20 6 9 17l-5-5" />`,
     ArrowRight: (props) => html`<${SvgIcon} ...${props} d="M5 12h14M12 5l7 7-7 7" />`,
+    Mic: (props) => html`<${SvgIcon} ...${props} d=${['M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z', 'M19 10v2a7 7 0 0 1-14 0v-2', 'M12 19v4', 'M8 23h8']} />`,
+    Image: (props) => html`<${SvgIcon} ...${props} d=${['M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z', 'm21 15-5-5L5 21', 'M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z']} />`,
+    Stop: (props) => html`<${SvgIcon} ...${props} d="M4 4h16v16H4z" />`,
   };
 
   /* ==========================================================================
@@ -143,6 +147,39 @@
     return data;
   }
 
+  function extractCoursesFromJavaScript(source) {
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.hidden = true;
+      iframe.setAttribute('sandbox', 'allow-scripts');
+      const payload = `${source}\n;try { parent.postMessage({ type: 'elvate-course-import', courses: window.ELVATE_ADMIN_STARTER_COURSES || window.ELVATE_BUILTIN_COURSES || [] }, '*'); } catch (_) { parent.postMessage({ type: 'elvate-course-import-error' }, '*'); }`;
+
+      const nonce = crypto.randomUUID().replace(/-/g, '');
+      let settled = false;
+
+      const finish = (err, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        window.removeEventListener('message', onMsg);
+        iframe.remove();
+        if (err) reject(err);
+        else resolve(Array.isArray(result) ? result : []);
+      };
+
+      const onMsg = (msg) => {
+        if (msg.source !== iframe.contentWindow) return;
+        if (msg.data?.type === 'elvate-course-import') finish(null, msg.data.courses);
+        else if (msg.data?.type === 'elvate-course-import-error') finish(new Error('Course extraction failed.'));
+      };
+
+      const timeout = setTimeout(() => finish(new Error('Course data not found in script.')), 4000);
+      window.addEventListener('message', onMsg);
+      iframe.srcdoc = `<!doctype html><script nonce="${nonce}">${payload}</script>`;
+      document.body.append(iframe);
+    });
+  }
+
   /* ==========================================================================
      4. ROOT REACT APPLICATION
      ========================================================================== */
@@ -182,7 +219,6 @@
     const [courseSubTab, setCourseSubTab] = useState('catalog');
     const [editingCourse, setEditingCourse] = useState(null);
     const [editingCourseStatus, setEditingCourseStatus] = useState('draft');
-    const [isGeneratingCourse, setIsGeneratingCourse] = useState(false);
     const [activeAudioUrl, setActiveAudioUrl] = useState(null);
 
     // Push Notifications State
@@ -376,7 +412,7 @@
               <span className="nav-count">${courses.length || '4'}</span>
             </button>
 
-            <span className="nav-section-title">System</span>
+            <span className="nav-section-title">Operations</span>
             <button className=${`nav-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick=${() => handleTabChange('notifications')}>
               <${Icons.Bell} />
               <span>Push Engine</span>
@@ -1041,7 +1077,7 @@
   }
 
   /* ==========================================================================
-     9. VIEW: COURSE STUDIO & CURRICULUM
+     9. VIEW: COURSE STUDIO & CURRICULUM ARCHITECT
      ========================================================================== */
 
   function CourseStudioView({
@@ -1062,8 +1098,19 @@
     const [topic, setTopic] = useState('');
     const [levelName, setLevelName] = useState('');
     const [cefrTag, setCefrTag] = useState('CEFR A2');
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+    // Audio Batch Synthesis State
+    const [isAudioBusy, setIsAudioBusy] = useState(false);
+    const [audioProgressText, setAudioProgressText] = useState('');
+    const audioAbortRef = useRef(null);
     const audioPlayerRef = useRef(null);
+
+    // Image Synthesis State
+    const [generatingImageIndex, setGeneratingImageIndex] = useState(null);
+
+    // File Import Ref
+    const fileImportInputRef = useRef(null);
 
     // Audio Playback
     const toggleAudio = (url) => {
@@ -1089,12 +1136,12 @@
       a.play().catch(() => setActiveAudioUrl(null));
     };
 
-    // Synthesize Unit with AI
+    // Synthesize Unit with AI (Nemotron)
     const handleGenerateAi = async (e) => {
       e.preventDefault();
       if (!topic.trim() || !levelName.trim()) return;
 
-      setIsGenerating(true);
+      setIsGeneratingAi(true);
       showToast('Synthesizing 5 classes with Nemotron AI...', 'info');
 
       try {
@@ -1118,7 +1165,7 @@
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
-        setIsGenerating(false);
+        setIsGeneratingAi(false);
       }
     };
 
@@ -1151,24 +1198,232 @@
       }
     };
 
+    // Batch Audio Generation (Gemini TTS)
+    const handleGenerateAudio = async () => {
+      if (isAudioBusy || !editingCourse) return;
+      setIsAudioBusy(true);
+      setAudioProgressText('Initializing audio synthesis...');
+      const controller = new AbortController();
+      audioAbortRef.current = controller;
+
+      try {
+        const saved = await rpcCall(session, setSession, 'admin_save_course', {
+          p_level_data: editingCourse,
+          p_status: editingStatus,
+        });
+        let currentCourse = saved?.level_data || editingCourse;
+        setEditingCourse(currentCourse);
+
+        const totalClips = currentCourse.classes.length * 3;
+        let completedClips = 0;
+        let newlyGenerated = 0;
+
+        for (let i = 0; i < currentCourse.classes.length; i++) {
+          if (controller.signal.aborted) break;
+          const lesson = currentCourse.classes[i];
+          const clipDefs = [
+            { kind: 'tamil', text: lesson.rule?.tamilMentalModel || '' },
+            { kind: 'why', text: lesson.rule?.doAndDont?.whyTamil || '' },
+            { kind: 'right', text: lesson.rule?.doAndDont?.right || '' },
+          ];
+
+          const missing = clipDefs.filter(
+            (c) => c.text.trim() && lesson.lectureAudio?.[c.kind]?.text?.trim() !== c.text.trim()
+          );
+
+          completedClips += 3 - missing.length;
+          if (!missing.length) continue;
+
+          for (const clip of missing) {
+            if (controller.signal.aborted) break;
+            setAudioProgressText(`Class ${i + 1} (${clip.kind}): ${completedClips}/${totalClips} clips`);
+
+            const res = await fetch(`${apiUrl}/functions/v1/admin-generate-course-audio`, {
+              method: 'POST',
+              headers: {
+                apikey: publishableKey,
+                Authorization: `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                courseId: currentCourse.id,
+                lessonId: lesson.id,
+                clips: [clip],
+              }),
+              signal: controller.signal,
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Failed audio for Class ${i + 1}`);
+
+            lesson.lectureAudio = { ...lesson.lectureAudio, ...data.audioClips };
+            const persisted = await rpcCall(session, setSession, 'admin_save_course', {
+              p_level_data: currentCourse,
+              p_status: editingStatus,
+            });
+            if (persisted?.level_data) {
+              currentCourse = persisted.level_data;
+              setEditingCourse({ ...currentCourse });
+            }
+
+            completedClips += 1;
+            newlyGenerated += 1;
+
+            if (completedClips < totalClips && !controller.signal.aborted) {
+              await new Promise((r) => setTimeout(r, 2200));
+            }
+          }
+        }
+
+        showToast(newlyGenerated ? `Generated ${newlyGenerated} audio clips.` : 'All audio is up to date.', 'success');
+        await loadCourses();
+      } catch (err) {
+        if (controller.signal.aborted) {
+          showToast('Audio generation stopped.', 'info');
+        } else {
+          showToast(err.message || 'Audio generation failed.', 'error');
+        }
+      } finally {
+        setIsAudioBusy(false);
+        setAudioProgressText('');
+        audioAbortRef.current = null;
+      }
+    };
+
+    const handleStopAudio = () => {
+      if (audioAbortRef.current) {
+        audioAbortRef.current.abort();
+      }
+    };
+
+    // Class Image Generation (Gemini Illustration Studio)
+    const handleGenerateImage = async (lessonIndex) => {
+      if (generatingImageIndex !== null || !editingCourse) return;
+      setGeneratingImageIndex(lessonIndex);
+      showToast(`Synthesizing illustration for Class ${lessonIndex + 1}...`, 'info');
+
+      try {
+        const saved = await rpcCall(session, setSession, 'admin_save_course', {
+          p_level_data: editingCourse,
+          p_status: editingStatus,
+        });
+        let currentCourse = saved?.level_data || editingCourse;
+        const lesson = currentCourse.classes[lessonIndex];
+
+        const res = await fetch(`${apiUrl}/functions/v1/admin-generate-course-image`, {
+          method: 'POST',
+          headers: {
+            apikey: publishableKey,
+            Authorization: `Bearer ${session.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            courseId: currentCourse.id,
+            lessonId: lesson.id,
+            title: String(lesson.title || '').replace(/^Class\s+\d+\s*:\s*/i, ''),
+            subtitle: lesson.subtitle,
+            grammarTopic: lesson.grammarTopic,
+            learnerOutcome: lesson.learnerOutcome,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Could not generate image for Class ${lessonIndex + 1}`);
+
+        lesson.imageUrl = data.imageUrl;
+        const persisted = await rpcCall(session, setSession, 'admin_save_course', {
+          p_level_data: currentCourse,
+          p_status: editingStatus,
+        });
+
+        setEditingCourse({ ...(persisted?.level_data || currentCourse) });
+        showToast(`Class ${lessonIndex + 1} illustration ready!`, 'success');
+        await loadCourses();
+      } catch (err) {
+        showToast(err.message || 'Image generation failed.', 'error');
+      } finally {
+        setGeneratingImageIndex(null);
+      }
+    };
+
+    // Import Course JavaScript / JSON
+    const handleImportFile = async (e) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+
+      showToast('Reading course file...', 'info');
+      try {
+        let data = [];
+        const text = await file.text();
+        if (file.name.toLowerCase().endsWith('.json')) {
+          const parsed = JSON.parse(text);
+          data = Array.isArray(parsed) ? parsed : [parsed];
+        } else {
+          data = await extractCoursesFromJavaScript(text);
+        }
+
+        const course = data.find((c) => Array.isArray(c?.classes) && c.classes.length) || data[0];
+        if (!course || !course.classes?.length) throw new Error('File does not contain valid course classes.');
+
+        const imported = JSON.parse(JSON.stringify(course));
+        delete imported.id;
+        delete imported.starterCourseKey;
+        const nextUnitNum = 5 + courses.filter((c) => !c.is_builtin).length;
+        imported.levelNumber = nextUnitNum;
+        imported.levelName = `Unit ${nextUnitNum}: ${String(imported.levelName || 'Imported Course').replace(/^Unit\s+\d+\s*:\s*/i, '')}`;
+
+        imported.classes = imported.classes.map((l, idx) => {
+          const copy = { ...l };
+          delete copy.id;
+          copy.levelNumber = nextUnitNum;
+          copy.classNumber = idx + 1;
+          return copy;
+        });
+
+        setEditingCourse(imported);
+        setEditingStatus('draft');
+        setSubTab('manual');
+        showToast(`Imported ${imported.classes.length} classes.`, 'success');
+      } catch (err) {
+        showToast(err.message || 'Import failed.', 'error');
+      }
+    };
+
     return html`
       <div>
         <div className="view-header">
           <div>
             <h1 className="view-title">Course Studio</h1>
-            <p className="view-subtitle">Author conversational curricula, synthesize lesson units with AI, and manage Gemini voice lectures.</p>
+            <p className="view-subtitle">Author conversational curricula, synthesize units with Nemotron AI, generate Gemini TTS voice lectures, and craft lesson artwork.</p>
           </div>
-          <button
-            className="btn-primary btn-sm"
-            onClick=${() => {
-              setEditingCourse(null);
-              setEditingStatus('draft');
-              setSubTab('ai');
-            }}
-          >
-            <${Icons.Sparkles} size=${14} />
-            <span>Generate with AI</span>
-          </button>
+          <div style=${{ display: 'flex', gap: '8px' }}>
+            <input
+              type="file"
+              ref=${fileImportInputRef}
+              accept=".js,.json"
+              style=${{ display: 'none' }}
+              onChange=${handleImportFile}
+            />
+            <button
+              className="btn-secondary btn-sm"
+              onClick=${() => fileImportInputRef.current?.click()}
+            >
+              <${Icons.Upload} size=${14} />
+              <span>Import File</span>
+            </button>
+            <button
+              className="btn-primary btn-sm"
+              onClick=${() => {
+                setEditingCourse(null);
+                setEditingStatus('draft');
+                setSubTab('ai');
+              }}
+            >
+              <${Icons.Sparkles} size=${14} />
+              <span>AI Generator</span>
+            </button>
+          </div>
         </div>
 
         <div className="subtabs-bar">
@@ -1280,9 +1535,9 @@
                 </select>
               </div>
 
-              <button type="submit" className="btn-primary" disabled=${isGenerating}>
+              <button type="submit" className="btn-primary" disabled=${isGeneratingAi}>
                 <${Icons.Sparkles} size=${14} />
-                <span>${isGenerating ? 'Synthesizing 5 Classes (~30s)...' : 'Synthesize 5-Class Unit'}</span>
+                <span>${isGeneratingAi ? 'Synthesizing 5 Classes (~30s)...' : 'Synthesize 5-Class Unit'}</span>
               </button>
             </form>
           </div>
@@ -1300,7 +1555,20 @@
                           <h3 style=${{ fontSize: '16px', fontWeight: 600 }}>${editingCourse.levelName}</h3>
                           <span style=${{ fontSize: '12px', color: 'var(--text-muted)' }}>${editingCourse.classes?.length || 5} Classes Configured</span>
                         </div>
-                        <div style=${{ display: 'flex', gap: '8px' }}>
+                        <div style=${{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          ${isAudioBusy
+                            ? html`
+                                <button className="btn-danger btn-sm" onClick=${handleStopAudio}>
+                                  <${Icons.Stop} size=${12} />
+                                  <span>Stop Audio</span>
+                                </button>
+                              `
+                            : html`
+                                <button className="btn-secondary btn-sm" onClick=${handleGenerateAudio}>
+                                  <${Icons.Mic} size=${12} />
+                                  <span>Generate Audio (Gemini TTS)</span>
+                                </button>
+                              `}
                           <button className="btn-secondary btn-sm" onClick=${() => handleSaveCourse('draft')}>Save Draft</button>
                           <button className="btn-primary btn-sm" onClick=${() => handleSaveCourse('published')}>Publish to App</button>
                         </div>
@@ -1315,13 +1583,29 @@
                           onChange=${(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
                         />
                       </div>
+
+                      ${isAudioBusy && html`
+                        <div className="media-batch-card">
+                          <div className="media-batch-info">
+                            <span className="media-batch-title">Gemini TTS Multi-Modal Audio Synthesis in progress</span>
+                            <span className="media-batch-desc">${audioProgressText}</span>
+                          </div>
+                          <span className="status-dot"></span>
+                        </div>
+                      `}
                     </div>
 
-                    <!-- 5 Class Cards -->
+                    <!-- 5 Class Cards with Audio and Image generation -->
                     <div className="class-accordion">
                       ${(editingCourse.classes || []).map((lesson, idx) => {
-                        const audioUrl = lesson.lectureAudio?.tamil?.url;
-                        const isPlaying = activeAudioUrl === audioUrl;
+                        const tamilAudio = lesson.lectureAudio?.tamil?.url;
+                        const whyAudio = lesson.lectureAudio?.why?.url;
+                        const rightAudio = lesson.lectureAudio?.right?.url;
+
+                        const isTamilPlaying = activeAudioUrl === tamilAudio;
+                        const isWhyPlaying = activeAudioUrl === whyAudio;
+                        const isRightPlaying = activeAudioUrl === rightAudio;
+                        const isImageGenerating = generatingImageIndex === idx;
 
                         return html`
                           <div key=${idx} className="class-card">
@@ -1372,25 +1656,79 @@
                               />
                             </div>
 
-                            <div className="class-media-row">
-                              ${audioUrl
-                                ? html`
+                            <!-- Media Studio Grid: Audio playback on Left, 16:9 Image Studio on Right -->
+                            <div className="class-media-grid">
+                              <div className="class-audio-stack">
+                                <span className="class-audio-label">Gemini TTS Voice Clips</span>
+                                <div className="class-audio-btns">
+                                  ${tamilAudio
+                                    ? html`
+                                        <button
+                                          type="button"
+                                          className=${`audio-preview-btn ${isTamilPlaying ? 'playing' : ''}`}
+                                          onClick=${() => toggleAudio(tamilAudio)}
+                                        >
+                                          ${isTamilPlaying ? html`<${Icons.Pause} size=${12} />` : html`<${Icons.Play} size=${12} />`}
+                                          <span>Tamil Model</span>
+                                        </button>
+                                      `
+                                    : html`<span style=${{ fontSize: '11px', color: 'var(--text-muted)' }}>No Tamil audio</span>`}
+
+                                  ${whyAudio && html`
                                     <button
                                       type="button"
-                                      className=${`audio-preview-btn ${isPlaying ? 'playing' : ''}`}
-                                      onClick=${() => toggleAudio(audioUrl)}
+                                      className=${`audio-preview-btn ${isWhyPlaying ? 'playing' : ''}`}
+                                      onClick=${() => toggleAudio(whyAudio)}
                                     >
-                                      ${isPlaying ? html`<${Icons.Pause} size=${12} />` : html`<${Icons.Play} size=${12} />`}
-                                      <span>${isPlaying ? 'Stop Tamil Lecture' : 'Play Tamil Audio'}</span>
+                                      ${isWhyPlaying ? html`<${Icons.Pause} size=${12} />` : html`<${Icons.Play} size=${12} />`}
+                                      <span>Why Rule</span>
                                     </button>
-                                  `
-                                : html`<span style=${{ fontSize: '11.5px', color: 'var(--text-muted)' }}>No audio synthesized yet</span>`}
+                                  `}
 
-                              ${lesson.imageUrl && html`
-                                <span style=${{ fontSize: '11.5px', color: 'var(--success)' }}>
-                                  <${Icons.Check} size=${12} /> Illustration mapped
-                                </span>
-                              `}
+                                  ${rightAudio && html`
+                                    <button
+                                      type="button"
+                                      className=${`audio-preview-btn ${isRightPlaying ? 'playing' : ''}`}
+                                      onClick=${() => toggleAudio(rightAudio)}
+                                    >
+                                      ${isRightPlaying ? html`<${Icons.Pause} size=${12} />` : html`<${Icons.Play} size=${12} />`}
+                                      <span>Spoken Answer</span>
+                                    </button>
+                                  `}
+                                </div>
+                              </div>
+
+                              <!-- Class Image Studio -->
+                              <div className="class-image-box">
+                                ${lesson.imageUrl
+                                  ? html`
+                                      <img className="class-image-preview" src=${lesson.imageUrl} alt="Class illustration" />
+                                      <button
+                                        type="button"
+                                        className="btn-secondary btn-sm"
+                                        disabled=${isImageGenerating}
+                                        onClick=${() => handleGenerateImage(idx)}
+                                      >
+                                        <${Icons.Image} size=${12} />
+                                        <span>${isImageGenerating ? 'Synthesizing...' : 'Regenerate Image'}</span>
+                                      </button>
+                                    `
+                                  : html`
+                                      <div className="class-image-placeholder">
+                                        <${Icons.Image} size=${16} />
+                                        <span>No illustration</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="btn-secondary btn-sm"
+                                        disabled=${isImageGenerating}
+                                        onClick=${() => handleGenerateImage(idx)}
+                                      >
+                                        <${Icons.Sparkles} size=${12} />
+                                        <span>${isImageGenerating ? 'Synthesizing...' : 'Generate Image'}</span>
+                                      </button>
+                                    `}
+                              </div>
                             </div>
                           </div>
                         `;
