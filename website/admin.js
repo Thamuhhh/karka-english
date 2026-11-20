@@ -39,6 +39,8 @@
     Mic: (props) => html`<${SvgIcon} ...${props} d=${['M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z', 'M19 10v2a7 7 0 0 1-14 0v-2', 'M12 19v4', 'M8 23h8']} />`,
     Image: (props) => html`<${SvgIcon} ...${props} d=${['M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z', 'm21 15-5-5L5 21', 'M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z']} />`,
     Stop: (props) => html`<${SvgIcon} ...${props} d="M4 4h16v16H4z" />`,
+    Smartphone: (props) => html`<${SvgIcon} ...${props} d=${['M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z', 'M12 18h.01']} />`,
+    Send: (props) => html`<${SvgIcon} ...${props} d=${['M22 2 11 13', 'M22 2 15 22 11 13 2 9 22 2z']} />`,
   };
 
   /* ==========================================================================
@@ -222,6 +224,7 @@
     const [activeAudioUrl, setActiveAudioUrl] = useState(null);
 
     // Push Notifications State
+    const [pushStats, setPushStats] = useState(null);
     const [pushDevicesCount, setPushDevicesCount] = useState('—');
     const [pushTitle, setPushTitle] = useState('Nila AI Speaking Challenge is Live');
     const [pushBody, setPushBody] = useState('Practice a quick 2-minute conversation today and protect your streak.');
@@ -317,9 +320,20 @@
       }
     }, [session]);
 
-    // Load Push Devices Count
+    // Load Push Devices Telemetry
     const loadPushDevices = useCallback(async () => {
       if (!session?.accessToken) return;
+      try {
+        const stats = await rpcCall(session, setSession, 'admin_get_push_stats');
+        if (stats && typeof stats.total_installs === 'number') {
+          setPushStats(stats);
+          setPushDevicesCount(formatNumber(stats.total_installs));
+          return;
+        }
+      } catch (err) {
+        console.warn('admin_get_push_stats fallback:', err?.message);
+      }
+
       try {
         const res = await fetch(`${apiUrl}/rest/v1/push_devices?select=id`, {
           method: 'HEAD',
@@ -328,12 +342,15 @@
         const range = res.headers.get('content-range');
         if (range) {
           const total = range.split('/')[1];
-          if (total) setPushDevicesCount(formatNumber(total));
+          if (total) {
+            setPushDevicesCount(formatNumber(total));
+            setPushStats({ total_installs: Number(total), android_installs: 0, ios_installs: 0 });
+          }
         } else {
-          setPushDevicesCount('Active');
+          setPushDevicesCount('0');
         }
       } catch {
-        setPushDevicesCount('Active');
+        setPushDevicesCount('0');
       }
     }, [session]);
 
@@ -472,6 +489,7 @@
             ${activeTab === 'overview' && html`
               <${OverviewView}
                 overview=${overview}
+                pushStats=${pushStats}
                 lastUpdated=${lastUpdated}
                 onNavigate=${handleTabChange}
               />
@@ -513,6 +531,7 @@
             ${activeTab === 'notifications' && html`
               <${PushView}
                 devicesCount=${pushDevicesCount}
+                pushStats=${pushStats}
                 title=${pushTitle}
                 setTitle=${setPushTitle}
                 body=${pushBody}
@@ -526,7 +545,9 @@
                 isBroadcasting=${isBroadcasting}
                 setIsBroadcasting=${setIsBroadcasting}
                 session=${session}
+                setSession=${setSession}
                 showToast=${showToast}
+                refreshDevices=${loadPushDevices}
               />
             `}
 
@@ -657,8 +678,9 @@
      6. VIEW: OVERVIEW TELEMETRY
      ========================================================================== */
 
-  function OverviewView({ overview, lastUpdated, onNavigate }) {
+  function OverviewView({ overview, pushStats, lastUpdated, onNavigate }) {
     const totalAccounts = Number(overview?.total_accounts || 0);
+    const totalInstalls = Number(overview?.total_installs ?? pushStats?.total_installs ?? 0);
     const activeToday = Number(overview?.active_today || 0);
     const newWeekly = Number(overview?.new_accounts_7d || 0);
     const completedClasses = Number(overview?.completed_classes || 0);
@@ -677,8 +699,17 @@
           ${lastUpdated && html`<span className="breadcrumb-root">Updated ${lastUpdated}</span>`}
         </div>
 
-        <!-- 6 KPI Metric Cards -->
+        <!-- KPI Metric Cards -->
         <div className="metrics-grid">
+          <div className="metric-card">
+            <div className="metric-head">
+              <span className="metric-label">App Installs</span>
+              <${Icons.Smartphone} className="metric-icon" />
+            </div>
+            <strong className="metric-value">${formatNumber(totalInstalls)}</strong>
+            <span className="metric-foot">Expo device registrations</span>
+          </div>
+
           <div className="metric-card">
             <div className="metric-head">
               <span className="metric-label">Total Accounts</span>
@@ -1754,6 +1785,7 @@
 
   function PushView({
     devicesCount,
+    pushStats,
     title,
     setTitle,
     body,
@@ -1767,36 +1799,147 @@
     isBroadcasting,
     setIsBroadcasting,
     session,
+    setSession,
     showToast,
+    refreshDevices,
   }) {
+    const [testToken, setTestToken] = useState('');
+    const [isTestingSingle, setIsTestingSingle] = useState(false);
+
+    const totalInstalls = pushStats?.total_installs != null ? pushStats.total_installs : (devicesCount !== '—' ? Number(devicesCount) : 0);
+    const androidInstalls = pushStats?.android_installs != null ? pushStats.android_installs : '—';
+    const iosInstalls = pushStats?.ios_installs != null ? pushStats.ios_installs : '—';
+
+    // Broadcast to all registered devices via Expo Push Gateway
     const handleBroadcast = async (e) => {
-      e.preventDefault();
+      e?.preventDefault();
       setIsBroadcasting(true);
-      setFeedback('Dispatching notification payload...');
+      setFeedback('Querying registered Expo push devices from database...');
 
       try {
-        const res = await fetch(`${apiUrl}/functions/v1/ai-speaking-push`, {
-          method: 'POST',
-          headers: {
-            apikey: publishableKey,
-            Authorization: `Bearer ${session.accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ broadcastNotice: true, title, body, screen, priority }),
+        const data = await rpcCall(session, setSession, 'admin_broadcast_push', {
+          p_title: title,
+          p_body: body,
+          p_screen: screen,
+          p_priority: priority,
         });
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok && res.status !== 200) {
-          setFeedback(data.error || 'Notice dispatched to device test queue.');
-        } else {
-          setFeedback('Notification successfully broadcast to registered learner devices.');
+        const tokens = Array.isArray(data?.tokens) ? data.tokens : [];
+        if (!tokens.length) {
+          setFeedback('No active Expo device tokens found. Once users open the updated app and accept notification permissions, devices will register automatically.');
+          showToast('No registered push devices found.', 'info');
+          return;
         }
-        showToast('Push dispatch complete.', 'success');
+
+        setFeedback(`Found ${tokens.length} registered device tokens. Dispatching to Expo Push API...`);
+
+        const BATCH_SIZE = 100;
+        let okCount = 0;
+        let errCount = 0;
+        const errorDetails = [];
+
+        for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
+          const chunk = tokens.slice(i, i + BATCH_SIZE);
+          const messages = chunk.map((token) => ({
+            to: token,
+            title,
+            body,
+            sound: 'default',
+            priority: priority === 'high' ? 'high' : 'default',
+            channelId: 'daily-practice',
+            data: { screen, kind: 'broadcast-notice' },
+          }));
+
+          const res = await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify(messages),
+          });
+
+          const json = await res.json().catch(() => ({}));
+          if (Array.isArray(json?.data)) {
+            json.data.forEach((ticket) => {
+              if (ticket.status === 'ok') {
+                okCount++;
+              } else {
+                errCount++;
+                const reason = ticket?.message || ticket?.details?.error;
+                if (reason && errorDetails.length < 3) errorDetails.push(reason);
+              }
+            });
+          } else {
+            errCount += chunk.length;
+          }
+        }
+
+        let summary = `Broadcast sent: ${okCount} delivered successfully via Expo gateway.`;
+        if (errCount > 0) {
+          summary += ` (${errCount} errors: ${errorDetails.join(', ') || 'DeviceNotRegistered'})`;
+        }
+        setFeedback(summary);
+        showToast(`Dispatched to ${okCount} devices.`, okCount > 0 ? 'success' : 'error');
+        if (refreshDevices) refreshDevices();
       } catch (err) {
-        setFeedback(err.message || 'Notification service dispatch failed.');
-        showToast('Push broadcast executed.', 'info');
+        setFeedback(`Broadcast error: ${err.message}`);
+        showToast(err.message, 'error');
       } finally {
         setIsBroadcasting(false);
+      }
+    };
+
+    // Test send to a single specific device token
+    const handleSendTestToken = async () => {
+      const cleanToken = testToken.trim();
+      if (!cleanToken) {
+        showToast('Please enter an Expo push token.', 'error');
+        return;
+      }
+      if (!cleanToken.startsWith('ExponentPushToken[') && !cleanToken.startsWith('ExpoPushToken[')) {
+        showToast('Token should be in ExponentPushToken[...] format.', 'error');
+        return;
+      }
+
+      setIsTestingSingle(true);
+      setFeedback(`Sending test push to ${cleanToken.slice(0, 24)}...`);
+
+      try {
+        const message = {
+          to: cleanToken,
+          title: title || 'Nila AI Speaking Challenge is Live',
+          body: body || 'Practice a quick 2-minute conversation today and protect your streak.',
+          sound: 'default',
+          priority: 'high',
+          channelId: 'daily-practice',
+          data: { screen, kind: 'test-ping' },
+        };
+
+        const res = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify([message]),
+        });
+
+        const json = await res.json().catch(() => ({}));
+        const ticket = json?.data?.[0];
+        if (ticket?.status === 'ok') {
+          setFeedback(`Test push accepted by Expo gateway. Ticket ID: ${ticket.id}`);
+          showToast('Test notification delivered to Expo!', 'success');
+        } else {
+          const reason = ticket?.message || ticket?.details?.error || 'Unknown error';
+          setFeedback(`Expo Push Gateway rejected: ${reason}`);
+          showToast(`Expo error: ${reason}`, 'error');
+        }
+      } catch (err) {
+        setFeedback(`Test dispatch error: ${err.message}`);
+        showToast(err.message, 'error');
+      } finally {
+        setIsTestingSingle(false);
       }
     };
 
@@ -1805,42 +1948,46 @@
         <div className="view-header">
           <div>
             <h1 className="view-title">Push Notifications Engine</h1>
-            <p className="view-subtitle">Inspect connected Expo device tokens, monitor the 8:00 PM cron daemon, and broadcast instant notices.</p>
+            <p className="view-subtitle">Inspect connected Expo device installations, test device tokens, and broadcast instant notices.</p>
           </div>
+          <button className="btn-secondary btn-sm" onClick=${refreshDevices}>
+            <${Icons.Refresh} size=${12} />
+            <span>Refresh Devices</span>
+          </button>
         </div>
 
         <div className="metrics-grid">
           <div className="metric-card">
             <div className="metric-head">
-              <span className="metric-label">Registered Devices</span>
-              <${Icons.Activity} className="metric-icon" />
+              <span className="metric-label">App Installs</span>
+              <${Icons.Smartphone} className="metric-icon" />
             </div>
-            <strong className="metric-value">${devicesCount}</strong>
-            <span className="metric-foot">Active Expo push tokens</span>
+            <strong className="metric-value">${formatNumber(totalInstalls)}</strong>
+            <span className="metric-foot">Expo device registrations</span>
           </div>
           <div className="metric-card">
             <div className="metric-head">
-              <span className="metric-label">Cron Engine</span>
+              <span className="metric-label">Android Devices</span>
               <${Icons.Activity} className="metric-icon" />
             </div>
-            <strong className="metric-value" style=${{ color: 'var(--success)' }}>1 min</strong>
-            <span className="metric-foot">pg_cron daemon active</span>
+            <strong className="metric-value">${androidInstalls !== '—' ? formatNumber(androidInstalls) : '—'}</strong>
+            <span className="metric-foot">Android 13+ devices</span>
           </div>
           <div className="metric-card">
             <div className="metric-head">
-              <span className="metric-label">Schedule Window</span>
+              <span className="metric-label">iOS Devices</span>
+              <${Icons.Activity} className="metric-icon" />
+            </div>
+            <strong className="metric-value">${iosInstalls !== '—' ? formatNumber(iosInstalls) : '—'}</strong>
+            <span className="metric-foot">Apple iOS devices</span>
+          </div>
+          <div className="metric-card">
+            <div className="metric-head">
+              <span className="metric-label">Daily Reminder</span>
               <${Icons.Bell} className="metric-icon" />
             </div>
             <strong className="metric-value">20:00</strong>
             <span className="metric-foot">Learner local timezone</span>
-          </div>
-          <div className="metric-card">
-            <div className="metric-head">
-              <span className="metric-label">AI Personalizer</span>
-              <${Icons.Sparkles} className="metric-icon" />
-            </div>
-            <strong className="metric-value" style=${{ color: 'var(--accent)' }}>Gemini</strong>
-            <span className="metric-foot">Dynamic streak & XP copy</span>
           </div>
         </div>
 
@@ -1894,12 +2041,37 @@
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" disabled=${isBroadcasting}>
-                <${Icons.Bell} size=${14} />
+              <button type="submit" className="btn-primary" disabled=${isBroadcasting || isTestingSingle}>
+                <${Icons.Send} size=${14} />
                 <span>${isBroadcasting ? 'Broadcasting...' : 'Dispatch to All Devices'}</span>
               </button>
 
-              ${feedback && html`<p style=${{ fontSize: '12px', color: 'var(--text-secondary)' }}>${feedback}</p>`}
+              <!-- Single Device Direct Tester -->
+              <div style=${{ marginTop: '12px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                <span className="card-title" style=${{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Test Single Device (Expo Push Token)</span>
+                <div style=${{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style=${{ fontFamily: 'monospace', fontSize: '11px' }}
+                    placeholder="ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+                    value=${testToken}
+                    onChange=${(e) => setTestToken(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style=${{ whiteSpace: 'nowrap' }}
+                    onClick=${handleSendTestToken}
+                    disabled=${isBroadcasting || isTestingSingle || !testToken.trim()}
+                  >
+                    <${Icons.Bell} size=${12} />
+                    <span>${isTestingSingle ? 'Testing...' : 'Test Device'}</span>
+                  </button>
+                </div>
+              </div>
+
+              ${feedback && html`<p style=${{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', marginTop: '6px' }}>${feedback}</p>`}
             </form>
           </div>
 

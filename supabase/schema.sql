@@ -324,6 +324,9 @@ begin
 
   return jsonb_build_object(
     'total_accounts', (select count(*) from auth.users),
+    'total_installs', (
+      select coalesce((select count(*) from public.push_devices), 0)
+    ),
     'new_accounts_7d', (
       select count(*) from auth.users where created_at >= now() - interval '7 days'
     ),

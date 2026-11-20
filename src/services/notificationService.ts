@@ -34,7 +34,7 @@ export async function registerUserPushDevice(
   authUser: AuthUser | null,
   requestPermission = true
 ): Promise<PushRegistrationResult> {
-  if (Platform.OS === 'web' || !supabase || !authUser?.id || !authUser.isCloudSession) return 'unsupported';
+  if (Platform.OS === 'web' || !supabase) return 'unsupported';
   await cancelLegacyLocalReminder();
   await configureAndroidChannel();
 
@@ -50,16 +50,24 @@ export async function registerUserPushDevice(
   }
   if (!permission.granted) return 'permission-denied';
 
-  const expoPushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const { error } = await supabase.rpc('register_push_device', {
-    p_expo_push_token: expoPushToken,
-    p_platform: Platform.OS,
-    p_timezone: timezone,
-  });
-  if (error) throw error;
-  await AsyncStorage.setItem(PUSH_TOKEN_KEY, expoPushToken);
-  return 'registered';
+  try {
+    const expoPushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const { error } = await supabase.rpc('register_push_device', {
+      p_expo_push_token: expoPushToken,
+      p_platform: Platform.OS,
+      p_timezone: timezone,
+    });
+    if (error) {
+      console.warn('Could not register device token with cloud:', error.message);
+    } else {
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, expoPushToken);
+    }
+    return 'registered';
+  } catch (err: any) {
+    console.warn('Push token retrieval notice:', err?.message || err);
+    return 'unsupported';
+  }
 }
 
 export async function unregisterUserPushDevice(): Promise<void> {
