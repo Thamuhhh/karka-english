@@ -227,6 +227,85 @@ create trigger leaderboard_entries_touch_updated_at
   before update on public.leaderboard_entries
   for each row execute function private.touch_updated_at();
 
+-- Security Guardrail: Prevent client-side XP, Gems, and Streak tampering / cheating
+create or replace function private.validate_progress_progression()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Prevent negative values
+  if new.stardust_xp < 0 or new.gems < 0 or new.streak_days < 0 then
+    raise exception 'Progress values cannot be negative' using errcode = '22003';
+  end if;
+
+  -- Cap max realistic values against overflow / memory corruption
+  if new.stardust_xp > 1000000 or new.gems > 100000 or new.streak_days > 3650 then
+    raise exception 'Value exceeds realistic limits' using errcode = '22003';
+  end if;
+
+  -- On update: prevent malicious jumps
+  if tg_op = 'UPDATE' and old.streak_days is not null then
+    -- Streak cannot jump by more than 2 days in a single sync
+    if new.streak_days > (old.streak_days + 2) then
+      new.streak_days := old.streak_days + 1;
+    end if;
+
+    -- XP cannot jump by more than 5000 in a single client sync
+    if new.stardust_xp > (old.stardust_xp + 5000) then
+      new.stardust_xp := old.stardust_xp + 1000;
+    end if;
+  end if;
+
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+revoke execute on function private.validate_progress_progression() from public, anon, authenticated;
+
+drop trigger if exists user_progress_validate_progression on public.user_progress;
+create trigger user_progress_validate_progression
+  before insert or update on public.user_progress
+  for each row execute function private.validate_progress_progression();
+
+-- Security Guardrail: Keep leaderboard XP and Streak synchronized with verified user_progress
+create or replace function private.sync_leaderboard_progression()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  verified_xp integer;
+  verified_streak integer;
+begin
+  select stardust_xp, streak_days
+  into verified_xp, verified_streak
+  from public.user_progress
+  where user_id = new.user_id;
+
+  if verified_xp is not null and new.stardust_xp > verified_xp then
+    new.stardust_xp := verified_xp;
+  end if;
+
+  if verified_streak is not null and new.streak_days > verified_streak then
+    new.streak_days := verified_streak;
+  end if;
+
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+revoke execute on function private.sync_leaderboard_progression() from public, anon, authenticated;
+
+drop trigger if exists leaderboard_entries_sync_progression on public.leaderboard_entries;
+create trigger leaderboard_entries_sync_progression
+  before insert or update on public.leaderboard_entries
+  for each row execute function private.sync_leaderboard_progression();
+
 -- Private signup trigger: automatically provision profile, progress, and leaderboard row on auth.users insert
 create or replace function private.handle_new_user()
 returns trigger

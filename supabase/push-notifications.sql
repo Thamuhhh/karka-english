@@ -32,21 +32,37 @@ set search_path = public
 as $$
 declare
   current_user_id uuid := auth.uid();
+  clean_token text := trim(coalesce(p_expo_push_token, ''));
   resolved_timezone text := coalesce(nullif(trim(p_timezone), ''), 'UTC');
 begin
   if p_platform not in ('ios', 'android') then
     raise exception 'Unsupported notification platform';
   end if;
-  if length(resolved_timezone) > 80 then
+
+  -- Security Hardening: Strict Expo push token format validation
+  if clean_token !~ '^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]{15,70}\]$' then
+    raise exception 'Invalid Expo push token format';
+  end if;
+
+  -- Sanitize timezone input to prevent header injection or malformed data
+  if length(resolved_timezone) > 64 or resolved_timezone ~ '[<>"'';\\]' then
     resolved_timezone := 'UTC';
   end if;
-  if coalesce(p_expo_push_token, '') not like 'ExpoPushToken[%]'
-     and coalesce(p_expo_push_token, '') not like 'ExponentPushToken[%]' then
-    raise exception 'Invalid Expo push token';
+
+  -- Prevent device table bloat: Keep max 5 devices per registered user
+  if current_user_id is not null then
+    delete from public.push_devices
+    where user_id = current_user_id
+      and id in (
+        select id from public.push_devices
+        where user_id = current_user_id
+        order by updated_at asc
+        offset 4
+      );
   end if;
 
   insert into public.push_devices (user_id, expo_push_token, platform, timezone, last_reminder_local_date)
-  values (current_user_id, p_expo_push_token, p_platform, resolved_timezone, null)
+  values (current_user_id, clean_token, p_platform, resolved_timezone, null)
   on conflict (expo_push_token) do update set
     user_id = coalesce(excluded.user_id, push_devices.user_id),
     platform = excluded.platform,
