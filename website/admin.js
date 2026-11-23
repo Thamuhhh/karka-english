@@ -70,9 +70,10 @@
   }
 
   function isGuestAccount(learner) {
+    if (learner?.is_anonymous === true) return true;
     const email = String(learner?.email || '').trim().toLowerCase();
     const name = String(learner?.display_name || '').trim().toLowerCase();
-    return !email || email.includes('guest') || email.includes('anon') || name.startsWith('guest');
+    return !email || email === '—' || email === 'no email' || email.includes('guest') || email.includes('anon') || name.startsWith('guest');
   }
 
   function calculateRank(xp) {
@@ -712,11 +713,20 @@
 
           <div className="metric-card">
             <div className="metric-head">
+              <span className="metric-label">Verified Learners</span>
+              <${Icons.Users} className="metric-icon" />
+            </div>
+            <strong className="metric-value">${overview?.verified_accounts != null ? formatNumber(overview.verified_accounts) : (overview ? formatNumber(overview.total_accounts) : '—')}</strong>
+            <span className="metric-foot">Registered with email</span>
+          </div>
+
+          <div className="metric-card">
+            <div className="metric-head">
               <span className="metric-label">Total Accounts</span>
               <${Icons.Users} className="metric-icon" />
             </div>
             <strong className="metric-value">${overview ? formatNumber(overview.total_accounts) : '—'}</strong>
-            <span className="metric-foot">Registered learners</span>
+            <span className="metric-foot">Includes ${overview?.guest_accounts != null ? formatNumber(overview.guest_accounts) : '0'} guests</span>
           </div>
 
           <div className="metric-card">
@@ -734,7 +744,7 @@
               <${Icons.Sparkles} className="metric-icon" />
             </div>
             <strong className="metric-value">${overview ? formatNumber(overview.active_today) : '—'}</strong>
-            <span className="metric-foot">Practiced in past 24h</span>
+            <span className="metric-foot">Practiced in past 24-36h</span>
           </div>
 
           <div className="metric-card">
@@ -761,7 +771,7 @@
               <${Icons.Activity} className="metric-icon" />
             </div>
             <strong className="metric-value">${overview ? `${Number(overview.average_streak || 0).toFixed(1)}d` : '—'}</strong>
-            <span className="metric-foot">Consecutive practice days</span>
+            <span className="metric-foot">Active student average</span>
           </div>
         </div>
 
@@ -853,11 +863,11 @@
     // Filter list locally
     const filteredLearners = useMemo(() => {
       const now = Date.now();
-      const oneDay = 24 * 60 * 60 * 1000;
+      const thirtySixHours = 36 * 60 * 60 * 1000;
       return learners.filter((l) => {
         if (filter === 'active') {
           if (!l.last_active_date) return false;
-          return now - new Date(l.last_active_date).getTime() <= oneDay;
+          return now - new Date(l.last_active_date).getTime() <= thirtySixHours;
         }
         if (filter === 'streak') return Number(l.streak_days) >= 3;
         if (filter === 'guests') return isGuestAccount(l);
@@ -874,7 +884,7 @@
       }
       const headers = ['User ID', 'Name', 'Email', 'Type', 'XP', 'Streak', 'Classes', 'Joined', 'Last Active'];
       const rows = learners.map((l) => [
-        `"${String(l.id || '').replace(/"/g, '""')}"`,
+        `"${String(l.id || l.user_id || '').replace(/"/g, '""')}"`,
         `"${String(l.display_name || '').replace(/"/g, '""')}"`,
         `"${String(l.email || '').replace(/"/g, '""')}"`,
         isGuestAccount(l) ? 'Guest' : 'Verified Email',
@@ -959,8 +969,9 @@
                 : filteredLearners.map((learner) => {
                     const guest = isGuestAccount(learner);
                     const initial = (learner.display_name || learner.email || 'L').slice(0, 1).toUpperCase();
+                    const learnerKey = learner.id || learner.user_id || `learner-${learner.email}`;
                     return html`
-                      <tr key=${learner.id} onClick=${() => onSelectLearner(learner)}>
+                      <tr key=${learnerKey} onClick=${() => onSelectLearner(learner)}>
                         <td>
                           <div className="learner-col">
                             <div className="avatar-circle">${initial}</div>
@@ -1082,7 +1093,7 @@
               <div className="drawer-meta-list">
                 <div className="drawer-meta-item">
                   <span>Account ID</span>
-                  <code style=${{ fontSize: '11px', color: 'var(--text-secondary)' }}>${learner.id}</code>
+                  <code style=${{ fontSize: '11px', color: 'var(--text-secondary)' }}>${learner.id || learner.user_id || '—'}</code>
                 </div>
                 <div className="drawer-meta-item">
                   <span>Registration Date</span>

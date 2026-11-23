@@ -165,8 +165,7 @@ function AppContent() {
 
   useEffect(() => {
     if (!hydrated || Platform.OS === 'web') return;
-    if (!authUser?.id || !authUser.isCloudSession) return;
-    const authKey = authUser.id;
+    const authKey = authUser?.id || 'guest-install';
     if (notificationAuthKeyRef.current === authKey) return;
     notificationAuthKeyRef.current = authKey;
     let active = true;
@@ -199,7 +198,7 @@ function AppContent() {
       active = false;
       appStateSubscription.remove();
     };
-  }, [authUser?.id, authUser?.isCloudSession, hydrated]);
+  }, [authUser?.id, hydrated]);
 
   useEffect(() => {
     let mounted = true;

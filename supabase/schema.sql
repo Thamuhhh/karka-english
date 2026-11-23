@@ -392,35 +392,98 @@ $$;
 
 revoke all on function private.require_admin() from public, anon, authenticated;
 
+-- Backfill any existing users into profiles, user_progress, and leaderboard_entries
+insert into public.profiles (id, display_name, avatar_color)
+select
+  u.id,
+  coalesce(
+    nullif(trim(u.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(split_part(coalesce(u.email, ''), '@', 1), ''),
+    case when coalesce(u.is_anonymous, false) then 'Guest Learner' else 'Elvate Learner' end
+  ),
+  '#7F43FE'
+from auth.users u
+on conflict (id) do nothing;
+
+insert into public.user_progress (user_id)
+select u.id from auth.users u
+on conflict (user_id) do nothing;
+
+insert into public.leaderboard_entries (
+  user_id, display_name, avatar_initials, avatar_color, stardust_xp, streak_days, cosmic_rank
+)
+select
+  u.id,
+  coalesce(
+    nullif(trim(u.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(split_part(coalesce(u.email, ''), '@', 1), ''),
+    'Elvate Learner'
+  ),
+  'EL',
+  '#7F43FE',
+  coalesce(pr.stardust_xp, 0),
+  coalesce(pr.streak_days, 1),
+  coalesce(pr.cosmic_rank, 'Bronze League')
+from auth.users u
+left join public.user_progress pr on pr.user_id = u.id
+on conflict (user_id) do nothing;
+
 create or replace function public.admin_get_overview()
 returns jsonb
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_total_accounts bigint;
+  v_verified_accounts bigint;
+  v_guest_accounts bigint;
+  v_total_installs bigint;
+  v_new_accounts_7d bigint;
+  v_active_today bigint;
+  v_total_xp bigint;
+  v_completed_classes bigint;
+  v_avg_streak numeric;
 begin
   perform private.require_admin();
 
+  select count(*),
+         count(*) filter (where not coalesce(is_anonymous, false) and email is not null and email not like '%@guest%'),
+         count(*) filter (where coalesce(is_anonymous, false) or email is null or email like '%@guest%')
+  into v_total_accounts, v_verified_accounts, v_guest_accounts
+  from auth.users;
+
+  select coalesce(count(*), 0)
+  into v_total_installs
+  from public.push_devices;
+
+  select count(*)
+  into v_new_accounts_7d
+  from auth.users
+  where created_at >= (now() - interval '7 days');
+
+  -- Active within last 36 hours (handles local timezone offset for India +5:30)
+  select count(*)
+  into v_active_today
+  from public.user_progress
+  where last_active_date >= (current_date - 1);
+
+  select coalesce(sum(stardust_xp), 0),
+         coalesce(sum(cardinality(completed_classes)), 0),
+         coalesce(round(avg(streak_days) filter (where streak_days > 0)::numeric, 1), 0)
+  into v_total_xp, v_completed_classes, v_avg_streak
+  from public.user_progress;
+
   return jsonb_build_object(
-    'total_accounts', (select count(*) from auth.users),
-    'total_installs', (
-      select coalesce((select count(*) from public.push_devices), 0)
-    ),
-    'new_accounts_7d', (
-      select count(*) from auth.users where created_at >= now() - interval '7 days'
-    ),
-    'active_today', (
-      select count(*) from public.user_progress where last_active_date = current_date
-    ),
-    'total_xp', (
-      select coalesce(sum(stardust_xp), 0) from public.user_progress
-    ),
-    'completed_classes', (
-      select coalesce(sum(cardinality(completed_classes)), 0) from public.user_progress
-    ),
-    'average_streak', (
-      select coalesce(round(avg(streak_days)::numeric, 1), 0) from public.user_progress
-    )
+    'total_accounts', coalesce(v_total_accounts, 0),
+    'verified_accounts', coalesce(v_verified_accounts, 0),
+    'guest_accounts', coalesce(v_guest_accounts, 0),
+    'total_installs', coalesce(v_total_installs, 0),
+    'new_accounts_7d', coalesce(v_new_accounts_7d, 0),
+    'active_today', coalesce(v_active_today, 0),
+    'total_xp', coalesce(v_total_xp, 0),
+    'completed_classes', coalesce(v_completed_classes, 0),
+    'average_streak', coalesce(v_avg_streak, 0)
   );
 end;
 $$;
@@ -431,9 +494,11 @@ create or replace function public.admin_list_learners(
   p_offset integer default 0
 )
 returns table (
+  id uuid,
   user_id uuid,
   email text,
   display_name text,
+  is_anonymous boolean,
   created_at timestamptz,
   last_active_date date,
   stardust_xp integer,
@@ -450,10 +515,12 @@ begin
   return query
     select
       u.id,
-      coalesce(u.email, case when u.is_anonymous then 'Guest account' else '—' end)::text,
+      u.id as user_id,
+      coalesce(u.email, case when coalesce(u.is_anonymous, false) then 'Guest session' else '—' end)::text,
       coalesce(p.display_name, 'Elvate Learner')::text,
+      coalesce(u.is_anonymous, false),
       u.created_at,
-      pr.last_active_date,
+      coalesce(pr.last_active_date, u.created_at::date),
       coalesce(pr.stardust_xp, 0)::integer,
       coalesce(pr.streak_days, 0)::integer,
       coalesce(cardinality(pr.completed_classes), 0)::integer
