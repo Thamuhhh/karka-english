@@ -428,6 +428,7 @@ from auth.users u
 left join public.user_progress pr on pr.user_id = u.id
 on conflict (user_id) do nothing;
 
+drop function if exists public.admin_get_overview();
 create or replace function public.admin_get_overview()
 returns jsonb
 language plpgsql
@@ -488,6 +489,7 @@ begin
 end;
 $$;
 
+drop function if exists public.admin_list_learners(text, integer, integer);
 create or replace function public.admin_list_learners(
   p_query text default '',
   p_limit integer default 30,
