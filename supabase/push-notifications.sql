@@ -39,8 +39,8 @@ begin
     raise exception 'Unsupported notification platform';
   end if;
 
-  -- Security Hardening: Strict Expo push token format validation
-  if clean_token !~ '^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]{15,70}\]$' then
+  -- Security Hardening: Expo push token format validation
+  if clean_token !~ '^(Expo|Exponent)PushToken\[[A-Za-z0-9_\-]+\]$' then
     raise exception 'Invalid Expo push token format';
   end if;
 
