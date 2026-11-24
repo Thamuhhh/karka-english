@@ -1872,15 +1872,24 @@
 
           const json = await res.json().catch(() => ({}));
           if (Array.isArray(json?.data)) {
-            json.data.forEach((ticket) => {
+            for (let idx = 0; idx < json.data.length; idx++) {
+              const ticket = json.data[idx];
               if (ticket.status === 'ok') {
                 okCount++;
               } else {
                 errCount++;
                 const reason = ticket?.message || ticket?.details?.error;
                 if (reason && errorDetails.length < 3) errorDetails.push(reason);
+                // Prune expired or reinstalled device tokens automatically from DB
+                if (ticket?.details?.error === 'DeviceNotRegistered' && chunk[idx]) {
+                  try {
+                    await rpcCall(session, setSession, 'unregister_push_device', {
+                      p_expo_push_token: chunk[idx],
+                    });
+                  } catch (_) {}
+                }
               }
-            });
+            }
           } else {
             errCount += chunk.length;
           }

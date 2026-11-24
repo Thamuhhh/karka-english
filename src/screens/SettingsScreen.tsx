@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -9,11 +10,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { THEME } from '../constants/theme';
 import { EnglishAccent, getSpeechRate } from '../services/ttsService';
+import { registerUserPushDevice } from '../services/notificationService';
 import {
   loadPreferredAccent,
   resetAllUserProgress,
@@ -47,10 +51,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const [selectedAccent, setSelectedAccent] = useState<EnglishAccent>('en-US');
   const [isSlowSpeech, setIsSlowSpeech] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<'checking' | 'granted' | 'denied' | 'unsupported'>('checking');
+  const [registeredToken, setRegisteredToken] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   useEffect(() => {
     loadPreferredAccent().then(setSelectedAccent);
     setIsSlowSpeech(getSpeechRate() < 0.9);
+
+    if (Platform.OS !== 'web') {
+      Notifications.getPermissionsAsync().then((perm) => {
+        setNotificationStatus(perm.granted ? 'granted' : 'denied');
+      }).catch(() => setNotificationStatus('unsupported'));
+      AsyncStorage.getItem('elvate-expo-push-token-v1').then(setRegisteredToken).catch(() => {});
+    } else {
+      setNotificationStatus('unsupported');
+    }
   }, []);
 
   const handleAccentChange = async (accent: EnglishAccent) => {
@@ -69,6 +85,53 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const handleDailyGoalChange = async (goal: number) => {
     onStatsUpdate(await updateDailyGoal(goal));
+  };
+
+  const handleRegisterPush = async () => {
+    setIsRegistering(true);
+    try {
+      const perm = await Notifications.getPermissionsAsync();
+      if (!perm.granted && !perm.canAskAgain) {
+        Alert.alert(
+          'Notification Permission Blocked',
+          'Notifications are turned off in your phone settings. Open Settings to enable them.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+          ]
+        );
+        setIsRegistering(false);
+        return;
+      }
+
+      const result = await registerUserPushDevice(null, true);
+      const updatedPerm = await Notifications.getPermissionsAsync();
+      setNotificationStatus(updatedPerm.granted ? 'granted' : 'denied');
+      const token = await AsyncStorage.getItem('elvate-expo-push-token-v1');
+      setRegisteredToken(token);
+
+      if (result === 'registered') {
+        Alert.alert(
+          'Device Connected!',
+          `Your phone is successfully registered to receive AI reminders from Miss Nova.\n\nToken:\n${token || 'Saved in cloud'}`
+        );
+      } else if (result === 'permission-denied') {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow notifications in phone settings to receive speaking reminders.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+          ]
+        );
+      } else {
+        Alert.alert('Notification Notice', `Registration status: ${result}`);
+      }
+    } catch (e: any) {
+      Alert.alert('Registration Error', e?.message || 'Could not register push device.');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   const handleResetProgress = () => {
@@ -204,12 +267,53 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <Text style={styles.settingTitle}>Nila AI speaking reminder</Text>
                 <Text style={styles.settingSubtitle}>
                   {Platform.OS === 'web'
-                    ? 'Daily reminders are available in the Android and iOS app'
-                    : 'One personalized AI reminder daily at 8 PM local time'}
+                    ? 'Daily reminders are available in the mobile app'
+                    : notificationStatus === 'granted'
+                    ? 'Active • Connected to Nila AI'
+                    : notificationStatus === 'denied'
+                    ? 'Blocked in phone settings'
+                    : 'Daily practice reminders at 8 PM'}
                 </Text>
               </View>
             </View>
+            {Platform.OS !== 'web' ? (
+              <TouchableOpacity
+                onPress={handleRegisterPush}
+                disabled={isRegistering}
+                style={{
+                  backgroundColor: notificationStatus === 'granted' ? '#1E1B2E' : THEME.colors.primary,
+                  borderWidth: 1,
+                  borderColor: notificationStatus === 'granted' ? THEME.colors.primaryGlow : 'transparent',
+                  paddingVertical: 7,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
+                  {isRegistering
+                    ? 'Syncing...'
+                    : notificationStatus === 'granted'
+                    ? 'Sync Token'
+                    : 'Enable'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
+          {registeredToken ? (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert('Registered Device Token', registeredToken);
+                }}
+                style={{ paddingVertical: 10, paddingHorizontal: 14 }}
+              >
+                <Text style={{ color: THEME.colors.textMuted, fontSize: 10 }} numberOfLines={1}>
+                  Token: {registeredToken}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </View>
 
         {__DEV__ ? (

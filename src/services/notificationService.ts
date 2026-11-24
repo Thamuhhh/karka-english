@@ -41,7 +41,8 @@ export async function registerUserPushDevice(
   const projectId =
     Constants.easConfig?.projectId ||
     Constants.expoConfig?.extra?.eas?.projectId ||
-    process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+    'd3118528-01ad-4833-b519-df4f99b1e8da';
   if (!projectId) return 'project-id-missing';
 
   let permission = await Notifications.getPermissionsAsync();

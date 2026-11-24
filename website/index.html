@@ -3,121 +3,232 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#100e16" />
-    <meta name="description" content="Elvate helps Tamil speakers build practical English fluency through guided lessons and speaking practice." />
+    <meta name="theme-color" content="#0c0b10" />
+    <meta name="description" content="Elvate helps Tamil speakers build practical English speaking fluency through guided lessons, clear Tamil mental models, and daily voice practice." />
     <title>Elvate — English, in your own voice</title>
-    <link rel="icon" type="image/png" href="./assets/mascot/elvate_headset_enhanced.png" />
+    <link rel="icon" type="image/png" href="./assets/R_Appicon.png" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="./script.js" defer></script>
   </head>
   <body>
+    <!-- Site Header -->
     <header class="site-header" id="top">
-      <div class="header-inner">
+      <div class="header-inner page-width">
         <a class="brand" href="#top" aria-label="Elvate home">
           <span class="brand-emblem"><img src="./assets/R_Appicon.png" alt="" /></span>
-          <img src="./assets/Elvate%20Logo.png" alt="Elvate" />
+          <img class="brand-logo" src="./assets/Elvate%20Logo.png" alt="Elvate" />
         </a>
-        <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button>
+
+        <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+          <span></span>
+          <span></span>
+        </button>
+
         <nav class="main-nav" aria-label="Main navigation">
           <a href="#approach">Our approach</a>
-          <a href="#practice">Practice</a>
+          <a href="#practice">How it works</a>
           <a href="#download">Download</a>
+          <a class="nav-mobile-cta" href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">
+            <span>Download APK</span>
+            <span aria-hidden="true">&nearr;</span>
+          </a>
         </nav>
-        <a class="header-cta" href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">Get Elvate <span aria-hidden="true">↗</span></a>
+
+        <a class="header-cta" href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">
+          <span>Get Elvate</span>
+          <span class="header-cta-arrow" aria-hidden="true">&nearr;</span>
+        </a>
       </div>
     </header>
 
     <main>
+      <!-- Hero Section (Clean & Unboxed) -->
       <section class="hero page-width">
         <div class="hero-copy reveal">
+          <span class="hero-tag">Made for Tamil speakers</span>
           <h1>Say more in English.<br /><em>Sound like yourself.</em></h1>
-          <p class="hero-intro">Build practical speaking skills with clear Tamil explanations, guided lessons, and practice you can return to every day.</p>
+          <p class="hero-intro">
+            Build practical speaking confidence through guided lessons, clear Tamil explanations, and daily 1-on-1 voice practice with Miss Nova. No memorizing dry rules.
+          </p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" /></svg>
-              Download for Android
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>Download for Android</span>
+              <span class="button-badge">v1.0.0</span>
             </a>
-            <a class="button-text" href="#approach">See how it works <span aria-hidden="true">↓</span></a>
+            <a class="button-text" href="#practice">
+              <span>See how it works</span>
+              <span aria-hidden="true">&darr;</span>
+            </a>
+          </div>
+          <div class="hero-meta">
+            <span>Free for learners</span>
+            <span class="meta-separator">&bull;</span>
+            <span>Instant guest access</span>
+            <span class="meta-separator">&bull;</span>
+            <span>Android 8.0+</span>
           </div>
         </div>
+
         <div class="hero-visual reveal reveal-later">
-          <div class="portrait-backdrop"></div>
-          <img src="./assets/mascot/elvate_headset_enhanced.png" alt="Elvate's fox guide, ready to help you practise" class="hero-fox" />
+          <img src="./assets/mascot/elvate_headset_enhanced.png" alt="Elvate speaking guide" class="hero-fox" />
         </div>
       </section>
 
+      <!-- Approach Section (Open & Unboxed) -->
       <section class="approach section-space" id="approach">
         <div class="page-width">
           <div class="section-heading reveal">
+            <span class="kicker">The Approach</span>
             <h2>Understand the words.<br /><em>Build the confidence.</em></h2>
-            <p>Elvate brings explanation and practice together, so every lesson gives you something useful to say.</p>
+            <p>Elvate pairs clear mental models with guided voice practice, giving you something practical to say in every session.</p>
           </div>
+
           <div class="approach-grid">
             <article class="approach-item reveal">
-              <div class="item-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 7v14m0 0c-2.7-1.35-5.3-1.35-8 0V5c2.7-1.35 5.3-1.35 8 0m0 16c2.7-1.35 5.3-1.35 8 0V5c-2.7-1.35-5.3-1.35-8 0" /></svg>
-              </div>
-              <h3>Make sense of English</h3>
-              <p>Learn sentence patterns with simple explanations and Tamil support when you need it.</p>
+              <span class="item-number">01</span>
+              <h3>Tamil mental models</h3>
+              <p>English and Tamil organize sentences differently. We map thoughts directly into English sentence structure so you stop translating word-for-word in your head.</p>
             </article>
+
             <article class="approach-item reveal reveal-later">
-              <div class="item-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4m-4 0h8" /></svg>
-              </div>
-              <h3>Practise saying it</h3>
-              <p>Listen to natural examples, speak your response, and work through guided conversations.</p>
+              <span class="item-number">02</span>
+              <h3>Speak without fear</h3>
+              <p>Practice 1-on-1 voice conversations with Miss Nova. Listen to natural pacing, answer aloud, and build real-time speech reflexes without embarrassment.</p>
             </article>
+
             <article class="approach-item reveal reveal-later-more">
-              <div class="item-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M7 15l4-4 3 3 6-7" /><path d="M16 7h4v4" /></svg>
-              </div>
-              <h3>Keep your progress</h3>
-              <p>Follow your course path, revisit classes, and see the practice you have put in.</p>
+              <span class="item-number">03</span>
+              <h3>Sustained daily rhythm</h3>
+              <p>Short 10-minute daily classes fit into your routine. Streaks, progress paths, and instant feedback help you build lifelong habits with zero stress.</p>
             </article>
           </div>
         </div>
       </section>
 
+      <!-- How Lessons Work (Unboxed & Open) -->
       <section class="practice-section section-space" id="practice">
         <div class="practice-inner page-width">
-          <div class="practice-art reveal">
-            <div class="art-surface"></div>
-            <img src="./assets/mascot/elvate_headset_enhanced.png" alt="Elvate's fox guide listening along with your speaking practice" loading="lazy" />
+          <div class="practice-visual reveal">
+            <img src="./assets/mascot/elvate_hero_wink.png" alt="Elvate lesson practice" class="practice-fox" />
           </div>
+
           <div class="practice-copy reveal reveal-later">
+            <span class="kicker">How It Works</span>
             <h2>A little practice<br />goes a <em>long way.</em></h2>
-            <p>Move through short classes at your own pace. Hear a phrase, understand why it works, then try it in your own voice.</p>
+            <p>Move through short, focused classes at your own speed. Hear a natural phrase, understand why it works, and try it in your own voice.</p>
+
             <ol class="practice-steps">
-              <li><p><b>Start with a useful phrase</b><small>Learn English you can bring into daily life.</small></p></li>
-              <li><p><b>Understand the meaning</b><small>Get a clear explanation before you practise.</small></p></li>
-              <li><p><b>Say it out loud</b><small>Build comfort through guided speaking.</small></p></li>
+              <li>
+                <span class="step-bullet">1</span>
+                <div>
+                  <b>Start with a practical phrase</b>
+                  <p>Learn useful language you can immediately use at work, in cafés, or with friends.</p>
+                </div>
+              </li>
+              <li>
+                <span class="step-bullet">2</span>
+                <div>
+                  <b>Understand the logic in Tamil</b>
+                  <p>Get a direct, intuitive explanation before you speak so the grammar feels obvious.</p>
+                </div>
+              </li>
+              <li>
+                <span class="step-bullet">3</span>
+                <div>
+                  <b>Speak out loud</b>
+                  <p>Vocalize your answer with Miss Nova to cement muscle memory and build natural pacing.</p>
+                </div>
+              </li>
             </ol>
           </div>
         </div>
       </section>
 
+      <!-- Download Section (Open & Unboxed) -->
       <section class="download-section page-width" id="download">
-        <div class="download-panel reveal">
+        <div class="download-inner reveal">
           <div class="download-copy">
+            <span class="kicker">Get Started</span>
             <h2>Start with one<br /><em>small step.</em></h2>
-            <p>Download Elvate for Android and begin practising English in a way that feels clear and personal.</p>
-            <a class="button button-light" href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" /></svg>
-              Download the Android app
-            </a>
+            <p>
+              Download Elvate for Android and begin speaking English in a way that feels clear, personal, and comfortable. 100% free, no ads, no required signup.
+            </p>
+            <div class="download-actions">
+              <a class="button button-primary" href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Download Android APK</span>
+                <span class="button-badge">v1.0.0</span>
+              </a>
+              <span class="download-file-info">Android 8.0+ &bull; 58 MB &bull; Direct Release</span>
+            </div>
           </div>
-          <img src="./assets/mascot/elvate_download_enhanced.png" alt="Elvate fox celebrating with you" class="download-fox" loading="lazy" />
+
+          <div class="download-qr-wrap">
+            <img src="./assets/qr-download.png" alt="QR code to download Elvate APK" class="qr-img" />
+            <span class="qr-label">Scan to download directly on your phone</span>
+          </div>
         </div>
       </section>
     </main>
 
+    <!-- Corporate High-Craft Footer -->
     <footer class="site-footer">
-      <div class="footer-inner page-width">
-        <a class="brand" href="#top"><span class="brand-emblem"><img src="./assets/R_Appicon.png" alt="" /></span><img src="./assets/Elvate%20Logo.png" alt="Elvate" /></a>
-        <p>English fluency, in your own voice.</p>
-        <a class="back-top" href="#top">Back to top ↑</a>
+      <div class="footer-grid page-width">
+        <!-- Corporate Column 1: Brand & Mission -->
+        <div class="footer-col footer-col-brand">
+          <a class="brand" href="#top" aria-label="Elvate home">
+            <span class="brand-emblem"><img src="./assets/R_Appicon.png" alt="" /></span>
+            <img class="brand-logo" src="./assets/Elvate%20Logo.png" alt="Elvate" />
+          </a>
+          <p class="footer-mission">
+            Elvate is a voice-first English speaking companion engineered specifically for Tamil speakers. Built on cognitive thought mapping, judgment-free voice practice, and structured CEFR milestones.
+          </p>
+        </div>
+
+        <!-- Corporate Column 2: Product -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Platform</h4>
+          <ul class="footer-links-list">
+            <li><a href="#approach">Our Approach</a></li>
+            <li><a href="#practice">How It Works</a></li>
+            <li><a href="#download">Android Application</a></li>
+            <li><a href="#download">Direct Download</a></li>
+          </ul>
+        </div>
+        <!-- Corporate Column 3: Legal & Trust -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Legal &amp; Trust</h4>
+          <ul class="footer-links-list">
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="privacy.html#data-security">Data Security</a></li>
+            <li><a href="terms.html#acceptable-use">Community Guidelines</a></li>
+          </ul>
+        </div>
       </div>
-      <div class="footer-legal page-width"><span>© <span id="year"></span> Elvate</span><span>Made for Tamil learners.</span><a href="https://github.com/Thamuhhh/karka-english/releases/download/latest-apk/Elvate-English.apk">Android download ↗</a></div>
+
+      <!-- Footer Bottom Legal Strip -->
+      <div class="footer-legal page-width">
+        <div class="footer-legal-copy">
+          <span>&copy; <span id="year">2026</span> Elvate. All rights reserved. Handcrafted for Tamil learners worldwide.</span>
+        </div>
+        <div class="footer-legal-meta">
+          <a href="privacy.html">Privacy Policy</a>
+          <span class="meta-dot-sep">&bull;</span>
+          <a href="terms.html">Terms of Service</a>
+          <span class="meta-dot-sep">&bull;</span>
+          <a class="back-top" href="#top">Back to top &uarr;</a>
+        </div>
+      </div>
     </footer>
   </body>
 </html>

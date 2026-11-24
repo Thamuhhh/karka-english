@@ -18,6 +18,9 @@ reference_apk/
 .env
 .env*.local
 
+# Design source files
+*.psd
+
 # Supabase CLI temp files
 supabase/.temp/
 
